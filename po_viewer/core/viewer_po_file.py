@@ -36,7 +36,7 @@ class ViewerPOFile:
             file_path: POファイルのパス
         """
         self.file_path = Path(file_path)
-        self._sgpo.load(str(file_path))
+        self._sgpo = SGPOFile.from_file(str(file_path))
         self.modified = False
 
     def get_entries(self, filter_type: Optional[str] = None) -> List[EntryModel]:
@@ -50,15 +50,14 @@ class ViewerPOFile:
         """
         entries = []
         for entry in self._sgpo:
-            if filter_type == "translated" and not entry.translated():
+            model = EntryModel.from_po_entry(entry)
+            if filter_type == "translated" and (not model.translated() or model.fuzzy):
                 continue
-            if filter_type == "untranslated" and entry.translated():
+            if filter_type == "untranslated" and (model.translated() or model.fuzzy):
                 continue
-            if filter_type == "fuzzy" and "fuzzy" not in entry.flags:
+            if filter_type == "fuzzy" and not model.fuzzy:
                 continue
-
-            entries.append(EntryModel.from_po_entry(entry))
-
+            entries.append(model)
         return entries
 
     def update_entry(self, entry: EntryModel) -> None:
@@ -80,13 +79,15 @@ class ViewerPOFile:
             query: 検索クエリ
 
         Returns:
-            検索結果のエントリリスト
+            エントリのリスト
         """
         entries = []
         for entry in self._sgpo:
-            if (query.lower() in entry.msgid.lower() or
-                query.lower() in entry.msgstr.lower() or
-                (entry.msgctxt and query.lower() in entry.msgctxt.lower())):
+            if (
+                query.lower() in entry.msgid.lower()
+                or query.lower() in entry.msgstr.lower()
+                or query.lower() in (entry.msgctxt or "").lower()
+            ):
                 entries.append(EntryModel.from_po_entry(entry))
         return entries
 

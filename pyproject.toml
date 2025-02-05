@@ -4,10 +4,17 @@ version = "0.1.0"
 description = "A tool for viewing and checking PO (gettext) files"
 requires-python = ">=3.8"
 dependencies = [
-    "polib",      # POファイルの解析用
-    "rich",       # ターミナルでの表示を改善
-    "typer",      # CLIインターフェース用
-    "PySide6>=6.6.0",  # GUIインターフェース用
+    "polib", # POファイルの解析用
+    "rich", # ターミナルでの表示を改善
+    "typer", # CLIインターフェース用
+    "PySide6>=6.6.0", # GUIインターフェース用
+    "pydantic>=2.10.6",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
 ]
 
 [project.scripts]
@@ -20,3 +27,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "--cov=po_viewer --cov-report=term-missing"
