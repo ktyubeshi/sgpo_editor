@@ -1,0 +1,12 @@
+---
+description: Python の依存関係の追加、Pythonスクリプトの実行、テストの実行などの際に適用します。
+globs: 
+---
+このプロジェクトはuvを使ってPythonプロジェクトや依存関係の管理をしています。
+以下のように使います。
+
+依存関係のインストール `pip install -e .`
+パッケージの追加 `uv add <package_name>`
+スクリプトの実行 `uv run <script_name>`
+テストは `uv run pytest`
+通常のpytest実行と同様にオプションを指定できます。 `uv run pytest --cov=パッケージ名 --cov-report=term-missing`

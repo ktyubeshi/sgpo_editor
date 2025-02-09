@@ -1,0 +1,6 @@
+---
+description: テストを実行するときのルール
+globs: test_*.py
+---
+テストは `uv run pytest`
+通常のpytest実行と同様にオプションを指定できます。 `uv run pytest --cov=パッケージ名 --cov-report=term-missing`
