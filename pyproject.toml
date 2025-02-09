@@ -1,5 +1,5 @@
 [project]
-name = "po_viewer"
+name = "sgpo_editor"
 version = "0.1.0"
 description = "A tool for viewing and checking PO (gettext) files"
 requires-python = ">=3.8"
@@ -9,6 +9,7 @@ dependencies = [
     "typer", # CLIインターフェース用
     "PySide6>=6.6.0", # GUIインターフェース用
     "pydantic>=2.10.6",
+    "pytest-cov>=5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -18,8 +19,8 @@ test = [
 ]
 
 [project.scripts]
-po-viewer-cli = "po_viewer.cli:app"
-po-viewer = "po_viewer.__main__:main"
+po_editor-cli = "sgpo_editor.cli:app"
+po_editor = "sgpo_editor.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -31,4 +32,4 @@ allow-direct-references = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "--cov=po_viewer --cov-report=term-missing"
+addopts = "--cov=po_editor --cov-report=term-missing"

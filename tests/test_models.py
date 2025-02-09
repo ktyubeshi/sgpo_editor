@@ -1,75 +1,135 @@
 """モデルのテスト"""
 import pytest
-from po_viewer.gui.models.entry import EntryModel
-from po_viewer.gui.models.stats import StatsModel
+from sgpo_editor.gui.models.entry import EntryModel
+from sgpo_editor.gui.models.stats import StatsModel
 from unittest.mock import Mock
 
 def test_entry_model():
     """EntryModelのテスト"""
+    # 基本的なエントリのテスト
     entry = EntryModel(
+        key="context\x04test",
         msgid="test",
         msgstr="テスト",
         msgctxt="context",
-        fuzzy=True,
         obsolete=False,
         references=["test.py:10"],
         comment="コメント",
-        tcomment="翻訳者コメント"
+        tcomment="翻訳者コメント",
+        flags=["fuzzy"]  # fuzzyフラグをflagsリストで設定
     )
     
+    assert entry.key == "context\x04test"
     assert entry.msgid == "test"
     assert entry.msgstr == "テスト"
     assert entry.msgctxt == "context"
-    assert entry.fuzzy
+    assert entry.fuzzy  # fuzzyプロパティで確認
     assert not entry.obsolete
     assert entry.references == ["test.py:10"]
     assert entry.comment == "コメント"
     assert entry.tcomment == "翻訳者コメント"
 
     # キーのテスト
-    assert entry.key == "context|test"
+    assert entry.key == "context\x04test"
     entry_without_context = EntryModel(msgid="test", msgstr="テスト")
     assert entry_without_context.key == "|test"
 
     # 翻訳状態のテスト
-    assert entry.translated()
-    assert entry.is_fuzzy()
-    assert entry.get_status() == "ファジー"
+    assert not entry.translated()  # fuzzyがTrueなので未翻訳
+    entry_not_translated = EntryModel(msgid="test", msgstr="")
+    assert not entry_not_translated.translated()  # msgstrが空なので未翻訳
+    entry_translated = EntryModel(msgid="test", msgstr="テスト")  # fuzzyフラグなし
+    assert entry_translated.translated()  # msgstrがあり、fuzzyがFalseなので翻訳済み
 
     # 未翻訳のテスト
-    untranslated = EntryModel(msgid="test")
+    untranslated = EntryModel(msgid="test", msgstr="")  # 空文字列を指定
     assert not untranslated.translated()
-    assert not untranslated.is_fuzzy()
+    assert not untranslated.fuzzy
     assert untranslated.get_status() == "未翻訳"
 
     # 翻訳済みのテスト
-    translated = EntryModel(msgid="test", msgstr="テスト", fuzzy=False)
+    translated = EntryModel(msgid="test", msgstr="テスト")  # fuzzyフラグなし
     assert translated.translated()
-    assert not translated.is_fuzzy()
-    assert translated.get_status() == "翻訳済み"
+    assert not translated.fuzzy
+    assert translated.get_status() == "完了"  # 状態は「完了」
+
+    # フラグのテスト
+    entry = EntryModel(msgid="test", msgstr="テスト")
+    assert not entry.fuzzy
+    assert len(entry.flags) == 0
+
+    # fuzzyプロパティのテスト
+    entry.fuzzy = True
+    assert entry.fuzzy
+    assert "fuzzy" in entry.flags
+
+    entry.fuzzy = False
+    assert not entry.fuzzy
+    assert "fuzzy" not in entry.flags
+
+    # フラグの追加と削除
+    entry.add_flag("python-format")
+    assert "python-format" in entry.flags
+    assert len(entry.flags) == 1
+
+    entry.add_flag("fuzzy")
+    assert entry.fuzzy
+    assert len(entry.flags) == 2
+
+    entry.remove_flag("python-format")
+    assert "python-format" not in entry.flags
+    assert entry.fuzzy
+    assert len(entry.flags) == 1
+
+    # 重複フラグの防止
+    entry.add_flag("fuzzy")
+    assert len(entry.flags) == 1
 
     # POEntryからの変換テスト
     po_entry = Mock()
     po_entry.msgid = "test"
     po_entry.msgstr = "テスト"
     po_entry.msgctxt = None
-    po_entry.flags = ["fuzzy"]
+    po_entry.flags = ["fuzzy", "python-format"]
     po_entry.obsolete = False
     po_entry.comment = None
     po_entry.tcomment = None
-    po_entry.references = []
-    # previous_msgid と previous_msgstr 属性を持っていないようにする
+    po_entry.occurrences = []  # イテラブルなリストとして設定
+    # previous_msgid と previous_msgctxt 属性を持っていないようにする
     delattr(po_entry, "previous_msgid")
-    delattr(po_entry, "previous_msgstr")
+    delattr(po_entry, "previous_msgctxt")
     model = EntryModel.from_po_entry(po_entry)
     assert model.msgid == "test"
     assert model.msgstr == "テスト"
     assert model.msgctxt is None
     assert model.fuzzy
+    assert "python-format" in model.flags
     assert not model.obsolete
     assert model.previous_msgid is None
-    assert model.previous_msgstr is None
+    assert model.previous_msgctxt is None
     assert model.references == []
+
+    # 辞書形式への変換
+    data = model.to_dict()
+    assert data["key"] == "|test"
+    assert data["msgid"] == "test"
+    assert data["msgstr"] == "テスト"
+    assert data["msgctxt"] is None
+    assert data["fuzzy"] is True
+    assert "python-format" in data["flags"]
+    assert data["obsolete"] is False
+    assert data["references"] == []
+
+    # 辞書からの復元
+    restored = EntryModel.from_dict(data)
+    assert restored.key == model.key
+    assert restored.msgid == model.msgid
+    assert restored.msgstr == model.msgstr
+    assert restored.msgctxt == model.msgctxt
+    assert restored.fuzzy == model.fuzzy
+    assert "python-format" in restored.flags
+    assert restored.obsolete == model.obsolete
+    assert restored.references == model.references
 
 def test_stats_model():
     """StatsModelのテスト"""
