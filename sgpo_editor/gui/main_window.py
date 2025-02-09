@@ -55,12 +55,6 @@ class MainWindow(QMainWindow):
         self.entry_table = self.table
         self.entry_editor_dock = QDockWidget("エントリ編集", self)
 
-        # プログレスバー
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setMaximum(100)
-        self.progress_bar.setMinimum(0)
-        self.statusBar().addPermanentWidget(self.progress_bar)
-
         # UIの初期化
         self._setup_ui()
         self._setup_menubar()
@@ -278,21 +272,12 @@ class MainWindow(QMainWindow):
             raise
 
     def _update_progress(self) -> None:
-        """プログレスバーを更新する"""
+        """内部カウンターの検証のみ実施（プログレスバーは削除済み）"""
         try:
             self._validate_counters()
-            if self.total_entries > 0:
-                progress = int((self.current_entry_index + 1) / self.total_entries * 100)
-                self.progress_bar.setValue(progress)
-                self.progress_bar.setFormat(f"{self.current_entry_index + 1}/{self.total_entries}")
-            else:
-                self.progress_bar.setValue(0)
-                self.progress_bar.setFormat("0/0")
         except Exception as e:
             logger.error(f"プログレスバーの更新でエラー: {e}")
             self.statusBar().showMessage(f"プログレスバーの更新でエラー: {e}", 3000)
-            self.progress_bar.setValue(0)
-            self.progress_bar.setFormat("エラー")
 
     def _show_current_entry(self) -> None:
         """現在のエントリを表示する"""
@@ -331,6 +316,7 @@ class MainWindow(QMainWindow):
             search_text = criteria.search_text
             if self.current_po is None:
                 return
+            po = self.current_po
             # Convert sort parameters to strings
             sort_column_str = str(sort_column) if sort_column is not None else None
             if sort_order is not None:
@@ -338,7 +324,7 @@ class MainWindow(QMainWindow):
             else:
                 sort_order_str = None
             # Retrieve filtered entries
-            entries = self.current_po.get_filtered_entries(
+            entries = po.get_filtered_entries(
                 filter_text=filter_text,
                 search_text=search_text,
                 sort_column=sort_column_str,

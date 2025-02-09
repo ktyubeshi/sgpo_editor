@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access, undefined-variable, no-member, unused-argument
 from __future__ import annotations
 from typing import Any, cast
 
@@ -230,12 +230,10 @@ class TestMainWindow(unittest.TestCase):
 
     def test_sort_entries(self) -> None:
         """ソート機能のテスト"""
-        self.main_window.table.horizontalHeader().sortIndicatorOrder = MagicMock(return_value=Qt.AscendingOrder)
+        self.main_window.table.horizontalHeader().sortIndicatorOrder = MagicMock(return_value=Qt.SortOrder.AscendingOrder)
         self.main_window._update_table = MagicMock()
-
         self.main_window._on_header_clicked(2)  # msgidカラムをクリック
-
-        self.main_window._update_table.assert_called_with(2, Qt.DescendingOrder)
+        self.main_window._update_table.assert_called_with(2, Qt.SortOrder.DescendingOrder)
 
     @patch("sgpo_editor.gui.main_window.ViewerPOFile")
     def test_error_handling(self, mock_viewer_po_file: Any) -> None:
@@ -476,7 +474,7 @@ class TestMainWindow(unittest.TestCase):
         self.assertTrue(True)
 
     def test_update_progress_invalid_state(self) -> None:
-        """無効な状態でのプログレス更新テスト"""
+        """無効な状態での内部カウンター更新テスト"""
         # 無効な状態を設定
         self.main_window.current_entry_index = "invalid"
         self.main_window.total_entries = None
