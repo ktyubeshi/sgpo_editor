@@ -206,8 +206,9 @@ class EntryEditor(QWidget):
 
     def _on_fuzzy_changed(self, state: int) -> None:
         """Fuzzyチェックボックスの状態が変更されたときの処理"""
-        if self.fuzzy_checkbox:
-            self.fuzzy_checkbox.setChecked(state == Qt.CheckState.Checked)
+        if self.fuzzy_checkbox and self._current_entry:
+            is_fuzzy = state == Qt.CheckState.Checked
+            self._current_entry.fuzzy = is_fuzzy
             self.text_changed.emit()
 
     def set_entry(self, entry: Optional[EntryModel]) -> None:
