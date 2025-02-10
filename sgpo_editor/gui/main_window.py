@@ -6,7 +6,7 @@ from typing import Optional, List, cast, Dict, Any
 import traceback
 
 from PySide6.QtCore import Qt, QSettings, QModelIndex, QEvent
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QKeySequence, QActionGroup
 from PySide6.QtWidgets import (
     QMainWindow,
     QDockWidget,
@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
-from sgpo_editor.gui.widgets.entry_editor import EntryEditor
+from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.gui.widgets.search import SearchWidget
 from sgpo_editor.gui.widgets.stats import StatsWidget
 
@@ -76,11 +76,13 @@ class MainWindow(QMainWindow):
         # エントリ一覧
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["エントリ番号", "msgctxt", "msgid", "msgstr", "状態"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(0, 80)
         self.table.setColumnWidth(1, 120)
-        self.table.setColumnWidth(2, 150)
-        self.table.setColumnWidth(3, 150)
         self.table.setColumnWidth(4, 100)
         self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
         self.table.verticalHeader().hide()
@@ -143,6 +145,35 @@ class MainWindow(QMainWindow):
         exit_action.setShortcut(QKeySequence.StandardKey.Quit)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+        # 表示メニュー
+        display_menu = self.menuBar().addMenu("表示")
+        display_menu.setObjectName("display_menu")
+        
+        # エントリ編集サブメニュー
+        entry_edit_menu = display_menu.addMenu("エントリ編集")
+        entry_edit_menu.setObjectName("entry_edit_menu")
+        
+        # レイアウト1
+        layout1_action = QAction("レイアウト1", self)
+        layout1_action.setObjectName("layout1_action")
+        layout1_action.setCheckable(True)
+        layout1_action.setChecked(True)
+        layout1_action.triggered.connect(lambda: self._change_entry_layout(LayoutType.LAYOUT1))
+        entry_edit_menu.addAction(layout1_action)
+        
+        # レイアウト2
+        layout2_action = QAction("レイアウト2", self)
+        layout2_action.setObjectName("layout2_action")
+        layout2_action.setCheckable(True)
+        layout2_action.triggered.connect(lambda: self._change_entry_layout(LayoutType.LAYOUT2))
+        entry_edit_menu.addAction(layout2_action)
+        
+        # アクショングループの作成（排他的選択）
+        layout_group = QActionGroup(self)
+        layout_group.addAction(layout1_action)
+        layout_group.addAction(layout2_action)
+        layout_group.setExclusive(True)
 
     def _setup_statusbar(self) -> None:
         """ステータスバーの初期化"""
@@ -332,43 +363,49 @@ class MainWindow(QMainWindow):
             )
             self._display_entries = []
             for idx, entry in enumerate(entries):
-                try:
-                    key = getattr(entry, 'key', None)
-                    if key is None:
-                        raise AttributeError("'NoneType' object has no attribute 'key'")
-                    row = self.table.rowCount()
-                    self.table.insertRow(row)
-                    # Column 0: エントリ番号 (row index + 1)
-                    item0 = QTableWidgetItem(str(idx + 1))
-                    item0.setData(Qt.ItemDataRole.UserRole, key)
-                    self.table.setItem(row, 0, item0)
-                    
-                    # Column 1: msgctxt
-                    ctxt = entry.msgctxt if getattr(entry, 'msgctxt', None) is not None else ""
-                    item1 = QTableWidgetItem(str(ctxt))
-                    item1.setData(Qt.ItemDataRole.UserRole, key)
-                    self.table.setItem(row, 1, item1)
-                    
-                    # Column 2: msgid
-                    item2 = QTableWidgetItem(str(entry.msgid))
-                    item2.setData(Qt.ItemDataRole.UserRole, key)
-                    self.table.setItem(row, 2, item2)
-                    
-                    # Column 3: msgstr
-                    item3 = QTableWidgetItem(str(entry.msgstr))
-                    item3.setData(Qt.ItemDataRole.UserRole, key)
-                    self.table.setItem(row, 3, item3)
-                    
-                    # Column 4: 状態
-                    status = entry.get_status() if hasattr(entry, 'get_status') else ""
-                    item4 = QTableWidgetItem(str(status))
-                    item4.setData(Qt.ItemDataRole.UserRole, key)
-                    self.table.setItem(row, 4, item4)
-                    
-                    self._display_entries.append(key)
-                except Exception as e:
-                    self.statusBar().showMessage(f"エントリの表示でエラー: {e}", 3000)
-                    continue
+                # Debug: Log current state of flags before conversion
+                logger.debug("_update_table: processing entry (key: %s) with flags type: %s, value: %s", getattr(entry, 'key', 'None'), type(entry.flags), entry.flags)
+                if not hasattr(entry, 'flags') or not isinstance(entry.flags, list):
+                    if isinstance(entry.flags, str) and entry.flags.strip() != "":
+                        logger.debug("_update_table: converting entry.flags from string to list")
+                        entry.flags = [entry.flags]
+                    else:
+                        logger.debug("_update_table: entry.flags is not a list and not a valid string; initializing to empty list")
+                        entry.flags = []
+
+                key = getattr(entry, 'key', None)
+                if key is None:
+                    raise AttributeError("'NoneType' object has no attribute 'key'")
+                row = self.table.rowCount()
+                self.table.insertRow(row)
+                # Column 0: エントリ番号 (row index + 1)
+                item0 = QTableWidgetItem(str(idx + 1))
+                item0.setData(Qt.ItemDataRole.UserRole, key)
+                self.table.setItem(row, 0, item0)
+                
+                # Column 1: msgctxt
+                ctxt = entry.msgctxt if getattr(entry, 'msgctxt', None) is not None else ""
+                item1 = QTableWidgetItem(str(ctxt))
+                item1.setData(Qt.ItemDataRole.UserRole, key)
+                self.table.setItem(row, 1, item1)
+                
+                # Column 2: msgid
+                item2 = QTableWidgetItem(str(entry.msgid))
+                item2.setData(Qt.ItemDataRole.UserRole, key)
+                self.table.setItem(row, 2, item2)
+                
+                # Column 3: msgstr
+                item3 = QTableWidgetItem(str(entry.msgstr))
+                item3.setData(Qt.ItemDataRole.UserRole, key)
+                self.table.setItem(row, 3, item3)
+                
+                # Column 4: 状態
+                status = entry.get_status() if hasattr(entry, 'get_status') else ""
+                item4 = QTableWidgetItem(str(status))
+                item4.setData(Qt.ItemDataRole.UserRole, key)
+                self.table.setItem(row, 4, item4)
+                
+                self._display_entries.append(key)
             self.total_entries = len(entries)
             if hasattr(self, 'current_entry_index'):
                 self.current_entry_index = min(self.current_entry_index, max(0, self.total_entries - 1))
@@ -376,6 +413,7 @@ class MainWindow(QMainWindow):
                 self.current_entry_index = 0
             self._update_progress()
         except Exception as e:
+            logger.error(f"テーブルの更新でエラー: {e}")
             self.statusBar().showMessage(f"テーブルの更新でエラー: {e}", 3000)
 
     def _on_header_clicked(self, logical_index: int) -> None:
@@ -455,16 +493,30 @@ class MainWindow(QMainWindow):
                 self.entry_editor_dock.setWindowTitle(f"{title}*")
 
     def _on_apply_clicked(self) -> None:
-        """適用ボタンがクリックされたときの処理"""
+        """適用ボタンクリック時の処理"""
         if not self.entry_editor.current_entry:
             return
 
         entry = self.entry_editor.current_entry
+        # Log the initial state of flags
+        logger.debug("_on_apply_clicked: initial entry.flags type: %s, value: %s", type(entry.flags), entry.flags)
+
         entry.msgstr = self.entry_editor.msgstr_edit.toPlainText()
+
+        # If entry.flags is not a list, initialize it to an empty list
+        if not hasattr(entry, 'flags') or not isinstance(entry.flags, list):
+            logger.debug("_on_apply_clicked: entry.flags is not a list; initializing to empty list")
+            entry.flags = []
+
+        # Update fuzzy status based on checkbox
         if "fuzzy" in entry.flags and not self.entry_editor.fuzzy_checkbox.isChecked():
+            logger.debug("_on_apply_clicked: removing 'fuzzy' from entry.flags")
             entry.flags.remove("fuzzy")
         elif "fuzzy" not in entry.flags and self.entry_editor.fuzzy_checkbox.isChecked():
+            logger.debug("_on_apply_clicked: adding 'fuzzy' to entry.flags")
             entry.flags.append("fuzzy")
+
+        logger.debug("_on_apply_clicked: final entry.flags type: %s, value: %s", type(entry.flags), entry.flags)
 
         # エントリを更新
         if self.current_po:
@@ -476,6 +528,9 @@ class MainWindow(QMainWindow):
         title = self.entry_editor_dock.windowTitle()
         if title.endswith("*"):
             self.entry_editor_dock.setWindowTitle(title[:-1])
+
+        # 追加: エントリリストの表示を更新
+        self._update_table()
 
     def next_entry(self) -> None:
         try:
@@ -528,6 +583,10 @@ class MainWindow(QMainWindow):
             logger.error(f"最後のエントリへの移動でエラー: {e}")
             self.statusBar().showMessage(f"最後のエントリへの移動でエラー: {e}", 3000)
             raise
+
+    def _change_entry_layout(self, layout_type: LayoutType) -> None:
+        """エントリ編集のレイアウトを変更する"""
+        self.entry_editor.set_layout_type(layout_type)
 
 
 def main():

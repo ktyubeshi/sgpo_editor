@@ -1,11 +1,13 @@
+#!/usr/bin/env python
 # pylint: disable=protected-access, undefined-variable, no-member, unused-argument
 from __future__ import annotations
-from typing import Any, cast
+from typing import Any, cast, Optional
 
-import unittest
 from unittest.mock import MagicMock, patch, call
+import unittest
 
-from PySide6.QtWidgets import QTableWidgetItem, QApplication
+from PySide6.QtWidgets import QTableWidgetItem, QApplication, QMenu
+from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 from sgpo_editor.gui.main_window import MainWindow
 from sgpo_editor.gui.models.entry import EntryModel
@@ -13,6 +15,7 @@ import sys
 from pathlib import Path
 import logging
 from sgpo_editor.gui.widgets.search import SearchCriteria
+from sgpo_editor.gui.widgets.entry_editor import LayoutType
 
 app = QApplication([])
 
@@ -512,10 +515,12 @@ class TestMainWindow(unittest.TestCase):
         """無効なエントリでのテーブル更新エラーテスト"""
         # POファイルをモック
         mock_po = MagicMock()
-        mock_entry = MagicMock(spec=['msgid', 'msgstr', 'position'])  # keyを除外
+        mock_entry = MagicMock(spec=['msgid', 'msgstr', 'position', 'key', 'flags'])
         mock_entry.msgid = None  # 無効なmsgidを設定
         mock_entry.msgstr = None  # 無効なmsgstrを設定
         mock_entry.position = None  # 無効なpositionを設定
+        mock_entry.key = None
+        mock_entry.flags = []
         mock_po.get_filtered_entries.return_value = [mock_entry]
         self.main_window.current_po = mock_po
 
@@ -528,7 +533,7 @@ class TestMainWindow(unittest.TestCase):
 
         # エラーメッセージが表示されることを確認
         mock_status_bar.showMessage.assert_any_call(
-            "エントリの表示でエラー: 'NoneType' object has no attribute 'key'",
+            "テーブルの更新でエラー: 'NoneType' object has no attribute 'key'",
             3000
         )
 
@@ -691,10 +696,11 @@ class TestMainWindow(unittest.TestCase):
             assert header_item.text() == expected, f"列 {i+1} のヘッダーが '{expected}' ではなく '{header_item.text()}' です"
 
         # 予め決められた列幅を検証
-        expected_widths = [80, 120, 150, 150, 100]
+        expected_widths = [80, 120, None, None, 100]  # Stretchモードの列はNoneとする
         for i, expected_width in enumerate(expected_widths):
             width = table.columnWidth(i)
-            assert width == expected_width, f"列 {i+1} の幅が {expected_width} ではなく {width} です"
+            if expected_width is not None:
+                assert width == expected_width, f"列 {i+1} の幅が {expected_width} ではなく {width} です"
 
     def test_entry_list_data(self) -> None:
         """エントリリストの表示されるデータの整合性テスト"""
@@ -915,6 +921,174 @@ class TestMainWindow(unittest.TestCase):
         self.main_window._update_table()
         expected_count = len([e for e in entries if "app" in e.msgid])
         self.assertEqual(self.main_window.table.rowCount(), expected_count, "GUI上の部分一致キーワードフィルタが正しく機能していません")
+
+    def test_view_menu_layout(self) -> None:
+        """表示メニューのレイアウト切り替え機能のテスト"""
+        # 表示メニューの確認
+        menubar = self.main_window.menuBar()
+        display_menu = None
+        for action in menubar.actions():
+            if action.text() == "表示":
+                display_menu = action.menu()
+                break
+        self.assertIsNotNone(display_menu)
+
+        # エントリ編集サニューの確認
+        entry_edit_menu = None
+        for action in display_menu.actions():
+            if action.text() == "エントリ編集":
+                entry_edit_menu = action.menu()
+                break
+        self.assertIsNotNone(entry_edit_menu)
+
+        # レイアウト1とレイアウト2のアクションの確認
+        layout_actions = entry_edit_menu.actions()
+        self.assertEqual(len(layout_actions), 2)
+        layout1_action = layout_actions[0]
+        layout2_action = layout_actions[1]
+
+        self.assertEqual(layout1_action.text(), "レイアウト1")
+        self.assertEqual(layout2_action.text(), "レイアウト2")
+        self.assertTrue(layout1_action.isCheckable())
+        self.assertTrue(layout2_action.isCheckable())
+        self.assertTrue(layout1_action.isChecked())
+        self.assertFalse(layout2_action.isChecked())
+
+    def test_layout_switching(self) -> None:
+        """レイアウト切り替えの動作テスト"""
+        # 初期状態の確認
+        self.assertEqual(self.main_window.entry_editor.get_layout_type(), LayoutType.LAYOUT1)
+
+        # レイアウト2に切り替え
+        layout2_action = None
+        for action in self.main_window.menuBar().actions():
+            if action.text() == "表示":
+                display_menu = action.menu()
+                for sub_action in display_menu.actions():
+                    if sub_action.text() == "エントリ編集":
+                        entry_edit_menu = sub_action.menu()
+                        layout2_action = entry_edit_menu.actions()[1]
+                        break
+                break
+        self.assertIsNotNone(layout2_action)
+        layout2_action.trigger()
+        self.assertEqual(self.main_window.entry_editor.get_layout_type(), LayoutType.LAYOUT2)
+
+        # レイアウト1に切り替え
+        layout1_action = None
+        for action in self.main_window.menuBar().actions():
+            if action.text() == "表示":
+                display_menu = action.menu()
+                for sub_action in display_menu.actions():
+                    if sub_action.text() == "エントリ編集":
+                        entry_edit_menu = sub_action.menu()
+                        layout1_action = entry_edit_menu.actions()[0]
+                        break
+                break
+        self.assertIsNotNone(layout1_action)
+        layout1_action.trigger()
+        self.assertEqual(self.main_window.entry_editor.get_layout_type(), LayoutType.LAYOUT1)
+
+    def test_layout_with_entry(self) -> None:
+        """エントリ表示中のレイアウト切り替えテスト"""
+        # テスト用のエントリを作成
+        mock_entry = EntryModel(
+            msgid="test_msgid",
+            msgstr="test_msgstr",
+            msgctxt="test_context"
+        )
+
+        # エントリのmsgctxtが正しく設定されていることを確認
+        self.assertEqual(mock_entry.msgctxt, "test_context", "EntryModelのmsgctxtが正しく設定されていません")
+
+        # エントリを設定
+        self.main_window.entry_editor.set_entry(mock_entry)
+
+        # 初期状態でコンテキストが正しく設定されていることを確認
+        initial_context = self.main_window.entry_editor.context_edit.text()
+        self.assertEqual(initial_context, "test_context", "初期状態でコンテキストが正しく設定されていません")
+
+        # レイアウト2に切り替え
+        layout2_action = None
+        for action in self.main_window.menuBar().actions():
+            if action.text() == "表示":
+                display_menu = action.menu()
+                for sub_action in display_menu.actions():
+                    if sub_action.text() == "エントリ編集":
+                        entry_edit_menu = sub_action.menu()
+                        layout2_action = entry_edit_menu.actions()[1]
+                        break
+                break
+        self.assertIsNotNone(layout2_action)
+        layout2_action.trigger()
+
+        # レイアウト2に切り替わったことを確認
+        self.assertEqual(
+            self.main_window.entry_editor.get_layout_type(),
+            LayoutType.LAYOUT2,
+            "レイアウト2への切り替えが失敗しました"
+        )
+
+        # レイアウト2でのコンテキストを確認
+        layout2_context = self.main_window.entry_editor.context_edit.text()
+        self.assertEqual(
+            layout2_context,
+            "test_context",
+            f"レイアウト2でコンテキストが失われました: expected='test_context', actual='{layout2_context}'"
+        )
+
+        # エントリの内容が保持されていることを確認
+        self.assertEqual(
+            self.main_window.entry_editor.msgid_edit.toPlainText(),
+            "test_msgid",
+            "レイアウト2でmsgidが失われました"
+        )
+        self.assertEqual(
+            self.main_window.entry_editor.msgstr_edit.toPlainText(),
+            "test_msgstr",
+            "レイアウト2でmsgstrが失われました"
+        )
+
+        # レイアウト1に切り替え
+        layout1_action = None
+        for action in self.main_window.menuBar().actions():
+            if action.text() == "表示":
+                display_menu = action.menu()
+                for sub_action in display_menu.actions():
+                    if sub_action.text() == "エントリ編集":
+                        entry_edit_menu = sub_action.menu()
+                        layout1_action = entry_edit_menu.actions()[0]
+                        break
+                break
+        self.assertIsNotNone(layout1_action)
+        layout1_action.trigger()
+
+        # レイアウト1に切り替わったことを確認
+        self.assertEqual(
+            self.main_window.entry_editor.get_layout_type(),
+            LayoutType.LAYOUT1,
+            "レイアウト1への切り替えが失敗しました"
+        )
+
+        # レイアウト1でのコンテキストを確認
+        layout1_context = self.main_window.entry_editor.context_edit.text()
+        self.assertEqual(
+            layout1_context,
+            "test_context",
+            f"レイアウト1でコンテキストが失われました: expected='test_context', actual='{layout1_context}'"
+        )
+
+        # エントリの内容が保持されていることを確認
+        self.assertEqual(
+            self.main_window.entry_editor.msgid_edit.toPlainText(),
+            "test_msgid",
+            "レイアウト1でmsgidが失われました"
+        )
+        self.assertEqual(
+            self.main_window.entry_editor.msgstr_edit.toPlainText(),
+            "test_msgstr",
+            "レイアウト1でmsgstrが失われました"
+        )
 
 if __name__ == "__main__":
     unittest.main()

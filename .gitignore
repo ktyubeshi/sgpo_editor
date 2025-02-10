@@ -6,3 +6,5 @@
 /test_output.txt
 *.coverage
 *.db
+*.db-shm
+*.db-wal

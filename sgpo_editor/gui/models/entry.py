@@ -1,7 +1,7 @@
 """POエントリのモデル"""
 import logging
 from typing import Optional, List, Union, Any, Dict
-from pydantic import BaseModel, Field, computed_field, model_validator, validator
+from pydantic import BaseModel, Field, computed_field, model_validator, field_validator
 
 from sgpo_editor.types.po_entry import POEntry
 
@@ -25,6 +25,15 @@ class EntryModel(BaseModel):
     previous_msgid_plural: Optional[str] = None
     previous_msgctxt: Optional[str] = None
     id: Optional[Union[str, int]] = None
+
+    @field_validator('flags', mode='before')
+    def ensure_flags_list(cls, v: Any) -> List[str]:
+        if isinstance(v, str):
+            v = v.strip()
+            return [v] if v else []
+        if isinstance(v, list):
+            return list(map(str, v))
+        return []
 
     @model_validator(mode='before')
     @classmethod

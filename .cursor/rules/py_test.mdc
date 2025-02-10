@@ -2,5 +2,9 @@
 description: テストを実行するときのルール
 globs: test_*.py
 ---
-テストは `uv run pytest`
-通常のpytest実行と同様にオプションを指定できます。 `uv run pytest --cov=パッケージ名 --cov-report=term-missing`
+テストは `uv run pytest <option>` の形で実行します。
+以下のようにオプションを指定できます。
+ `uv run pytest -v`
+ `uv run pytest --cov=パッケージ名 --cov-report=term-missing`
+テストに失敗した特定の項目を修正して確認するときはテスト項目名を指定して実行してください。
+問題が修正できたら改めて全項目テストします。
