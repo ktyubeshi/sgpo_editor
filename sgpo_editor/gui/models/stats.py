@@ -1,5 +1,6 @@
 """統計情報のデータモデル"""
 from pydantic import BaseModel, Field
+from typing import Dict, Any
 
 
 class StatsModel(BaseModel):
@@ -11,7 +12,7 @@ class StatsModel(BaseModel):
     progress: float = Field(0.0, description="翻訳の進捗率（%）")
     file_name: str = Field("", description="POファイル名")
 
-    def __init__(self, **data):
+    def __init__(self, **data: Dict[str, Any]):
         super().__init__(**data)
         self.update_progress()
 

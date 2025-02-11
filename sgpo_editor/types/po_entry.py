@@ -1,9 +1,22 @@
 """POEntryの型定義"""
-from typing import List, Optional, Tuple, Protocol, runtime_checkable, Any, Sequence, Union, TypeVar, Generic, Iterator
+from typing import List, Optional, Tuple, Protocol, runtime_checkable, Any, Sequence, Union, TypeVar, Generic, Iterator, TypedDict
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
 
+class POEntryData(TypedDict):
+    """POエントリの型定義"""
+    msgid: str
+    msgstr: str
+    msgctxt: Optional[str]
+    occurrences: List[Tuple[str, str]]
+    flags: List[str]
+    obsolete: bool
+    comment: Optional[str]
+    tcomment: Optional[str]
+    previous_msgid: Optional[str]
+    previous_msgid_plural: Optional[str]
+    previous_msgctxt: Optional[str]
 
 @runtime_checkable
 class POEntry(Protocol):
@@ -72,4 +85,12 @@ class POEntry(Protocol):
     @property
     def fuzzy(self) -> bool:
         """fuzzyフラグの状態を取得"""
+        ...
+
+    def to_dict(self) -> POEntryData:
+        """データを辞書形式で取得"""
+        ...
+
+    def from_dict(self, data: POEntryData) -> None:
+        """辞書形式からデータを設定"""
         ... 

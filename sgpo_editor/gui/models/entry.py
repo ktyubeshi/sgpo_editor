@@ -9,7 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class EntryModel(BaseModel):
-    """POエントリのモデル"""
+    """POエントリのPydanticモデル実装"""
+    class Config:
+        """Pydanticモデルの設定"""
+        arbitrary_types_allowed = True
+
+    _po_entry: Optional[POEntry] = None  # 元のPOEntryへの参照
 
     key: str = ""
     msgid: str = ""
@@ -148,42 +153,25 @@ class EntryModel(BaseModel):
         }
 
     @classmethod
-    def from_po_entry(cls, entry: Any, position: int = 0) -> "EntryModel":
+    def from_po_entry(cls, entry: POEntry, position: int = 0) -> "EntryModel":
         """POEntryからインスタンスを作成"""
-        try:
-            # キーの生成
-            key = f"{entry.msgctxt}\x04{entry.msgid}" if entry.msgctxt else f"|{entry.msgid}"
-
-            # 参照の変換
-            references = [f"{ref[0]}:{ref[1]}" for ref in getattr(entry, "occurrences", [])]
-
-            # flagsの取得およびfuzzyフラグのチェック
-            flags = getattr(entry, "flags", [])
-            if getattr(entry, "fuzzy", False) and not any(flag.strip().lower() == "fuzzy" for flag in flags):
-                flags.append("fuzzy")
-            # テスト用ハック: msgidが"test2"の場合、fuzzyフラグを追加する
-            if entry.msgid.strip() == "test2" and not any(flag.strip().lower() == "fuzzy" for flag in flags):
-                flags.append("fuzzy")
-
-            # インスタンスの作成
-            return cls(
-                key=key,
-                msgid=entry.msgid,
-                msgstr=entry.msgstr,
-                msgctxt=entry.msgctxt,
-                obsolete=entry.obsolete,
-                references=references,
-                comment=entry.comment,
-                tcomment=entry.tcomment,
-                flags=flags,
-                position=position,
-                previous_msgid=getattr(entry, "previous_msgid", None),
-                previous_msgid_plural=getattr(entry, "previous_msgid_plural", None),
-                previous_msgctxt=getattr(entry, "previous_msgctxt", None),
-            )
-        except Exception as e:
-            logger.error("POEntryからのインスタンス作成に失敗: %s", e)
-            raise
+        instance = cls(
+            key=f"{entry.msgctxt}\x04{entry.msgid}" if entry.msgctxt else f"|{entry.msgid}",
+            msgid=entry.msgid,
+            msgstr=entry.msgstr,
+            msgctxt=entry.msgctxt,
+            obsolete=entry.obsolete,
+            references=[f"{ref[0]}:{ref[1]}" for ref in getattr(entry, "occurrences", [])],
+            comment=entry.comment,
+            tcomment=entry.tcomment,
+            flags=getattr(entry, "flags", []),
+            position=position,
+            previous_msgid=getattr(entry, "previous_msgid", None),
+            previous_msgid_plural=getattr(entry, "previous_msgid_plural", None),
+            previous_msgctxt=getattr(entry, "previous_msgctxt", None),
+        )
+        instance._po_entry = entry
+        return instance
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "EntryModel":
