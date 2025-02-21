@@ -17,10 +17,16 @@ test = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
 ]
+build = [
+    "nuitka>=2.6",
+    "ordered-set",  # Nuitkaの依存パッケージ
+    "zstandard",    # Nuitkaの依存パッケージ
+]
 
 [project.scripts]
 po_editor-cli = "sgpo_editor.cli:app"
 po_editor = "sgpo_editor.__main__:main"
+po_editor-build = "sgpo_editor.build:main"
 
 [build-system]
 requires = ["hatchling"]

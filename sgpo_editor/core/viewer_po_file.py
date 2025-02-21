@@ -249,7 +249,7 @@ class ViewerPOFile:
             po_file = ensure_not_none(self._po_file, "POファイルが読み込まれていません")
             po_file.clear()
             for entry in entries:
-                po_entry = cast(POEntry, polib.POEntry(
+                po_entry = cast(POEntry, sgpo.POEntry(
                     msgid=entry.msgid,
                     msgstr=entry.msgstr,
                     msgctxt=entry.msgctxt,

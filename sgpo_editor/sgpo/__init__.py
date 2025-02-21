@@ -1,3 +1,4 @@
+import polib
 from .core import (
     DiffEntry,
     DiffResult,
@@ -9,6 +10,7 @@ from .core import (
 )
 
 SgPo = SGPOFile  # Alias for backward compatibility
+POEntry = polib.POEntry  # Re-export POEntry from polib
 
 __all__ = [
     "DiffEntry",
@@ -17,6 +19,7 @@ __all__ = [
     "KeyTuple",
     "SGPOFile",
     "SgPo",
+    "POEntry",
     "pofile",
     "pofile_from_text",
 ]
