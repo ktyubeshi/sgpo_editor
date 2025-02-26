@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QCheckBox,
 )
-from PySide6.QtCore import Signal, Qt, QSize
+from PySide6.QtCore import Signal, Qt, QSize, QTimer
 
 from ..models.entry import EntryModel
 
@@ -90,6 +90,10 @@ class EntryEditor(QWidget):
         super().__init__(parent)
         self._current_entry = None
         self._current_layout = LayoutType.LAYOUT1
+        # テキスト変更通知を遅延させるためのタイマー
+        self._text_change_timer = QTimer(self)
+        self._text_change_timer.setSingleShot(True)
+        self._text_change_timer.timeout.connect(self._emit_text_changed)
 
         # メインレイアウト
         main_layout = QVBoxLayout()
@@ -193,6 +197,12 @@ class EntryEditor(QWidget):
 
     def _on_text_changed(self) -> None:
         """テキストが変更されたときの処理"""
+        # 頻繁な通知を避けるため、タイマーをリセットして一定時間後に通知
+        self._text_change_timer.stop()
+        self._text_change_timer.start(5)
+
+    def _emit_text_changed(self) -> None:
+        """テキスト変更シグナルを発行"""
         if not self._current_entry:
             return
 
