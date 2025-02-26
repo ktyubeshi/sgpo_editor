@@ -109,6 +109,23 @@ class Database:
         logger.debug("バルクインサート開始（%d件）", len(entries))
         with self.transaction() as cur:
             # エントリ一括挿入
+            entry_data = [
+                (
+                    entry["key"],
+                    entry.get("msgctxt"),
+                    entry["msgid"],
+                    entry["msgstr"],
+                    entry.get("fuzzy", False),
+                    entry.get("obsolete", False),
+                    entry.get("previous_msgid"),
+                    entry.get("previous_msgid_plural"),
+                    entry.get("previous_msgctxt"),
+                    entry.get("comment"),
+                    entry.get("tcomment"),
+                )
+                for entry in entries
+            ]
+            
             cur.executemany(
                 """
                 INSERT INTO entries (
@@ -117,23 +134,21 @@ class Database:
                     comment, tcomment
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                [
-                    (
-                        entry["key"],
-                        entry.get("msgctxt"),
-                        entry["msgid"],
-                        entry["msgstr"],
-                        entry.get("fuzzy", False),
-                        entry.get("obsolete", False),
-                        entry.get("previous_msgid"),
-                        entry.get("previous_msgid_plural"),
-                        entry.get("previous_msgctxt"),
-                        entry.get("comment"),
-                        entry.get("tcomment"),
-                    )
-                    for entry in entries
-                ],
+                entry_data
             )
+            
+            # 挿入されたエントリのIDを取得
+            # keyとidのマッピングを作成
+            cur.execute("""
+                SELECT id, key FROM entries
+                WHERE key IN ({})
+            """.format(','.join(['?'] * len(entries))), [entry["key"] for entry in entries])
+            
+            id_map = {key: id for id, key in cur.fetchall()}
+            
+            # エントリにIDを設定
+            for entry in entries:
+                entry["id"] = id_map.get(entry["key"])
 
             # リファレンス一括挿入
             references = []
@@ -403,7 +418,7 @@ class Database:
             List[Dict[str, Any]]: エントリのリスト
         """
         query = """
-            SELECT e.*, GROUP_CONCAT(f.flag) as flags
+            SELECT e.*, GROUP_CONCAT(f.flag) as flags, d.position
             FROM entries e
             LEFT JOIN entry_flags f ON e.id = f.entry_id
             LEFT JOIN display_order d ON e.id = d.entry_id
@@ -502,9 +517,11 @@ class Database:
             try:
                 # 表示順序を更新
                 cur.execute("DELETE FROM display_order")
+                # enumerate関数は(index, value)のタプルを生成するため、
+                # SQLのVALUES句に合わせて(value, index)の順序に入れ替える
                 cur.executemany(
                     "INSERT INTO display_order (entry_id, position) VALUES (?, ?)",
-                    enumerate(entry_ids)
+                    [(entry_id, i) for i, entry_id in enumerate(entry_ids)]
                 )
             finally:
                 # 制約を有効化

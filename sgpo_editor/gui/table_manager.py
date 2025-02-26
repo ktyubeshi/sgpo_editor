@@ -1,6 +1,6 @@
-"""テーブル管理モジュール
+"""Table Management Module
 
-このモジュールは、POファイルのエントリを表示・管理するテーブルに関する機能を提供します。
+This module provides functionality for displaying and managing table entries from PO files.
 """
 
 import logging
@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 
 class TableManager:
-    """テーブル管理クラス"""
+    """Table Management Class"""
 
     def __init__(self, table: QTableWidget, get_current_po: Callable[[], Optional[ViewerPOFile]] = None) -> None:
-        """初期化
+        """Initialize
 
         Args:
-            table: 管理対象のテーブルウィジェット
-            get_current_po: 現在のPOファイルを取得するコールバック
+            table: Target table widget to manage
+            get_current_po: Callback to get the current PO file
         """
         super().__init__()
         self.table = table
@@ -30,16 +30,16 @@ class TableManager:
         self._current_sort_column: Optional[int] = None
         self._current_sort_order: Optional[Qt.SortOrder] = None
         self._get_current_po = get_current_po
-        # エントリのキャッシュ
+        # Entry cache
         self._entry_cache: Dict[str, Any] = {}
         
-        # テーブルの初期設定
+        # Initial table setup
         self._setup_table()
         
     def _setup_table(self) -> None:
-        """テーブルの初期設定"""
+        """Initial table setup"""
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["エントリ番号", "msgctxt", "msgid", "msgstr", "状態"])
+        self.table.setHorizontalHeaderLabels(["Entry Number", "msgctxt", "msgid", "msgstr", "Status"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -53,84 +53,93 @@ class TableManager:
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         
-        # パフォーマンス最適化のための設定
+        # Performance optimization settings
         self.table.setVerticalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
         self.table.setHorizontalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
         self.table.setWordWrap(False)
         
-        # ソートを有効化
-        # 注意: setSortingEnabled(True)は使用しない（カスタムソートロジックと競合するため）
+        # Enable sorting
+        # Note: Do not use setSortingEnabled(True) (conflicts with custom sort logic)
         self.table.horizontalHeader().setSortIndicatorShown(True)
         self.table.horizontalHeader().setSectionsClickable(True)
         
-        # デフォルトのソート設定
-        self._current_sort_column = 0  # エントリ番号列
+        # Default sort settings
+        self._current_sort_column = 0  # Entry number column
         self._current_sort_order = Qt.SortOrder.AscendingOrder
         self.table.horizontalHeader().setSortIndicator(self._current_sort_column, self._current_sort_order)
         
     def _on_header_clicked(self, logical_index: int) -> None:
-        """ヘッダーがクリックされたときの処理"""
-        # 現在のソート順を取得
+        """Process header click event"""
+        # Get current sort order
         if self._current_sort_column == logical_index:
-            # 同じ列なら昇順/降順を切り替え
+            # Toggle ascending/descending if same column
             new_order = (
                 Qt.SortOrder.DescendingOrder
                 if self._current_sort_order == Qt.SortOrder.AscendingOrder
                 else Qt.SortOrder.AscendingOrder
             )
         else:
-            # 異なる列なら昇順をデフォルトとする
+            # Default to ascending order for different column
             new_order = Qt.SortOrder.AscendingOrder
             
-        # ソートインジケータを更新
+        # Update sort indicator
         self.table.horizontalHeader().setSortIndicator(logical_index, new_order)
         self._current_sort_column = logical_index
         self._current_sort_order = new_order
         
-        # POファイルが存在する場合はソート処理を実行
+        # Execute sort process if PO file exists
         po_file = self._get_current_po() if self._get_current_po else None
         if po_file:
             self.update_table(po_file, logical_index, new_order)
         
     def update_table(self, po_file: Optional[ViewerPOFile], sort_column: int = None, 
-                     sort_order: Qt.SortOrder = None) -> None:
-        """テーブルの更新
+                     sort_order: Qt.SortOrder = None, filter_text: str = None,
+                     filter_keyword: str = None) -> List[Any]:
+        """Update table
 
         Args:
-            po_file: POファイル
-            sort_column: ソート列（省略時は現在の設定を維持）
-            sort_order: ソート順序（省略時は現在の設定を維持）
+            po_file: PO file
+            sort_column: Sort column (maintains current setting if omitted)
+            sort_order: Sort order (maintains current setting if omitted)
+            filter_text: Filter text ("All", "Translated", "Untranslated", "Fuzzy")
+            filter_keyword: Filter keyword
+            
+        Returns:
+            List of entries displayed (None if no PO file)
         """
         if not po_file:
             self.table.setRowCount(0)
             self._display_entries = []
-            self._entry_cache.clear()  # キャッシュをクリア
-            return
+            self._entry_cache.clear()  # Clear cache
+            return None
 
         if sort_column is not None:
             self._current_sort_column = sort_column
         if sort_order is not None:
             self._current_sort_order = sort_order
 
-        # 表示するエントリの取得
-        entries = po_file.get_filtered_entries()
+        # Get entries to display
+        entries = po_file.get_filtered_entries(
+            filter_text=filter_text,
+            filter_keyword=filter_keyword
+        )
         self._display_entries = [entry.key for entry in entries]
         
-        # キャッシュ更新
+        # Update cache
         self._entry_cache = {entry.key: entry for entry in entries}
         
-        # ソート
+        # Sort
         if self._current_sort_column is not None and self._current_sort_order is not None:
             entries = self._sort_entries(entries, self._current_sort_column, self._current_sort_order)
 
-        # 描画パフォーマンス向上のためにテーブル更新を一時的に停止
+        # Temporarily disable table updates for better drawing performance
         self.table.setUpdatesEnabled(False)
         
         try:
-            # テーブルの更新
+            # Update table
             self.table.setRowCount(len(entries))
             for i, entry in enumerate(entries):
-                # エントリ番号
+                # Entry number
                 item = QTableWidgetItem(str(entry.position + 1))
                 item.setData(Qt.ItemDataRole.UserRole, entry.key)
                 self.table.setItem(i, 0, item)
@@ -147,32 +156,35 @@ class TableManager:
                 msgstr = entry.msgstr if entry.msgstr else ""
                 self.table.setItem(i, 3, QTableWidgetItem(msgstr))
                 
-                # 状態
+                # Status
                 status = entry.get_status() if hasattr(entry, 'get_status') else ""
                 status_item = QTableWidgetItem(status)
                 self.table.setItem(i, 4, status_item)
+            
         finally:
-            # テーブル更新を再開
+            # Resume table updates
             self.table.setUpdatesEnabled(True)
             
-        # ソートインジケータを更新
+        # Update sort indicator
         if self._current_sort_column is not None and self._current_sort_order is not None:
             self.table.horizontalHeader().setSortIndicator(
                 self._current_sort_column, self._current_sort_order
             )
+            
+        return entries
 
     def _sort_entries(self, entries: List[Any], column: int, order: Qt.SortOrder) -> List[Any]:
-        """エントリをソートする
+        """Sort entries
 
         Args:
-            entries: ソート対象のエントリリスト
-            column: ソート列
-            order: ソート順序
+            entries: List of entries to sort
+            column: Sort column
+            order: Sort order
 
         Returns:
-            ソート後のエントリリスト
+            Sorted entry list
         """
-        if column == 0:  # エントリ番号
+        if column == 0:  # Entry number
             key_func = lambda entry: entry.position
         elif column == 1:  # msgctxt
             key_func = lambda entry: entry.msgctxt or ""
@@ -180,8 +192,8 @@ class TableManager:
             key_func = lambda entry: entry.msgid or ""
         elif column == 3:  # msgstr
             key_func = lambda entry: entry.msgstr or ""
-        elif column == 4:  # 状態
-            # 状態の優先順位: 未翻訳 > あいまい > 翻訳済み > 廃止
+        elif column == 4:  # Status
+            # Status priority: Untranslated > Fuzzy > Translated > Obsolete
             def status_key(entry):
                 if entry.obsolete:
                     return 3
@@ -200,31 +212,31 @@ class TableManager:
         return sorted_entries
         
     def get_display_entries(self) -> List[str]:
-        """表示中のエントリキーのリストを取得する
+        """Get list of entry keys currently displayed
 
         Returns:
-            表示中のエントリキーのリスト
+            List of entry keys currently displayed
         """
         return self._display_entries
 
     def select_row(self, row: int) -> None:
-        """指定された行を選択する
+        """Select specified row
 
         Args:
-            row: 選択する行
+            row: Row to select
         """
         if 0 <= row < self.table.rowCount():
             self.table.selectRow(row)
             self.table.setCurrentCell(row, 0)
 
     def get_key_at_row(self, row: int) -> Optional[str]:
-        """指定された行のエントリキーを取得する
+        """Get entry key at specified row
 
         Args:
-            row: 行インデックス
+            row: Row index
 
         Returns:
-            エントリキー（存在しない場合はNone）
+            Entry key (None if not exists)
         """
         if 0 <= row < self.table.rowCount():
             item = self.table.item(row, 0)
@@ -233,15 +245,15 @@ class TableManager:
         return None
 
     def find_row_by_key(self, key: str) -> int:
-        """エントリキーから行インデックスを取得する
+        """Get row index from entry key
 
         Args:
-            key: エントリキー
+            key: Entry key
 
         Returns:
-            行インデックス（見つからない場合は-1）
+            Row index (-1 if not found)
         """
-        # キーがディスプレイエントリに含まれていない場合は早期リターン
+        # Early return if key is not in display entries
         if key not in self._display_entries:
             return -1
             

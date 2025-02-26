@@ -283,7 +283,7 @@ class ViewerPOFile:
     def get_entries(
         self,
         filter_text: Optional[str] = None,
-        search_text: Optional[str] = None,
+        filter_keyword: Optional[str] = None,
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
         flags: Optional[List[str]] = None,
@@ -311,7 +311,7 @@ class ViewerPOFile:
 
         entries = self._db.get_entries(
             filter_text=filter_text,
-            search_text=search_text,
+            search_text=filter_keyword,  # データベースのインターフェースは変更しない
             sort_column=sort_column,
             sort_order=sort_order,
             flag_conditions=flag_conditions,
@@ -384,16 +384,16 @@ class ViewerPOFile:
             file_name=str(self._path) if self._path else ""
         )
 
-    def search_entries(self, search_text: str) -> List[EntryModel]:
-        """エントリを検索する
+    def search_entries(self, filter_keyword: str) -> List[EntryModel]:
+        """エントリをフィルタリングする
 
         Args:
-            search_text: 検索テキスト
+            filter_keyword: フィルタキーワード
 
         Returns:
-            List[EntryModel]: 検索結果のエントリリスト
+            List[EntryModel]: フィルタリング結果のエントリリスト
         """
-        entries = self._db.get_entries(search_text=search_text)
+        entries = self._db.get_entries(search_text=filter_keyword)
         return [EntryModel.model_validate(entry) for entry in entries]
 
     def save_po_file(self) -> None:
@@ -408,7 +408,7 @@ class ViewerPOFile:
         show_translated: Optional[bool] = None,
         show_untranslated: Optional[bool] = None,
         show_fuzzy: Optional[bool] = None,
-        search_text: Optional[str] = None,
+        filter_keyword: Optional[str] = None,
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
     ) -> List[EntryModel]:
@@ -419,13 +419,14 @@ class ViewerPOFile:
             show_translated: 翻訳済みを表示するかどうか
             show_untranslated: 未翻訳を表示するかどうか
             show_fuzzy: 要確認を表示するかどうか
-            search_text: 検索テキスト
+            filter_keyword: フィルタキーワード
             sort_column: ソート列
             sort_order: ソート順序
 
         Returns:
             List[EntryModel]: フィルタリングされたエントリの一覧
         """
+        # フィルター設定の更新
         if filter_text is not None:
             self._filter_text = filter_text
         if show_translated is not None:
@@ -434,17 +435,47 @@ class ViewerPOFile:
             self._show_untranslated = show_untranslated
         if show_fuzzy is not None:
             self._show_fuzzy = show_fuzzy
+            
+        # 翻訳状態フィルターの設定
+        only_translated = False
+        only_untranslated = False
+        only_fuzzy = False
+        
+        if self._filter_text == "翻訳済み":
+            only_translated = True
+            only_untranslated = False
+            only_fuzzy = False
+        elif self._filter_text == "未翻訳":
+            only_translated = False
+            only_untranslated = True
+            only_fuzzy = False
+        elif self._filter_text == "ファジー":
+            only_translated = False
+            only_untranslated = False
+            only_fuzzy = True
 
         # データベースからエントリを取得
         entries = self.get_entries(
-            filter_text=self._filter_text,
-            search_text=search_text,
+            filter_text=None,  # フィルターテキストは使用せず、翻訳状態で絞り込む
+            filter_keyword=filter_keyword,  # フィルタキーワードはデータベースクエリではなく後処理で使用
             sort_column=sort_column,
             sort_order=sort_order,
-            only_fuzzy=not self._show_fuzzy,
-            only_translated=not self._show_translated,
-            only_untranslated=not self._show_untranslated,
+            only_fuzzy=only_fuzzy,
+            only_translated=only_translated,
+            only_untranslated=only_untranslated,
         )
+        
+        # フィルタキーワードによる二次フィルタリング
+        if filter_keyword and filter_keyword.strip():
+            filter_keyword = filter_keyword.lower().strip()
+            filtered_entries = []
+            for entry in entries:
+                # msgid, msgstr, msgctxtのいずれかにフィルタキーワードが含まれるエントリを抽出
+                if ((entry.msgid and filter_keyword in entry.msgid.lower()) or
+                    (entry.msgstr and filter_keyword in entry.msgstr.lower()) or
+                    (entry.msgctxt and filter_keyword in entry.msgctxt.lower())):
+                    filtered_entries.append(entry)
+            entries = filtered_entries
 
         self._filtered_entries = entries
         return entries

@@ -133,7 +133,7 @@ class EventHandler(QObject):
     def _on_apply_clicked(self) -> None:
         """適用ボタンクリック時の処理"""
         try:
-            entry = self.entry_editor.get_entry()
+            entry = self.entry_editor.current_entry
             if not entry:
                 return
                 
@@ -147,8 +147,8 @@ class EventHandler(QObject):
             # テーブルの更新
             self._update_table()
             
-            self._show_status(f"エントリ {entry.index} を更新しました", 3000)
-            self.entry_updated.emit(entry.index)
+            self._show_status(f"エントリ {entry.position} を更新しました", 3000)
+            self.entry_updated.emit(entry.position)
             
         except Exception as e:
             logger.error(f"エントリを適用する際にエラーが発生しました: {e}")

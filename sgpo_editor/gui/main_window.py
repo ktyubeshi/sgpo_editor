@@ -41,7 +41,6 @@ class MainWindow(QMainWindow):
         self.search_widget = SearchWidget(
             on_filter_changed=self._on_filter_changed,
             on_search_changed=self._on_search_changed,
-            on_open_clicked=self._open_file,
         )
         self.table = QTableWidget()
         
@@ -136,35 +135,34 @@ class MainWindow(QMainWindow):
 
     def _update_table(self) -> None:
         """テーブルを更新する"""
-        self.table_manager.update_table(self.file_handler.current_po)
+        # 現在のPOファイルを取得
+        current_po = self.table_manager._get_current_po()
+        if not current_po:
+            return
+            
+        # フィルタ条件を取得
+        criteria = self.search_widget.get_search_criteria()
+        filter_text = criteria.filter
+        filter_keyword = criteria.filter_keyword
+        
+        # テーブルを更新（フィルタ条件を渡す）
+        entries = self.table_manager.update_table(
+            current_po, 
+            filter_text=filter_text, 
+            filter_keyword=filter_keyword
+        )
+        
+        # フィルタ結果の件数をステータスバーに表示
+        if entries is not None:
+            self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
 
     def _on_filter_changed(self) -> None:
         """フィルターが変更されたときの処理"""
         self._update_table()
 
     def _on_search_changed(self) -> None:
-        """検索テキストが変更されたときの処理"""
-        search_text = self.search_widget.get_search_text()
-        if not search_text:
-            return
-            
-        current_po = self._get_current_po()
-        if not current_po:
-            return
-            
-        # 検索テキストに一致するエントリを検索
-        found = False
-        entries = current_po.get_filtered_entries()
-        for i, entry in enumerate(entries):
-            if (search_text.lower() in (entry.msgid or "").lower() or
-                search_text.lower() in (entry.msgstr or "").lower() or
-                search_text.lower() in (entry.msgctxt or "").lower()):
-                self.table.selectRow(i)
-                found = True
-                break
-                
-        if not found:
-            self.statusBar().showMessage(f"検索テキスト '{search_text}' は見つかりませんでした", 3000)
+        """フィルタキーワードが変更されたときの処理（互換性のために残す）"""
+        self._update_table()
 
     def _on_entry_updated(self, entry_number: int) -> None:
         """エントリが更新されたときの処理
