@@ -149,7 +149,7 @@ class MainWindow(QMainWindow):
         entries = self.table_manager.update_table(
             current_po, 
             filter_text=filter_text, 
-            filter_keyword=filter_keyword
+            search_text=filter_keyword
         )
         
         # フィルタ結果の件数をステータスバーに表示
@@ -161,7 +161,7 @@ class MainWindow(QMainWindow):
         self._update_table()
 
     def _on_search_changed(self) -> None:
-        """フィルタキーワードが変更されたときの処理（互換性のために残す）"""
+        """フィルターキーワードが変更されたときの処理（互換性のために残す）"""
         self._update_table()
 
     def _on_entry_updated(self, entry_number: int) -> None:

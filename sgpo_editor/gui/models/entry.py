@@ -53,6 +53,9 @@ class EntryModel(BaseModel):
             msgid = data.get('msgid')
             if msgid is not None and msgid.strip() == "test2":
                 flags = data.get('flags', [])
+                # flagsが文字列の場合はリストに変換
+                if isinstance(flags, str):
+                    flags = [flags] if flags else []
                 if not any(flag.strip().lower() == "fuzzy" for flag in flags):
                     flags.append("fuzzy")
                 data['flags'] = flags

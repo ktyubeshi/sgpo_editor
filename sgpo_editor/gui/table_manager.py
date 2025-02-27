@@ -94,7 +94,7 @@ class TableManager:
         
     def update_table(self, po_file: Optional[ViewerPOFile], sort_column: int = None, 
                      sort_order: Qt.SortOrder = None, filter_text: str = None,
-                     filter_keyword: str = None) -> List[Any]:
+                     search_text: str = None) -> List[Any]:
         """Update table
 
         Args:
@@ -102,7 +102,7 @@ class TableManager:
             sort_column: Sort column (maintains current setting if omitted)
             sort_order: Sort order (maintains current setting if omitted)
             filter_text: Filter text ("All", "Translated", "Untranslated", "Fuzzy")
-            filter_keyword: Filter keyword
+            search_text: Search text for keyword filtering
             
         Returns:
             List of entries displayed (None if no PO file)
@@ -121,7 +121,7 @@ class TableManager:
         # Get entries to display
         entries = po_file.get_filtered_entries(
             filter_text=filter_text,
-            filter_keyword=filter_keyword
+            filter_keyword=search_text
         )
         self._display_entries = [entry.key for entry in entries]
         

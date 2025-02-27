@@ -95,5 +95,5 @@ class SearchWidget(QWidget):
         return self.filter_combo.currentText()
 
     def get_filter_keyword(self) -> str:
-        """現在のフィルタキーワードを取得"""
+        """現在のフィルターキーワードを取得"""
         return self.search_edit.text()

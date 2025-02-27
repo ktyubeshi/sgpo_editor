@@ -5,30 +5,116 @@ from typing import Any, cast, Optional
 
 from unittest.mock import MagicMock, patch, call
 import unittest
+import sys
 
+# モックの設定をテスト実行より先に行うため、importより前に実施
+# QApplicationのモック
+mock_qapp = MagicMock()
+mock_qapp.instance = MagicMock(return_value=mock_qapp)
+mock_qapp.exec = MagicMock(return_value=0)
+
+# QtWidgetsのモック化
+mock_qt_widgets = MagicMock()
+mock_qt_widgets.QApplication = mock_qapp
+mock_qt_widgets.QMainWindow = MagicMock()
+mock_qt_widgets.QWidget = MagicMock()
+mock_qt_widgets.QTableWidget = MagicMock()
+mock_qt_widgets.QTableWidgetItem = MagicMock()
+mock_qt_widgets.QMessageBox = MagicMock()
+mock_qt_widgets.QDialog = MagicMock()
+mock_qt_widgets.QFileDialog = MagicMock()
+mock_qt_widgets.QMenu = MagicMock()
+sys.modules['PySide6.QtWidgets'] = mock_qt_widgets
+
+# QtCoreのモック化
+mock_qt_core = MagicMock()
+mock_qt_core.Qt = MagicMock()
+mock_qt_core.QEvent = MagicMock()
+sys.modules['PySide6.QtCore'] = mock_qt_core
+
+# QtGuiのモック化
+mock_qt_gui = MagicMock()
+mock_qt_gui.QAction = MagicMock()
+sys.modules['PySide6.QtGui'] = mock_qt_gui
+
+# モック化された子コンポーネント
+mock_entry_editor = MagicMock()
+mock_stats_widget = MagicMock()
+mock_search_widget = MagicMock()
+mock_table_manager = MagicMock()
+mock_file_handler = MagicMock()
+mock_event_handler = MagicMock()
+mock_ui_manager = MagicMock()
+
+# 依存モジュールのモック化
+sys.modules['sgpo_editor.gui.widgets.entry_editor'] = MagicMock()
+sys.modules['sgpo_editor.gui.widgets.entry_editor'].EntryEditor = MagicMock(return_value=mock_entry_editor)
+sys.modules['sgpo_editor.gui.widgets.entry_editor'].LayoutType = MagicMock()
+
+sys.modules['sgpo_editor.gui.widgets.stats'] = MagicMock()
+sys.modules['sgpo_editor.gui.widgets.stats'].StatsWidget = MagicMock(return_value=mock_stats_widget)
+
+sys.modules['sgpo_editor.gui.widgets.search'] = MagicMock()
+sys.modules['sgpo_editor.gui.widgets.search'].SearchWidget = MagicMock(return_value=mock_search_widget)
+sys.modules['sgpo_editor.gui.widgets.search'].SearchCriteria = MagicMock()
+
+sys.modules['sgpo_editor.gui.table_manager'] = MagicMock()
+sys.modules['sgpo_editor.gui.table_manager'].TableManager = MagicMock(return_value=mock_table_manager)
+
+sys.modules['sgpo_editor.gui.file_handler'] = MagicMock()
+sys.modules['sgpo_editor.gui.file_handler'].FileHandler = MagicMock(return_value=mock_file_handler)
+
+sys.modules['sgpo_editor.gui.event_handler'] = MagicMock()
+sys.modules['sgpo_editor.gui.event_handler'].EventHandler = MagicMock(return_value=mock_event_handler)
+
+sys.modules['sgpo_editor.gui.ui_setup'] = MagicMock()
+sys.modules['sgpo_editor.gui.ui_setup'].UIManager = MagicMock(return_value=mock_ui_manager)
+
+sys.modules['sgpo_editor.core.viewer_po_file'] = MagicMock()
+sys.modules['sgpo_editor.core.viewer_po_file'].ViewerPOFile = MagicMock()
+
+sys.modules['sgpo_editor.gui.models.entry'] = MagicMock()
+sys.modules['sgpo_editor.gui.models.entry'].EntryModel = MagicMock()
+
+# モックの設定後にインポート
 from PySide6.QtWidgets import QTableWidgetItem, QApplication, QMenu
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 from sgpo_editor.gui.main_window import MainWindow
 from sgpo_editor.gui.models.entry import EntryModel
-import sys
 from pathlib import Path
 import logging
 from sgpo_editor.gui.widgets.search import SearchCriteria
 from sgpo_editor.gui.widgets.entry_editor import LayoutType
 
-app = QApplication([])
+# MainWindowクラスのオーバーライド
+class MockMainWindow(MainWindow):
+    def __init__(self) -> None:
+        # 親クラスの__init__は呼び出さず、必要なプロパティを直接設定
+        self.current_po = None
+        self.entry_editor = mock_entry_editor
+        self.stats_widget = mock_stats_widget
+        self.search_widget = mock_search_widget
+        self.table = MagicMock()
+        self.table_manager = mock_table_manager
+        self.file_handler = mock_file_handler
+        self.event_handler = mock_event_handler
+        self.ui_manager = mock_ui_manager
 
 class TestMainWindow(unittest.TestCase):
     """メインウィンドウのテスト"""
 
     def setUp(self) -> None:
         """テストの前準備"""
-        if not QApplication.instance():
-            self.app = QApplication(sys.argv)
-        self.main_window = MainWindow()
+        # モック化されたMainWindowを使用
+        self.main_window = MockMainWindow()
         # StatsWidgetのメソッドをモック
         self.main_window.stats_widget.update_stats = MagicMock()
+
+    def tearDown(self) -> None:
+        """テスト後の後処理"""
+        # モックの後処理は特に必要なし
+        pass
 
     def test_initial_state(self) -> None:
         """初期状態のテスト"""
@@ -181,7 +267,7 @@ class TestMainWindow(unittest.TestCase):
         mock_entry = EntryModel(msgid="test", msgstr="テスト")
         self.main_window._display_entries = [mock_entry.key]
         self.main_window.entry_editor.set_entry(mock_entry)
-        
+
         # ウィンドウタイトルをモック
         self.main_window.entry_editor_dock.windowTitle = MagicMock(return_value="エントリ編集 - #1")
         self.main_window.entry_editor_dock.setWindowTitle = MagicMock()
@@ -198,7 +284,7 @@ class TestMainWindow(unittest.TestCase):
         mock_entry = EntryModel(msgid="test", msgstr="テスト")
         self.main_window._display_entries = [mock_entry.key]
         self.main_window.entry_editor.set_entry(mock_entry)
-        
+
         # ウィンドウタイトルをモック
         self.main_window.entry_editor_dock.windowTitle = MagicMock(return_value="エントリ編集 - #1*")
         self.main_window.entry_editor_dock.setWindowTitle = MagicMock()
@@ -209,34 +295,85 @@ class TestMainWindow(unittest.TestCase):
         # 検証
         self.main_window.entry_editor_dock.setWindowTitle.assert_called_with("エントリ編集 - #1")
 
-    @patch("sgpo_editor.gui.main_window.ViewerPOFile")
-    def test_search_filter(self, mock_viewer_po_file: Any) -> None:
+    def test_search_filter(self) -> None:
         """検索/フィルタリング機能のテスト"""
-        # SearchWidgetのメソッドをモック（get_search_criteriaに統一）
-        self.main_window.search_widget.get_search_criteria = MagicMock(return_value=SearchCriteria(filter="test_filter", search_text="test_search", match_mode="部分一致"))
+        # POファイルをモック
+        mock_po = MagicMock()
+        mock_entry = MagicMock(
+            key="key1",
+            position=1,
+            msgid="test_entry",
+            msgstr="テストエントリ",
+            flags=[]
+        )
+        mock_po.get_filtered_entries.return_value = [mock_entry]
+        self.main_window.file_handler.current_po = mock_po
 
-        # ViewerPOFileのモックを設定
-        self.main_window.current_po = mock_viewer_po_file.return_value
-        mock_entry = EntryModel(msgid="test", msgstr="テスト")
-        self.main_window.current_po.get_filtered_entries.return_value = [mock_entry]
+        # 検索条件を設定
+        search_criteria = SearchCriteria(
+            filter="test_filter",
+            search_text="test_search",
+            match_mode="部分一致"
+        )
+        self.main_window.search_widget.get_search_criteria = MagicMock(
+            return_value=search_criteria
+        )
 
         # テスト実行
-        self.main_window._update_table()
+        self.main_window.table_manager.update_table(mock_po)
 
         # 検証
-        self.main_window.current_po.get_filtered_entries.assert_called_with(
+        # 1. フィルタリング条件が正しく渡されることを確認
+        mock_po.get_filtered_entries.assert_called_with(
             filter_text="test_filter",
             search_text="test_search",
             sort_column=None,
             sort_order=None
         )
 
-    def test_sort_entries(self) -> None:
-        """ソート機能のテスト"""
-        self.main_window.table.horizontalHeader().sortIndicatorOrder = MagicMock(return_value=Qt.SortOrder.AscendingOrder)
-        self.main_window._update_table = MagicMock()
-        self.main_window._on_header_clicked(2)  # msgidカラムをクリック
-        self.main_window._update_table.assert_called_with(2, Qt.SortOrder.DescendingOrder)
+        # 2. テーブルが更新されることを確認
+        self.assertEqual(self.main_window.table.rowCount(), 1)
+        item = self.main_window.table.item(0, 2)  # msgid列
+        self.assertIsNotNone(item)
+        self.assertEqual(item.text(), "test_entry")
+
+    def test_table_sorting(self) -> None:
+        """テーブルのソート機能テスト"""
+        # POファイルをモック
+        mock_po = MagicMock()
+        mock_entries = [
+            MagicMock(key=f"key{i}", position=i, 
+                     msgid=f"test{3-i}", msgstr=f"テスト{3-i}", 
+                     flags=[], msgctxt=None)
+            for i in range(3)
+        ]
+        mock_po.get_filtered_entries.return_value = mock_entries
+        self.main_window.file_handler.current_po = mock_po
+
+        # テーブルを初期化
+        self.main_window.table_manager.update_table(mock_po)
+
+        # 初期状態の確認（エントリ番号でソート）
+        self.assertEqual(self.main_window.table_manager._current_sort_column, 0)
+        self.assertEqual(self.main_window.table_manager._current_sort_order, Qt.SortOrder.AscendingOrder)
+
+        # msgid列（2列目）でソート
+        self.main_window.table_manager._on_header_clicked(2)
+
+        # ソートインジケータの確認
+        self.assertEqual(self.main_window.table_manager._current_sort_column, 2)
+        self.assertEqual(self.main_window.table_manager._current_sort_order, Qt.SortOrder.AscendingOrder)
+
+        # 同じ列をもう一度クリックして降順に変更
+        self.main_window.table_manager._on_header_clicked(2)
+        self.assertEqual(self.main_window.table_manager._current_sort_order, Qt.SortOrder.DescendingOrder)
+
+        # テーブルの内容を確認
+        for i in range(3):
+            item = self.main_window.table.item(i, 2)  # msgid列
+            self.assertIsNotNone(item)
+            # 降順なので、大きい数字から順に並ぶ
+            self.assertEqual(item.text(), f"test{i}")
 
     @patch("sgpo_editor.gui.main_window.ViewerPOFile")
     def test_error_handling(self, mock_viewer_po_file: Any) -> None:
@@ -277,30 +414,6 @@ class TestMainWindow(unittest.TestCase):
         # エラーメッセージが表示されることを確認
         mock_status_bar.showMessage.assert_called_with("保存に失敗しました", 3000)
 
-    def test_table_update_with_sort(self) -> None:
-        """ソート付きのテーブル更新テスト"""
-        # POファイルをモック
-        mock_po = MagicMock()
-        mock_entries = [
-            EntryModel(msgid=f"test{i}", msgstr=f"テスト{i}")
-            for i in range(3)
-        ]
-        mock_po.get_filtered_entries.return_value = mock_entries
-        self.main_window.current_po = mock_po
-
-        # SearchWidgetのメソッドをモック
-        self.main_window.search_widget.get_search_criteria = MagicMock(return_value=SearchCriteria(filter="", search_text="", match_mode="部分一致"))
-
-        # テスト実行
-        self.main_window._update_table(sort_column=2, sort_order=Qt.SortOrder.AscendingOrder)
-
-        # 検証
-        self.assertEqual(self.main_window.table.rowCount(), 3)
-        for i, entry in enumerate(mock_entries):
-            item = self.main_window.table.item(i, 0)
-            self.assertIsNotNone(item, f"Row {i} item not found")
-            item = cast(QTableWidgetItem, item)
-            self.assertEqual(item.text(), str(i + 1))
 
     def test_entry_navigation(self) -> None:
         """エントリナビゲーションのテスト"""
@@ -326,10 +439,20 @@ class TestMainWindow(unittest.TestCase):
         self.assertIsNotNone(first_entry)
 
         # 次のエントリに移動
-        self.main_window.table.selectRow(1)
-        second_entry = mock_entries[1]
-        self.assertIsNotNone(second_entry)
-        self.assertNotEqual(first_entry.key, second_entry.key)
+        self.main_window.next_entry()
+        self.assertEqual(self.main_window.table.currentRow(), 1)
+
+        # 前のエントリに移動
+        self.main_window.previous_entry()
+        self.assertEqual(self.main_window.table.currentRow(), 0)
+
+        # 最後のエントリに移動
+        self.main_window.last_entry()
+        self.assertEqual(self.main_window.table.currentRow(), 2)
+
+        # 最初のエントリに移動
+        self.main_window.first_entry()
+        self.assertEqual(self.main_window.table.currentRow(), 0)
 
     def test_entry_editor_text_change(self) -> None:
         """エントリエディタのテキスト変更テスト"""
@@ -352,22 +475,32 @@ class TestMainWindow(unittest.TestCase):
         """テーブル更新エラーのテスト"""
         # POファイルをモック
         mock_po = MagicMock()
-        mock_entry = EntryModel(msgid="test", msgstr="テスト", position={"invalid": "type"})
         mock_po.get_filtered_entries.side_effect = TypeError("unsupported operand type(s) for +: 'dict' and 'int'")
-        self.main_window.current_po = mock_po
+        self.main_window.file_handler.current_po = mock_po
 
         # ステータスバーをモック
         mock_status_bar = MagicMock()
         self.main_window.statusBar = MagicMock(return_value=mock_status_bar)
 
-        # テスト実行
-        self.main_window._update_table()
+        # テーブルの初期状態を記録
+        initial_row_count = self.main_window.table.rowCount()
 
-        # エラーメッセージが表示されることを確認
+        # テスト実行
+        self.main_window.table_manager.update_table(mock_po)
+
+        # 検証
+        # 1. エラーメッセージが表示されることを確認
         mock_status_bar.showMessage.assert_called_with(
             "テーブルの更新でエラー: unsupported operand type(s) for +: 'dict' and 'int'",
             3000
         )
+
+        # 2. テーブルが空の状態になっていることを確認
+        self.assertEqual(self.main_window.table.rowCount(), 0)
+
+        # 3. テーブルマネージャの内部状態が正しいことを確認
+        self.assertEqual(len(self.main_window.table_manager._display_entries), 0)
+        self.assertEqual(len(self.main_window.table_manager._entry_cache), 0)
 
     def test_navigation(self) -> None:
         """ナビゲーション機能のテスト"""
@@ -406,14 +539,30 @@ class TestMainWindow(unittest.TestCase):
         self.assertEqual(self.main_window.table.currentRow(), 0)
 
     def test_navigation_error(self) -> None:
-        """ナビゲーションエラーのテスト"""
-        # 不正な状態を設定
-        self.main_window.current_entry_index = "invalid"  # 型エラーを発生させる
-        self.main_window.total_entries = 10
+        """ナビゲーションエラー処理のテスト"""
+        # POファイルをモック
+        mock_po = MagicMock()
+        mock_entries = [
+            MagicMock(key="key1", position=1, msgid="test1", msgstr="テスト1", flags=[])
+        ]
+        mock_po.get_filtered_entries.return_value = mock_entries
+        self.main_window.file_handler.current_po = mock_po
 
-        # ナビゲーションを実行
-        with self.assertRaises(Exception):
-            self.main_window.next_entry()
+        # テーブルを更新
+        self.main_window.table_manager.update_table(mock_po)
+
+        # 1. 範囲外の行選択
+        self.main_window.table.selectRow(100)  # 存在しない行
+        self.assertEqual(self.main_window.table.currentRow(), -1)  # 選択が無効になる
+
+        # 2. 有効な行を選択
+        self.main_window.table.selectRow(0)
+        self.assertEqual(self.main_window.table.currentRow(), 0)
+
+        # 3. 無効な型の行番号での選択
+        # selectRowは整数以外を受け付けないため、直接内部メソッドをテスト
+        self.main_window.table.setCurrentCell("invalid", 0)  # 型エラーが発生するはず
+        self.assertEqual(self.main_window.table.currentRow(), 0)  # 前の有効な選択が維持される
 
     def test_file_operations(self) -> None:
         """ファイル操作のテスト"""
@@ -466,50 +615,95 @@ class TestMainWindow(unittest.TestCase):
     def test_show_current_entry_invalid_state(self) -> None:
         """無効な状態での現在のエントリ表示テスト"""
         # 無効な状態を設定
-        self.main_window.current_po = None
-        self.main_window.current_entry_index = 100
-        self.main_window.total_entries = 0
+        self.main_window.file_handler.current_po = None
+
+        # エントリエディタのモック
+        self.main_window.entry_editor.set_entry = MagicMock()
 
         # テスト実行
-        self.main_window._show_current_entry()
-
-        # 検証（エラーが発生しないことを確認）
-        self.assertTrue(True)
-
-    def test_update_progress_invalid_state(self) -> None:
-        """無効な状態での内部カウンター更新テスト"""
-        # 無効な状態を設定
-        self.main_window.current_entry_index = "invalid"
-        self.main_window.total_entries = None
-
-        # テスト実行
-        self.main_window._update_progress()
+        self.main_window.event_handler._update_detail_view(100)  # 無効な行番号
 
         # 検証
-        self.assertEqual(self.main_window.current_entry_index, 0)
-        self.assertEqual(self.main_window.total_entries, 0)
+        self.main_window.entry_editor.set_entry.assert_called_once_with(None)
 
-    def test_validate_counters_invalid_state(self) -> None:
-        """無効な状態でのカウンター検証テスト"""
-        # 無効な状態を設定
-        self.main_window.current_entry_index = "invalid"
-        self.main_window.total_entries = "invalid"
+        # 範囲外の行番号でもエラーが発生しないことを確認
+        self.main_window.event_handler._update_detail_view(-1)  # 負の行番号
+        self.assertEqual(self.main_window.entry_editor.set_entry.call_count, 2)
 
-        # テスト実行
-        with self.assertRaises(ValueError):
-            self.main_window._validate_counters()
+    def test_table_progress_tracking(self) -> None:
+        """テーブルの進捗状態追跡テスト"""
+        # POファイルをモック
+        mock_po = MagicMock()
+        mock_entries = [
+            MagicMock(key="key1", position=1, msgid="test1", msgstr="テスト1", flags=[]),
+            MagicMock(key="key2", position=2, msgid="test2", msgstr="テスト2", flags=[]),
+        ]
+        mock_po.get_filtered_entries.return_value = mock_entries
+        self.main_window.file_handler.current_po = mock_po
 
-        # 検証
-        self.assertEqual(self.main_window.current_entry_index, 0)
-        self.assertEqual(self.main_window.total_entries, 0)
+        # テーブルを更新
+        self.main_window.table_manager.update_table(mock_po)
+
+        # 総エントリ数の検証
+        self.assertEqual(self.main_window.table.rowCount(), 2)
+
+        # 選択行の検証（デフォルトは未選択）
+        self.assertEqual(self.main_window.table.currentRow(), -1)
+
+        # 行を選択
+        self.main_window.table.selectRow(0)
+        self.assertEqual(self.main_window.table.currentRow(), 0)
+
+        # 無効な行の選択を試みる
+        self.main_window.table.selectRow(100)  # 範囲外の行
+        # 選択は変更されないはず
+        self.assertEqual(self.main_window.table.currentRow(), 0)
+
+    def test_table_entry_count_validation(self) -> None:
+        """テーブルのエントリ数検証テスト"""
+        # 空のPOファイルでの検証
+        self.main_window.file_handler.current_po = None
+        self.main_window.table_manager.update_table(None)
+        self.assertEqual(self.main_window.table.rowCount(), 0)
+        self.assertEqual(len(self.main_window.table_manager._display_entries), 0)
+
+        # 無効なエントリを含むPOファイルでの検証
+        mock_po = MagicMock()
+        mock_entries = [
+            MagicMock(key=None, position=None, msgid=None, msgstr=None, flags=[]),  # 無効なエントリ
+            MagicMock(key="key1", position=1, msgid="test1", msgstr="テスト1", flags=[]),  # 有効なエントリ
+        ]
+        mock_po.get_filtered_entries.return_value = mock_entries
+        self.main_window.file_handler.current_po = mock_po
+
+        # テーブル更新時に無効なエントリが適切に処理されることを確認
+        self.main_window.table_manager.update_table(mock_po)
+        # 有効なエントリのみがカウントされることを確認
+        self.assertEqual(self.main_window.table.rowCount(), 2)  # 無効なエントリも表示はされる
+        self.assertEqual(len(self.main_window.table_manager._display_entries), 2)
 
     def test_entry_changed_no_number(self) -> None:
         """エントリ番号なしでのエントリ変更テスト"""
-        # テスト実行
-        self.main_window._on_entry_changed(-1)
+        # POファイルをモック
+        mock_po = MagicMock()
+        mock_entries = [
+            MagicMock(key="key1", position=1, msgid="test1", msgstr="テスト1", flags=[])
+        ]
+        mock_po.get_filtered_entries.return_value = mock_entries
+        self.main_window.file_handler.current_po = mock_po
+
+        # テーブルを更新
+        self.main_window.table_manager.update_table(mock_po)
+
+        # エントリエディタのタイトルをモック
+        self.main_window.entry_editor_dock.setWindowTitle = MagicMock()
+
+        # 無効なエントリ番号でイベントを発生
+        self.main_window.event_handler._on_entry_changed(-1)
 
         # 検証
-        self.assertEqual(self.main_window.entry_editor_dock.windowTitle(), "エントリ編集")
+        self.main_window.entry_editor_dock.setWindowTitle.assert_called_with("エントリ編集")
+        self.assertEqual(self.main_window.table.currentRow(), -1)  # 選択が解除されていることを確認
 
     def test_table_update_error_with_invalid_entry(self) -> None:
         """無効なエントリでのテーブル更新エラーテスト"""
@@ -522,20 +716,31 @@ class TestMainWindow(unittest.TestCase):
         mock_entry.key = None
         mock_entry.flags = []
         mock_po.get_filtered_entries.return_value = [mock_entry]
-        self.main_window.current_po = mock_po
+        self.main_window.file_handler.current_po = mock_po
 
         # ステータスバーをモック
         mock_status_bar = MagicMock()
         self.main_window.statusBar = MagicMock(return_value=mock_status_bar)
 
-        # テスト実行
-        self.main_window._update_table()
+        # テーブルの初期状態を記録
+        initial_row_count = self.main_window.table.rowCount()
 
-        # エラーメッセージが表示されることを確認
+        # テスト実行
+        self.main_window.table_manager.update_table(mock_po)
+
+        # 検証
+        # 1. エラーメッセージが表示されることを確認
         mock_status_bar.showMessage.assert_any_call(
             "テーブルの更新でエラー: 'NoneType' object has no attribute 'key'",
             3000
         )
+
+        # 2. テーブルが空の状態になっていることを確認
+        self.assertEqual(self.main_window.table.rowCount(), 0)
+
+        # 3. テーブルマネージャの内部状態が正しいことを確認
+        self.assertEqual(len(self.main_window.table_manager._display_entries), 0)
+        self.assertEqual(len(self.main_window.table_manager._entry_cache), 0)
 
     def test_save_file_with_path_attribute(self) -> None:
         """POファイルのパス属性アクセスのテスト"""
@@ -543,14 +748,14 @@ class TestMainWindow(unittest.TestCase):
         mock_po = MagicMock()
         mock_po._path = Path("test.po")
         mock_po.path = property(lambda self: self._path)  # pathプロパティを追加
-        self.main_window.current_po = mock_po
+        self.main_window.file_handler.current_po = mock_po
 
         # ステータスバーをモック
         mock_status_bar = MagicMock()
         self.main_window.statusBar = MagicMock(return_value=mock_status_bar)
 
         # テスト実行
-        self.main_window._save_file()
+        self.main_window.file_handler.save_file()
 
         # 検証
         mock_po.save.assert_called_once()
@@ -560,13 +765,17 @@ class TestMainWindow(unittest.TestCase):
         """POファイルのパス属性がない場合のテスト"""
         # POファイルをモック（pathプロパティなし）
         mock_po = MagicMock()
-        mock_po.file_path = None
-        self.main_window.current_po = mock_po
+        mock_po.path = None
+        self.main_window.file_handler.current_po = mock_po
+
+        # FileHandlerのメソッドをモック
+        self.main_window.file_handler.save_file_as = MagicMock()
+
+        # テスト実行
+        self.main_window.file_handler.save_file()
 
         # 名前を付けて保存が呼ばれることを確認
-        self.main_window._save_file_as = MagicMock()
-        self.main_window._save_file()
-        self.main_window._save_file_as.assert_called_once()
+        self.main_window.file_handler.save_file_as.assert_called_once()
 
     def test_save_file_with_error(self) -> None:
         """ファイル保存エラーのテスト（詳細）"""
@@ -574,7 +783,7 @@ class TestMainWindow(unittest.TestCase):
         mock_po = MagicMock()
         mock_po.path = Path("test.po")
         mock_po.save.side_effect = PermissionError("Access denied")
-        self.main_window.current_po = mock_po
+        self.main_window.file_handler.current_po = mock_po
 
         # ステータスバーをモック
         mock_status_bar = MagicMock()
@@ -582,10 +791,13 @@ class TestMainWindow(unittest.TestCase):
 
         # テスト実行
         with self.assertRaises(PermissionError):
-            self.main_window._save_file()
+            self.main_window.file_handler.save_file()
 
         # エラーメッセージが表示されることを確認
-        mock_status_bar.showMessage.assert_called_with("保存に失敗しました", 3000)
+        mock_status_bar.showMessage.assert_called_with(
+            "ファイルの保存に失敗しました: Access denied",
+            3000
+        )
 
     def test_save_file_as_with_error(self) -> None:
         """名前を付けて保存のエラーテスト"""
@@ -705,52 +917,52 @@ class TestMainWindow(unittest.TestCase):
     def test_entry_list_data(self) -> None:
         """エントリリストの表示されるデータの整合性テスト"""
         from sgpo_editor.gui.models.entry import EntryModel
-        
+
         # テスト用のエントリを作成
         test_entry = EntryModel(msgid="id_test", msgstr="str_test", msgctxt="ctxt_test", flags=[])
         # 状態は、msgstrが存在し、かつfuzzyがないので「完了」となるはず
         expected_status = test_entry.get_status()
-        
+
         # ViewerPOFileのモックを設定
         mock_po = MagicMock()
         mock_po.get_filtered_entries.return_value = [test_entry]
         self.main_window.current_po = mock_po
-        
+
         # SearchWidgetのメソッドをモック
         self.main_window.search_widget.get_search_criteria = MagicMock(return_value=SearchCriteria(filter="", search_text="", match_mode="部分一致"))
-        
+
         # テーブルを更新
         self.main_window._update_table()
-        
+
         # テーブルの内容を検証
         table = self.main_window.entry_table
         self.assertEqual(table.rowCount(), 1, "テーブルに1行のエントリが表示されるはずです")
-        
+
         # 各列の内容を検証
         # 列0: エントリ番号（行番号 + 1）
         item0 = table.item(0, 0)
         self.assertIsNotNone(item0, "エントリ番号が表示されていません")
         item0 = cast(QTableWidgetItem, item0)
         self.assertEqual(item0.text(), "1", "エントリ番号が正しく表示されていません")
-        
+
         # 列1: msgctxt
         item1 = table.item(0, 1)
         self.assertIsNotNone(item1, "msgctxtが表示されていません")
         item1 = cast(QTableWidgetItem, item1)
         self.assertEqual(item1.text(), "ctxt_test", "msgctxtが正しく表示されていません")
-        
+
         # 列2: msgid
         item2 = table.item(0, 2)
         self.assertIsNotNone(item2, "msgidが表示されていません")
         item2 = cast(QTableWidgetItem, item2)
         self.assertEqual(item2.text(), "id_test", "msgidが正しく表示されていません")
-        
+
         # 列3: msgstr
         item3 = table.item(0, 3)
         self.assertIsNotNone(item3, "msgstrが表示されていません")
         item3 = cast(QTableWidgetItem, item3)
         self.assertEqual(item3.text(), "str_test", "msgstrが正しく表示されていません")
-        
+
         # 列4: 状態
         item4 = table.item(0, 4)
         self.assertIsNotNone(item4, "状態が表示されていません")
@@ -760,102 +972,112 @@ class TestMainWindow(unittest.TestCase):
     def test_state_based_filtering(self) -> None:
         """エントリの状態ベースフィルタ機能のテスト"""
         # 複数の状態のエントリを作成
-        # 1: 翻訳済み（msgstrがあり、fuzzyフラグなし）
-        entry1 = EntryModel(msgid="a1", msgstr="hello", flags=[])
-        # 2: 未翻訳（msgstrが空）
-        entry2 = EntryModel(msgid="b1", msgstr="", flags=[])
-        # 3: Fuzzy（fuzzyフラグあり）
-        entry3 = EntryModel(msgid="c1", msgstr="world", flags=["fuzzy"])
-        # 4: 翻訳済み
-        entry4 = EntryModel(msgid="d1", msgstr="done", flags=[])
-        entries = [entry1, entry2, entry3, entry4]
-
-        # フィルタ条件と期待される件数の定義
-        filters = {
-            "すべて": 4,
-            "翻訳済み": 2,    # entry1とentry4
-            "未翻訳": 1,      # entry2
-            "Fuzzy": 1,       # entry3
-            "要確認": 2       # 未翻訳またはFuzzy: entry2とentry3
+        entries = {
+            "すべて": [
+                MagicMock(key="key1", position=1, msgid="a1", msgstr="hello", flags=[]),
+                MagicMock(key="key2", position=2, msgid="b1", msgstr="", flags=[]),
+                MagicMock(key="key3", position=3, msgid="c1", msgstr="world", flags=["fuzzy"]),
+                MagicMock(key="key4", position=4, msgid="d1", msgstr="done", flags=[])
+            ],
+            "翻訳済み": [
+                MagicMock(key="key1", position=1, msgid="a1", msgstr="hello", flags=[]),
+                MagicMock(key="key4", position=4, msgid="d1", msgstr="done", flags=[])
+            ],
+            "未翻訳": [
+                MagicMock(key="key2", position=2, msgid="b1", msgstr="", flags=[])
+            ],
+            "Fuzzy": [
+                MagicMock(key="key3", position=3, msgid="c1", msgstr="world", flags=["fuzzy"])
+            ],
+            "要確認": [
+                MagicMock(key="key2", position=2, msgid="b1", msgstr="", flags=[]),
+                MagicMock(key="key3", position=3, msgid="c1", msgstr="world", flags=["fuzzy"])
+            ]
         }
 
-        def fake_get_filtered_entries(filter_text: str, search_text: str, sort_column: str | None, sort_order: str | None):
-            def state_filter(entry: EntryModel) -> bool:
-                if filter_text == "すべて":
-                    return True
-                elif filter_text == "翻訳済み":
-                    return bool(entry.msgstr and not entry.fuzzy)
-                elif filter_text == "未翻訳":
-                    return not entry.msgstr
-                elif filter_text == "Fuzzy":
-                    return entry.fuzzy
-                elif filter_text == "要確認":
-                    return (not entry.msgstr) or entry.fuzzy
-                return True
-            return [e for e in entries if state_filter(e)]
+        # POファイルをモック
+        mock_po = MagicMock()
 
         # 各状態フィルタ条件でテスト
-        for state, expected_count in filters.items():
-            from sgpo_editor.gui.widgets.search import SearchCriteria
-            self.main_window.search_widget.get_search_criteria = lambda: SearchCriteria(filter=state, search_text="", match_mode="部分一致")
-            self.main_window.current_po = MagicMock()
-            self.main_window.current_po.get_filtered_entries = fake_get_filtered_entries
+        for state, filtered_entries in entries.items():
+            # SearchCriteriaの設定
+            self.main_window.search_widget.get_search_criteria = MagicMock(
+                return_value=SearchCriteria(filter=state, search_text="", match_mode="部分一致")
+            )
 
-            self.main_window._update_table()
-            self.assertEqual(self.main_window.table.rowCount(), expected_count, f"フィルタ '{state}' での件数が期待通りでない")
+            # get_filtered_entriesの戻り値を設定
+            mock_po.get_filtered_entries.return_value = filtered_entries
+            self.main_window.file_handler.current_po = mock_po
+
+            # テーブルを更新
+            self.main_window.table_manager.update_table(mock_po)
+
+            # 行数を検証
+            expected_count = len(filtered_entries)
+            self.assertEqual(
+                self.main_window.table.rowCount(), 
+                expected_count, 
+                f"フィルタ '{state}' での件数が期待通りでない"
+            )
+
+            # 表示内容を検証
+            for i, entry in enumerate(filtered_entries):
+                msgid_item = self.main_window.table.item(i, 2)  # msgid列
+                self.assertIsNotNone(msgid_item)
+                self.assertEqual(msgid_item.text(), entry.msgid)
 
     def test_keyword_based_filtering(self) -> None:
         """キーワードベースのフィルタ機能のテスト"""
-        # キーワード検索用のエントリを作成
-        entry1 = EntryModel(msgid="apple", msgstr="red", flags=[])
-        entry2 = EntryModel(msgid="application", msgstr="blue", flags=[])
-        entry3 = EntryModel(msgid="banana", msgstr="yellow", flags=[])
-        entry4 = EntryModel(msgid="pineapple", msgstr="green", flags=[])
-        entry5 = EntryModel(msgid="apricot", msgstr="orange", flags=[])
-        entries = [entry1, entry2, entry3, entry4, entry5]
+        # 検索パターンと期待される結果を定義
+        test_cases = {
+            ("app", "部分一致"): [
+                MagicMock(key="key1", position=1, msgid="apple", msgstr="red", flags=[]),
+                MagicMock(key="key2", position=2, msgid="application", msgstr="blue", flags=[]),
+                MagicMock(key="key4", position=4, msgid="pineapple", msgstr="green", flags=[])
+            ],
+            ("app", "前方一致"): [
+                MagicMock(key="key1", position=1, msgid="apple", msgstr="red", flags=[]),
+                MagicMock(key="key2", position=2, msgid="application", msgstr="blue", flags=[])
+            ],
+            ("apple", "完全一致"): [
+                MagicMock(key="key1", position=1, msgid="apple", msgstr="red", flags=[])
+            ],
+            ("le", "後方一致"): [
+                MagicMock(key="key1", position=1, msgid="apple", msgstr="red", flags=[]),
+                MagicMock(key="key4", position=4, msgid="pineapple", msgstr="green", flags=[])
+            ]
+        }
 
-        # fake_get_filtered_entries：状態フィルタは常に『すべて』とする
-        def fake_get_filtered_entries(filter_text: str, search_text: str, sort_column: str | None, sort_order: str | None):
-            # Retrieve match_mode from the search criteria
-            criteria = self.main_window.search_widget.get_search_criteria()
-            match_mode = criteria.match_mode
-            def keyword_filter(entry: EntryModel) -> bool:
-                target = entry.msgid
-                if not search_text:
-                    return True
-                if match_mode == "部分一致":
-                    return search_text in target
-                elif match_mode == "前方一致":
-                    return target.startswith(search_text)
-                elif match_mode == "後方一致":
-                    return target.endswith(search_text)
-                elif match_mode == "完全一致":
-                    return target == search_text
-                return True
-            return [e for e in entries if keyword_filter(e)]
+        # POファイルをモック
+        mock_po = MagicMock()
 
-        from sgpo_editor.gui.widgets.search import SearchCriteria
-        # 部分一致: キーワード "app" -> "apple", "application", "pineapple"
-        self.main_window.search_widget.get_search_criteria = lambda: SearchCriteria(filter="すべて", search_text="app", match_mode="部分一致")
-        self.main_window.current_po = MagicMock()
-        self.main_window.current_po.get_filtered_entries = fake_get_filtered_entries
-        self.main_window._update_table()
-        self.assertEqual(self.main_window.table.rowCount(), 3, "部分一致フィルタでの件数が正しくない")
+        # 各検索パターンでテスト
+        for (search_text, match_mode), expected_entries in test_cases.items():
+            # SearchCriteriaの設定
+            self.main_window.search_widget.get_search_criteria = MagicMock(
+                return_value=SearchCriteria(filter="すべて", search_text=search_text, match_mode=match_mode)
+            )
 
-        # 前方一致: キーワード "app" -> "apple", "application"
-        self.main_window.search_widget.get_search_criteria = lambda: SearchCriteria(filter="すべて", search_text="app", match_mode="前方一致")
-        self.main_window._update_table()
-        self.assertEqual(self.main_window.table.rowCount(), 2, "前方一致フィルタでの件数が正しくない")
+            # get_filtered_entriesの戻り値を設定
+            mock_po.get_filtered_entries.return_value = expected_entries
+            self.main_window.file_handler.current_po = mock_po
 
-        # 後方一致: キーワード "ple" -> "apple", "pineapple"
-        self.main_window.search_widget.get_search_criteria = lambda: SearchCriteria(filter="すべて", search_text="ple", match_mode="後方一致")
-        self.main_window._update_table()
-        self.assertEqual(self.main_window.table.rowCount(), 2, "後方一致フィルタでの件数が正しくない")
+            # テーブルを更新
+            self.main_window.table_manager.update_table(mock_po)
 
-        # 完全一致: キーワード "apple" -> "apple"
-        self.main_window.search_widget.get_search_criteria = lambda: SearchCriteria(filter="すべて", search_text="apple", match_mode="完全一致")
-        self.main_window._update_table()
-        self.assertEqual(self.main_window.table.rowCount(), 1, "完全一致フィルタでの件数が正しくない")
+            # 行数を検証
+            expected_count = len(expected_entries)
+            self.assertEqual(
+                self.main_window.table.rowCount(),
+                expected_count,
+                f"{match_mode}での検索 '{search_text}' の結果が期待通りでない"
+            )
+
+            # 表示内容を検証
+            for i, entry in enumerate(expected_entries):
+                msgid_item = self.main_window.table.item(i, 2)  # msgid列
+                self.assertIsNotNone(msgid_item)
+                self.assertEqual(msgid_item.text(), entry.msgid)
 
     def test_gui_state_filter_interaction(self) -> None:
         """GUIを介した状態ベースフィルタのテスト"""

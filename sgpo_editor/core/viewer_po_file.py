@@ -385,13 +385,13 @@ class ViewerPOFile:
         )
 
     def search_entries(self, filter_keyword: str) -> List[EntryModel]:
-        """エントリをフィルタリングする
+        """エントリを検索する
 
         Args:
-            filter_keyword: フィルタキーワード
+            filter_keyword: フィルターキーワード
 
         Returns:
-            List[EntryModel]: フィルタリング結果のエントリリスト
+            List[EntryModel]: 検索結果のエントリリスト
         """
         entries = self._db.get_entries(search_text=filter_keyword)
         return [EntryModel.model_validate(entry) for entry in entries]
@@ -419,7 +419,7 @@ class ViewerPOFile:
             show_translated: 翻訳済みを表示するかどうか
             show_untranslated: 未翻訳を表示するかどうか
             show_fuzzy: 要確認を表示するかどうか
-            filter_keyword: フィルタキーワード
+            filter_keyword: フィルターキーワード
             sort_column: ソート列
             sort_order: ソート順序
 
@@ -457,7 +457,7 @@ class ViewerPOFile:
         # データベースからエントリを取得
         entries = self.get_entries(
             filter_text=None,  # フィルターテキストは使用せず、翻訳状態で絞り込む
-            filter_keyword=filter_keyword,  # フィルタキーワードはデータベースクエリではなく後処理で使用
+            filter_keyword=filter_keyword,  # フィルターキーワードをデータベースクエリに渡す
             sort_column=sort_column,
             sort_order=sort_order,
             only_fuzzy=only_fuzzy,
@@ -465,12 +465,12 @@ class ViewerPOFile:
             only_untranslated=only_untranslated,
         )
         
-        # フィルタキーワードによる二次フィルタリング
+        # フィルターキーワードによる二次フィルタリング
         if filter_keyword and filter_keyword.strip():
             filter_keyword = filter_keyword.lower().strip()
             filtered_entries = []
             for entry in entries:
-                # msgid, msgstr, msgctxtのいずれかにフィルタキーワードが含まれるエントリを抽出
+                # msgid, msgstr, msgctxtのいずれかにフィルターキーワードが含まれるエントリを抽出
                 if ((entry.msgid and filter_keyword in entry.msgid.lower()) or
                     (entry.msgstr and filter_keyword in entry.msgstr.lower()) or
                     (entry.msgctxt and filter_keyword in entry.msgctxt.lower())):

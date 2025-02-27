@@ -13,16 +13,11 @@ class Database:
 
     def __init__(self):
         """初期化"""
-        # データベースファイルのパス設定
-        self.db_path = Path(__file__).parent.parent.parent / "data" / "po_entries.db"
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        logger.debug("データベース初期化: %s", self.db_path)
-        self._conn = sqlite3.connect(str(self.db_path))
+        # データベースをin-memory化（一時データとして扱う）
+        logger.debug("インメモリデータベース初期化")
+        self._conn = sqlite3.connect(":memory:")
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
-        self._conn.execute("PRAGMA journal_mode = WAL")
-        self._conn.execute("PRAGMA synchronous = NORMAL")
         self._create_tables()
         logger.debug("データベース初期化完了")
 

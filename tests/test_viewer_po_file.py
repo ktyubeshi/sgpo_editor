@@ -58,7 +58,7 @@ def test_get_entries(test_po_file):
     assert all(isinstance(entry, EntryModel) for entry in entries)
 
     # フィルタリングのテスト
-    filtered = test_po_file.get_filtered_entries(search_text="test1")
+    filtered = test_po_file.get_filtered_entries(filter_keyword="test1")
     assert len(filtered) == 1
     assert filtered[0].msgid == "test1"
 
