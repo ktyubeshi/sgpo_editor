@@ -9,10 +9,9 @@ import polib
 import sgpo_editor.sgpo as sgpo
 
 from sgpo_editor.models.database import Database
-from sgpo_editor.gui.models.entry import EntryModel
+from sgpo_editor.models import EntryModel, StatsModel
 from sgpo_editor.types.po_entry import POEntry
 from sgpo_editor.sgpo import SGPOFile
-from sgpo_editor.gui.models.stats import StatsModel
 
 logger = logging.getLogger(__name__)
 

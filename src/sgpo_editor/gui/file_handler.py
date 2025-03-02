@@ -10,7 +10,7 @@ from typing import Optional, Callable, Dict, Any
 
 from PySide6.QtWidgets import QWidget, QFileDialog, QMessageBox
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
+# 循環インポートを避けるために型アノテーションを文字列に変更
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class FileHandler:
             status_callback: ステータス表示用コールバック
         """
         self.parent = parent
-        self.current_po: Optional[ViewerPOFile] = None
+        self.current_po: Optional["ViewerPOFile"] = None
         self.current_filepath: Optional[Path] = None
         self._update_stats = update_stats_callback
         self._update_table = update_table_callback
@@ -59,6 +59,7 @@ class FileHandler:
             self._show_status(f"ファイルを開いています: {filepath}...", 0)
             
             # POファイルを開く
+            from sgpo_editor.core.viewer_po_file import ViewerPOFile
             po_file = ViewerPOFile(filepath)
             
             self.current_po = po_file

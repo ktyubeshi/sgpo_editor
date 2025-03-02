@@ -2,7 +2,7 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PySide6.QtCore import Qt
 
-from ..models.stats import StatsModel
+from sgpo_editor.models import StatsModel
 
 
 class StatsWidget(QWidget):

@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
+# ViewerPOFileのインポートを遅延させる
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.gui.widgets.search import SearchWidget
 from sgpo_editor.gui.widgets.stats import StatsWidget
@@ -105,7 +105,7 @@ class MainWindow(QMainWindow):
         self.ui_manager.save_window_state()
         event.accept()
 
-    def _get_current_po(self) -> Optional[ViewerPOFile]:
+    def _get_current_po(self) -> Optional["ViewerPOFile"]:
         """現在のPOファイルを取得
 
         Returns:

@@ -9,7 +9,7 @@ from typing import Optional, List, Any, Callable, Dict
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
+# 循環インポートを避けるために型アノテーションを文字列に変更
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class TableManager:
     """Table Management Class"""
 
-    def __init__(self, table: QTableWidget, get_current_po: Callable[[], Optional[ViewerPOFile]] = None) -> None:
+    def __init__(self, table: QTableWidget, get_current_po: Callable[[], Optional["ViewerPOFile"]] = None) -> None:
         """Initialize
 
         Args:
@@ -92,7 +92,7 @@ class TableManager:
         if po_file:
             self.update_table(po_file, logical_index, new_order)
         
-    def update_table(self, po_file: Optional[ViewerPOFile], sort_column: int = None, 
+    def update_table(self, po_file: Optional["ViewerPOFile"], sort_column: int = None, 
                      sort_order: Qt.SortOrder = None, filter_text: str = None,
                      search_text: str = None) -> List[Any]:
         """Update table

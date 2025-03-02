@@ -1,7 +1,7 @@
 """GUIアプリケーションのエントリーポイント"""
 import sys
 from PySide6.QtWidgets import QApplication
-from .gui import MainWindow
+from sgpo_editor.gui import MainWindow
 
 def main():
     """アプリケーションを起動"""

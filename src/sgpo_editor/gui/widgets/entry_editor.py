@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Signal, Qt, QSize, QTimer
 
-from ..models.entry import EntryModel
+from sgpo_editor.models import EntryModel
 
 logger = logging.getLogger(__name__)
 

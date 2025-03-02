@@ -21,4 +21,6 @@ class StatsModel(BaseModel):
     def update_progress(self) -> None:
         """進捗率を更新"""
         if self.total > 0:
-            self.progress = (self.translated / self.total) * 100
+            self.progress = self.translated / self.total
+        else:
+            self.progress = 0.0
