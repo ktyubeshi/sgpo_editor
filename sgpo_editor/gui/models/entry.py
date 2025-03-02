@@ -1,7 +1,7 @@
 """POエントリのモデル"""
 import logging
 from typing import Optional, List, Union, Any, Dict
-from pydantic import BaseModel, Field, computed_field, model_validator, field_validator
+from pydantic import BaseModel, Field, computed_field, model_validator, field_validator, ConfigDict
 
 from sgpo_editor.types.po_entry import POEntry
 
@@ -10,9 +10,7 @@ logger = logging.getLogger(__name__)
 
 class EntryModel(BaseModel):
     """POエントリのPydanticモデル実装"""
-    class Config:
-        """Pydanticモデルの設定"""
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     _po_entry: Optional[POEntry] = None  # 元のPOEntryへの参照
 

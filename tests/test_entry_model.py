@@ -1,4 +1,5 @@
 import unittest
+
 from sgpo_editor.gui.models.entry import EntryModel
 
 
@@ -25,4 +26,4 @@ class TestEntryModelValidator(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()

@@ -9,10 +9,12 @@ from PySide6.QtWidgets import (
     QLabel,
 )
 from PySide6.QtCore import Qt, QTimer
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class SearchCriteria(BaseModel):
+    model_config = ConfigDict()
+    
     filter: str = "すべて"
     filter_keyword: str = ""
     match_mode: str = "部分一致"
