@@ -35,4 +35,5 @@ allow-direct-references = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "--cov=po_editor --cov-report=term-missing"
+pythonpath = [".", "src"]
+addopts = "--cov=sgpo_editor --cov-report=term-missing"

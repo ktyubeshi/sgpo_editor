@@ -1,10 +1,93 @@
-ありがとうございます。PySide6でのGUIテストにおける最適なモック化の範囲について調査し、特にファイルダイアログやエラーメッセージのポップアップ表示による一時停止を防ぐベストプラクティスをお伝えします。
+# PySide6 GUIアプリケーションのテストガイドライン
 
-テストの中でどのコンポーネントをモック化すべきか、どのようにUIの操作をエミュレートするのが適切か、またpytestでどのようにモックを設定するのが望ましいかについて、具体的なコード例を含めたガイドを作成します。
+## テスト時の主な課題と解決策
 
-少々お待ちください。
+### 1. セグメンテーションフォールトの防止
 
 **テスト中のGUIダイアログのブロックを防ぐには、実際のダイアログを開かずにユーザー操作をシミュレートするモック化が有効です。** PySide6アプリのテストでファイル選択ダイアログやエラーメッセージダイアログが表示されると、ユーザ入力待ちでテストが一時停止してしまいます。これを避けるため、テスト中はそれらのダイアログをモック（疑似的な振る舞いに置き換え）し、即座に想定結果を返すようにします。 ([python - Keeping a dialog from showing PySide for testing - Stack Overflow](https://stackoverflow.com/questions/26470305/keeping-a-dialog-from-showing-pyside-for-testing#:~:text=I%20decided%20to%20use%20the,is%20not%20optimal%20for%20testing)) こうすることでダイアログUIを実際に表示せずに**ユーザーが操作した結果**を再現でき、テストを自動化できます。以下に、それぞれのケースでのベストプラクティスを説明します。
+
+### 2. メインウィンドウやウィジェットのライフサイクル管理
+
+PySide6/QtのGUIアプリケーションのテストでは、ウィジェットやウィンドウのライフサイクル管理が非常に重要です。不適切な管理はセグメンテーションフォールトの原因となります。特に以下の点に注意が必要です：
+
+- テスト終了時に全てのウィジェットが適切に破棄されていること
+- `QApplication`のインスタンスが適切に管理されていること
+- テスト間でウィジェットやリソースが共有されないこと
+
+これらの問題に対処するには、モックオブジェクトを使用して実際のウィジェット作成を回避し、テスト終了時に適切なクリーンアップを行うことが効果的です。
+
+## 実装テクニック
+
+### MockMainWindowパターン
+
+複雑なGUIアプリケーションのテストでは、実際のウィンドウクラスをモッククラスで置き換えることで、セグメンテーションフォールトを防止し、テストの信頼性を高めることができます。以下は`MockMainWindow`クラスを使用したパターンの例です：
+
+```python
+from unittest.mock import MagicMock, patch
+import gc
+
+class MockMainWindow:
+    """MainWindowクラスのモック実装"""
+    def __init__(self):
+        # 必要なコンポーネントをモック化
+        self.entry_editor = MagicMock()
+        self.stats_widget = MagicMock()
+        self.table = MagicMock()
+        self.current_po = MagicMock()
+        
+        # 必要なメソッドをモック化
+        self.get_current_entry = MagicMock(return_value=None)
+        self.update_table = MagicMock()
+        self.update_stats = MagicMock()
+        
+    def close(self):
+        """明示的にリソースをクリーンアップ"""
+        pass
+
+class TestMainWindowFeatures(unittest.TestCase):
+    def setUp(self):
+        """各テスト前の準備"""
+        self.main_window = MockMainWindow()
+        
+    def tearDown(self):
+        """各テスト後のクリーンアップ"""
+        self.main_window.close()
+        self.main_window = None
+        # 明示的なガベージコレクションを実行
+        gc.collect()
+        
+    def test_feature(self):
+        """特定の機能のテスト"""
+        # テストコード
+        result = self.main_window.some_method()
+        self.assertEqual(result, expected_value)
+```
+
+このパターンを使用することで以下の利点があります：
+
+1. 実際のQtウィジェットを作成せず、メモリ管理の問題を回避
+2. テスト実行が高速化（実際のGUI描画が不要）
+3. テスト間の独立性が向上
+4. セグメンテーションフォールトのリスクが大幅に減少
+
+### Enumメンバーのモック化における注意点
+
+Pythonの`Enum`クラスのメンバーは直接置き換えることができないため、以下のようにモック化する必要があります：
+
+```python
+# ❌ 間違った方法（直接Enumメンバーをパッチ）
+@patch('app.LayoutType.LAYOUT1', MagicMock())
+def test_layout_switching(self):
+    # テストコード
+
+# ✅ 正しい方法（メソッドをパッチ）
+def test_layout_switching(self):
+    with patch.object(self.main_window.entry_editor, 'set_layout_type') as mock_set_layout:
+        # レイアウト切り替えのアクション
+        self.main_window.compact_layout_action.triggered.emit()
+        # 正しい引数でメソッドが呼ばれたか確認
+        mock_set_layout.assert_called_with(LayoutType.LAYOUT1)
+```
 
 ## QFileDialogの表示をモックして一時停止を防ぐ方法
 ファイル選択ダイアログ (`QFileDialog`) は通常、`getOpenFileName()`や`getSaveFileName()`といった静的関数で呼び出し、ユーザーがファイルを選択するまで処理をブロックします。テストではこれをモック化し、**常に決まったファイルパスを返す**ようにします。例えば、`QFileDialog.getOpenFileName` をモックして任意のファイルパスを返すラムダ関数に差し替えます ([python - Gui testing in PySide2 with qtbot - Stack Overflow](https://stackoverflow.com/questions/58731798/gui-testing-in-pyside2-with-qtbot#:~:text=qtbot.mouseClick%28main.button%2C%20QtCore.Qt.LeftButton%29%20,lambda%20%2Aargs%3A%20%28file_path%2C%20file_type))。コード例:
@@ -52,4 +135,29 @@ GUIのテストでは、Qtのイベントループを回しつつウィジェッ
 ## モック適用範囲のベストプラクティス
 モックは**必要最小限の範囲**に留めるのが鉄則です。GUIテストでは、ユーザー入力待ちでテストをブロックする部分（ファイルダイアログやメッセージボックス表示）に対してのみモックを当て、それ以外のアプリケーション内部ロジックは通常通り実行させます。こうすることで、モックによって対話部分だけをスキップしつつ、ビジネスロジックやUI更新処理は検証できます。モック適用はテスト関数単位で行い、テストが終われば元に戻るようにします ([How to monkeypatch/mock modules and environments - pytest documentation](https://docs.pytest.org/en/stable/how-to/monkeypatch.html#:~:text=))。先述の`monkeypatch`フィクスチャを用いればテストごとに適用と解除が自動化されるため、**テスト間の干渉を防ぎ**つつ各ケースで異なる戻り値を設定できます（例えばあるテストではファイル選択ダイアログにファイルを選ばせ、別のテストではキャンセルさせる、といった振る舞いを個別にモック可能です）。また、モックする対象はQtのダイアログそのもの（例: `QFileDialog.getOpenFileName` や `QMessageBox.question`）に限定し、アプリケーションのロジック側には極力手を加えません。こうしたスコープの絞り込みにより、モック化による影響範囲を最小に保ちつつ、ユーザー操作待ちによるテスト停止を防ぐことができます。
 
-**まとめ:** PySide6のGUIテストでは、ファイルダイアログやメッセージボックスをモックで置き換えることでユーザー入力待ちのブロッキングを回避し、pytest-qtの`qtbot`を使ってイベントループとユーザー操作をエミュレートするのがベストプラクティスです。最小限のモック適用によってテストの信頼性と可読性を保ち、ユーザー操作のシナリオを自動テストで再現できるようになります。各種手法は既存のQAや公式ドキュメントでも推奨されており ([python - Keeping a dialog from showing PySide for testing - Stack Overflow](https://stackoverflow.com/questions/26470305/keeping-a-dialog-from-showing-pyside-for-testing#:~:text=I%20decided%20to%20use%20the,is%20not%20optimal%20for%20testing)) ([PySide6.QtTest - Qt for Python](https://doc.qt.io/qtforpython-6/PySide6/QtTest/index.html#:~:text=Not%20all%20macros%20in%20the,Python%20module))、これらを組み合わせることで効果的なGUIアプリのテストが実現できます。
+## セグメンテーションフォールト対策のまとめ
+
+PySide6/Qtアプリケーションのテスト中にセグメンテーションフォールトが発生する主な原因と対策は以下の通りです：
+
+1. **原因：ウィジェットの不適切な破棄**
+   - **対策：** テスト終了時に明示的に`close()`メソッドを呼び、`tearDown`メソッドで`None`に設定
+   - **対策：** ガベージコレクションを明示的に実行（`gc.collect()`）
+
+2. **原因：QApplication間の競合**
+   - **対策：** テスト間で`QApplication`インスタンスを共有せず、モックを使用して実際のGUIを作成しない
+
+3. **原因：リソースリーク**
+   - **対策：** 全てのイベントループや非同期タスクを適切に終了
+   - **対策：** 大きなウィジェット階層をモックオブジェクトで置き換え
+
+4. **原因：ウィジェット間の不適切な参照**
+   - **対策：** 循環参照を避け、明示的に参照を解除
+
+## テスト実行におけるベストプラクティス
+
+1. テストは独立して実行可能にする（他のテストの状態に依存しない）
+2. 各テストの前後で適切なセットアップとクリーンアップを行う
+3. テストの実行時間を短くするため、実際のGUIの表示を最小限にする
+4. テスト失敗時にはログを詳細に確認し、特にセグメンテーションフォールトの場合は`tearDown`メソッドを確認
+
+**まとめ:** PySide6のGUIテストでは、ファイルダイアログやメッセージボックスをモックで置き換えることでユーザー入力待ちのブロッキングを回避し、pytest-qtの`qtbot`を使ってイベントループとユーザー操作をエミュレートするのがベストプラクティスです。さらに、実際のウィジェット作成を避けるためにモッククラスを使用し、適切なリソース管理を行うことでセグメンテーションフォールトを防止できます。これらの手法を組み合わせることで、テストの信頼性と可読性を保ち、ユーザー操作のシナリオを自動テストで再現できるようになります。

@@ -10,3 +10,4 @@
 *.db-wal
 /build/
 /test_log.txt
+/inspection/

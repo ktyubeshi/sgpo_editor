@@ -1,6 +1,6 @@
 # PO Viewer モジュール詳細
 
-## 1. sgpo_editor.sgpo
+## 1. sgpo
 
 ### 概要
 POファイル（gettext翻訳ファイル）を安全に処理するための独自実装モジュール。polibをベースに拡張機能を提供しています。

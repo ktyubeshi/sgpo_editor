@@ -9,7 +9,7 @@ PO Viewerは主にMVC（Model-View-Controller）パターンに基づいて設�
 データとビジネスロジックを担当します。
 
 - **`sgpo_editor.core.ViewerPOFile`**: POファイルの読み書きと管理
-- **`sgpo_editor.sgpo.SGPOFile`**: POファイル処理の基盤
+- **`sgpo.SGPOFile`**: POファイル処理の基盤
 - **`sgpo_editor.models.Database`**: データの永続化
 - **`sgpo_editor.gui.models.*`**: GUIとデータの橋渡し
 
@@ -197,7 +197,7 @@ except Exception as e:
 
 ### 2. POファイル処理の拡張
 
-`sgpo_editor.sgpo.SGPOFile` クラスを拡張することで、POファイル処理機能を追加できます。
+`sgpo.SGPOFile` クラスを拡張することで、POファイル処理機能を追加できます。
 
 ### 3. 新しいデータモデルの追加
 

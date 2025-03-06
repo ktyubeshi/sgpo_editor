@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from sgpo_editor.sgpo.core import KeyTuple, SGPOFile, pofile, pofile_from_text
+from sgpo.core import KeyTuple, SGPOFile, pofile, pofile_from_text
 
 
 def get_test_data_dir() -> Path:

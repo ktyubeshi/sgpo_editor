@@ -1,6 +1,6 @@
 """POファイルビューワー"""
 from sgpo_editor.core import ViewerPOFile
-from sgpo_editor.sgpo.core import (
+from sgpo.core import (
     DiffEntry,
     DiffResult,
     DiffStatus,

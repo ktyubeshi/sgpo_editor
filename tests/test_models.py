@@ -1,8 +1,8 @@
 """モデルのテスト"""
 from unittest.mock import Mock
 
-from sgpo_editor.gui.models.entry import EntryModel
-from sgpo_editor.gui.models.stats import StatsModel
+from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.models.stats import StatsModel
 
 
 def test_entry_model():

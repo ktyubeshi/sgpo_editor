@@ -4,7 +4,7 @@ import os
 import pytest
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
-from sgpo_editor.gui.models.entry import EntryModel
+from sgpo_editor.models.entry import EntryModel
 
 
 @pytest.fixture

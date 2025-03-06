@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Union, cast, TypeVar, Sequence, Protocol, Type, Iterator, Collection, overload, runtime_checkable, Generic
 
 import polib
-import sgpo_editor.sgpo as sgpo
+import sgpo as sgpo
 
 from sgpo_editor.models.database import Database
 from sgpo_editor.models import EntryModel, StatsModel
-from sgpo_editor.types.po_entry import POEntry
-from sgpo_editor.sgpo import SGPOFile
+from polib import POEntry
+from sgpo import SGPOFile
 
 logger = logging.getLogger(__name__)
 
@@ -371,8 +371,8 @@ class ViewerPOFile:
         """
         entries = self.get_entries()
         total = len(entries)
-        translated = len([e for e in entries if e.msgstr and not e.fuzzy])
-        fuzzy = len([e for e in entries if e.fuzzy])
+        translated = len([e for e in entries if e.is_translated])
+        fuzzy = len([e for e in entries if e.is_fuzzy])
         untranslated = total - translated - fuzzy
 
         return StatsModel(

@@ -70,7 +70,7 @@ def mock_components(monkeypatch):
 # モックの設定後にインポート
 from PySide6.QtWidgets import QTableWidgetItem
 from PySide6.QtCore import Qt
-from sgpo_editor.gui.models.entry import EntryModel
+from sgpo_editor.models import EntryModel
 from pathlib import Path
 from sgpo_editor.gui.widgets.search import SearchCriteria
 from sgpo_editor.gui.widgets.entry_editor import LayoutType
@@ -264,12 +264,12 @@ class TestMainWindow:
         # エントリエディタをモック
         mock_main_window.entry_editor.msgid_edit.toPlainText = MagicMock(return_value=selected_entry.msgid)
         mock_main_window.entry_editor.msgstr_edit.toPlainText = MagicMock(return_value=selected_entry.msgstr)
-        mock_main_window.entry_editor.fuzzy_checkbox.isChecked = MagicMock(return_value=selected_entry.fuzzy)
+        mock_main_window.entry_editor.fuzzy_checkbox.isChecked = MagicMock(return_value=selected_entry.is_fuzzy)
 
         # エントリエディタの内容を確認
         assert mock_main_window.entry_editor.msgid_edit.toPlainText() == selected_entry.msgid
         assert mock_main_window.entry_editor.msgstr_edit.toPlainText() == selected_entry.msgstr
-        assert mock_main_window.entry_editor.fuzzy_checkbox.isChecked() == selected_entry.fuzzy
+        assert mock_main_window.entry_editor.fuzzy_checkbox.isChecked() == selected_entry.is_fuzzy
 
     def test_entry_list_layout(self, mock_main_window):
         """エントリリストの列数、ヘッダー、列幅が要件通りであることを確認するテスト"""

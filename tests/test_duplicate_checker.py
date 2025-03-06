@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sgpo_editor.sgpo.core import pofile_from_text
+from sgpo.core import pofile_from_text
 
 
 def test_check_duplicates_with_compressed_notation():
@@ -73,6 +73,6 @@ def test_expand_msgctxt():
     """圧縮表記の展開機能のテスト"""
 
     # 内部関数をテストするため、一時的にアクセス
-    from sgpo_editor.sgpo.duplicate_checker import _expand_msgctxt
+    from sgpo.duplicate_checker import _expand_msgctxt
     expanded = _expand_msgctxt("wnd(Log|Project|Std|).:")
     assert set(expanded) == {"wndLog.:", "wndProject.:", "wndStd.:"}

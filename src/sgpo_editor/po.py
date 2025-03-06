@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Optional
 
-import po_viewer.sgpo as sgpo
+import sgpo
 from rich.console import Console
 from rich.table import Table
 
