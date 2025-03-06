@@ -85,6 +85,7 @@ class MainWindow(QMainWindow):
             "save_file_as": self._save_file_as,
             "close": self.close,
             "change_layout": self._change_entry_layout,
+            "open_recent_file": self._open_recent_file,
         })
         
         # ステータスバー
@@ -116,6 +117,19 @@ class MainWindow(QMainWindow):
     def _open_file(self) -> None:
         """ファイルを開く"""
         self.file_handler.open_file()
+        # 最近使用したファイルメニューを更新
+        self.ui_manager.update_recent_files_menu(self._open_recent_file)
+
+    def _open_recent_file(self, filepath: str) -> None:
+        """最近使用したファイルを開く
+
+        Args:
+            filepath: ファイルパス
+        """
+        if filepath:
+            self.file_handler.open_file(filepath)
+            # 最近使用したファイルメニューを更新
+            self.ui_manager.update_recent_files_menu(self._open_recent_file)
 
     def _save_file(self) -> None:
         """ファイルを保存する"""

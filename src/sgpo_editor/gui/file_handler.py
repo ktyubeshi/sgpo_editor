@@ -6,13 +6,17 @@
 import logging
 import traceback
 from pathlib import Path
-from typing import Optional, Callable, Dict, Any
+from typing import Optional, Callable, Dict, Any, List
 
 from PySide6.QtWidgets import QWidget, QFileDialog, QMessageBox
+from PySide6.QtCore import QSettings
 
 # 循環インポートを避けるために型アノテーションを文字列に変更
 
 logger = logging.getLogger(__name__)
+
+# 最近使用したファイルの最大数
+MAX_RECENT_FILES = 10
 
 
 class FileHandler:
@@ -34,6 +38,66 @@ class FileHandler:
         self._update_stats = update_stats_callback
         self._update_table = update_table_callback
         self._show_status = status_callback
+        self.recent_files = self._load_recent_files()
+
+    def _load_recent_files(self) -> List[str]:
+        """最近使用したファイルのリストを読み込む
+
+        Returns:
+            最近使用したファイルのリスト
+        """
+        settings = QSettings()
+        # セミコロンで連結された文字列として保存されたデータを読み込む
+        recent_files_str = settings.value("recent_files_str", "", type=str)
+        
+        if not recent_files_str:
+            return []
+            
+        # セミコロンで分割してリストに変換
+        recent_files = recent_files_str.split(";")
+        # 空の要素を除去
+        recent_files = [f for f in recent_files if f]
+        return recent_files
+
+    def _save_recent_files(self) -> None:
+        """最近使用したファイルのリストを保存する"""
+        settings = QSettings()
+        # リストをセミコロンで連結した文字列に変換して保存
+        if self.recent_files:
+            recent_files_str = ";".join(self.recent_files)
+            settings.setValue("recent_files_str", recent_files_str)
+            # レガシーサポートのために以前のキーも更新
+            settings.setValue("recent_files", self.recent_files)
+            # 変更を確実に保存
+            settings.sync()
+
+    def add_recent_file(self, filepath: str) -> None:
+        """最近使用したファイルを追加する
+
+        Args:
+            filepath: ファイルパス
+        """
+        # 既存のエントリを除去（同じファイルが既にリストにある場合）
+        if filepath in self.recent_files:
+            self.recent_files.remove(filepath)
+
+        # リストの先頭に追加
+        self.recent_files.insert(0, filepath)
+
+        # 最大数を超えた場合、古いものを削除
+        if len(self.recent_files) > MAX_RECENT_FILES:
+            self.recent_files = self.recent_files[:MAX_RECENT_FILES]
+
+        # 設定に保存
+        self._save_recent_files()
+
+    def get_recent_files(self) -> List[str]:
+        """最近使用したファイルのリストを取得する
+
+        Returns:
+            最近使用したファイルのリスト
+        """
+        return self.recent_files
 
     def open_file(self, filepath: Optional[str] = None) -> bool:
         """POファイルを開く
@@ -64,6 +128,9 @@ class FileHandler:
             
             self.current_po = po_file
             self.current_filepath = Path(filepath)
+            
+            # 最近使用したファイルに追加
+            self.add_recent_file(filepath)
             
             # 統計情報の更新
             stats = po_file.get_stats()
@@ -114,6 +181,8 @@ class FileHandler:
             
             if filepath:
                 self.current_filepath = Path(filepath)
+                # 保存したファイルを最近使用したファイルに追加
+                self.add_recent_file(save_path)
                 
             self._show_status(f"ファイルを保存しました: {save_path}", 0)
             self.parent.setWindowTitle(f"PO Editor - {save_path}")

@@ -4,7 +4,8 @@
 """
 
 import logging
-from typing import Optional, Callable
+from typing import Optional, Callable, Dict, List, Any
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QAction, QKeySequence, QActionGroup
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QProgressBar,
+    QMenu,
 )
 
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
@@ -47,6 +49,10 @@ class UIManager:
         # メニューアクション
         self.layout1_action: Optional[QAction] = None
         self.layout2_action: Optional[QAction] = None
+        
+        # 最近使用したファイルのアクション
+        self.recent_file_actions: List[QAction] = []
+        self.recent_files_menu: Optional[QMenu] = None
         
     def setup_central_widget(self, table_widget) -> None:
         """中央ウィジェットの設定
@@ -95,6 +101,7 @@ class UIManager:
               - save_file_as: 名前を付けて保存
               - close: アプリケーションを閉じる
               - change_layout: レイアウト変更
+              - open_recent_file: 最近使用したファイルを開く
         """
         # ファイルメニュー
         file_menu = self.main_window.menuBar().addMenu("ファイル")
@@ -104,6 +111,16 @@ class UIManager:
         open_action.setShortcut(QKeySequence.StandardKey.Open)
         open_action.triggered.connect(callbacks["open_file"])
         file_menu.addAction(open_action)
+
+        # 最近使用した項目を開く
+        self.recent_files_menu = QMenu("最近使用した項目を開く", self.main_window)
+        self.recent_files_menu.setObjectName("recent_files_menu")
+        file_menu.addMenu(self.recent_files_menu)
+        
+        # 最近使用したファイルアクションのリストを作成
+        self.update_recent_files_menu(callbacks.get("open_recent_file"))
+
+        file_menu.addSeparator()
 
         # 保存
         save_action = QAction("保存", self.main_window)
@@ -157,6 +174,55 @@ class UIManager:
         layout_group.addAction(self.layout1_action)
         layout_group.addAction(self.layout2_action)
         layout_group.setExclusive(True)
+
+    def update_recent_files_menu(self, callback: Callable[[str], None]) -> None:
+        """最近使用したファイルメニューを更新する
+
+        Args:
+            callback: 最近使用したファイルを開くコールバック
+        """
+        if not self.recent_files_menu or not callback:
+            return
+
+        # まず既存のアクションをクリア
+        self.recent_files_menu.clear()
+        self.recent_file_actions.clear()
+
+        # 設定から最近使用したファイルのリストを取得
+        settings = QSettings()
+        recent_files = settings.value("recent_files", [])
+        
+        if not recent_files:
+            # 最近使用したファイルがない場合
+            no_files_action = QAction("最近使用した項目はありません", self.main_window)
+            no_files_action.setEnabled(False)
+            self.recent_files_menu.addAction(no_files_action)
+            return
+
+        # 最近使用したファイルのアクションを作成
+        for filepath in recent_files:
+            if not isinstance(filepath, str):
+                continue
+                
+            action = QAction(Path(filepath).name, self.main_window)
+            action.setData(filepath)
+            action.setStatusTip(filepath)
+            action.triggered.connect(lambda checked=False, path=filepath: callback(path))
+            self.recent_files_menu.addAction(action)
+            self.recent_file_actions.append(action)
+
+        self.recent_files_menu.addSeparator()
+        
+        # クリアアクション
+        clear_action = QAction("履歴をクリア", self.main_window)
+        clear_action.triggered.connect(self._clear_recent_files)
+        self.recent_files_menu.addAction(clear_action)
+
+    def _clear_recent_files(self) -> None:
+        """最近使用したファイルの履歴をクリア"""
+        settings = QSettings()
+        settings.setValue("recent_files", [])
+        self.update_recent_files_menu(lambda _: None)
 
     def setup_statusbar(self) -> None:
         """ステータスバーの設定"""
