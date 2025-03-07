@@ -50,6 +50,7 @@ class EventHandler(QObject):
         # テーブル選択イベント
         self.table.cellPressed.connect(self._on_cell_selected)
         self.table.cellEntered.connect(self._on_cell_entered)
+        self.table.currentCellChanged.connect(self._on_current_cell_changed)
         
         # エントリエディタイベント
         self.entry_editor.text_changed.connect(self._on_entry_text_changed)
@@ -177,6 +178,17 @@ class EventHandler(QObject):
             if entry.position == entry_number:
                 self.table.selectRow(i)
                 break
+
+    def _on_current_cell_changed(self, current_row: int, current_column: int, previous_row: int, previous_column: int) -> None:
+        """現在のセルが変更されたときの処理（キーボード操作対応）
+
+        Args:
+            current_row: 現在の行インデックス
+            current_column: 現在の列インデックス
+            previous_row: 前の行インデックス
+            previous_column: 前の列インデックス
+        """
+        self._update_detail_view(current_row)
 
     def change_entry_layout(self, layout_type: LayoutType) -> None:
         """エントリ編集のレイアウトを変更する
