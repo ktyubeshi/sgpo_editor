@@ -204,6 +204,8 @@ class EntryEditor(QWidget):
             # ダイアログが未作成の場合は新規作成
             dialog = QDialog(self)
             dialog.setWindowTitle(f"対訳表示: {dialog_type}")
+            # 常に最前面に表示されるようにウィンドウフラグを設定
+            dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
             
             # ダイアログにレイアウトを設定
             layout = QVBoxLayout(dialog)
@@ -248,6 +250,7 @@ class EntryEditor(QWidget):
         # ダイアログを表示
         dialog.show()
         dialog.raise_()  # 前面に表示
+        dialog.activateWindow()  # ウィンドウをアクティブにする
 
     def _update_open_review_dialogs(self) -> None:
         """開いているすべてのレビューダイアログを更新"""
