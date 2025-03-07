@@ -1,5 +1,7 @@
 """POエントリのモデル"""
 import logging
+import uuid
+from datetime import datetime
 from typing import Optional, List, Union, Any, Dict
 from pydantic import BaseModel, Field, computed_field, model_validator, field_validator, ConfigDict
 
@@ -28,6 +30,12 @@ class EntryModel(BaseModel):
     tcomment: Optional[str] = None
     occurrences: List[tuple[str, int]] = Field(default_factory=list)
     references: List[str] = Field(default_factory=list)
+    
+    # レビュー機能拡張フィールド
+    review_comments: List[Dict[str, Any]] = Field(default_factory=list)
+    overall_quality_score: Optional[int] = None
+    category_quality_scores: Dict[str, int] = Field(default_factory=dict)
+    check_results: List[Dict[str, Any]] = Field(default_factory=list)
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -142,6 +150,11 @@ class EntryModel(BaseModel):
             "tcomment": self.tcomment,
             "occurrences": self.occurrences,
             "references": self.references,
+            # レビュー機能の拡張フィールド
+            "review_comments": self.review_comments,
+            "overall_quality_score": self.overall_quality_score,
+            "category_quality_scores": self.category_quality_scores,
+            "check_results": self.check_results,
         }
         
     def get_status(self) -> str:
@@ -195,58 +208,164 @@ class EntryModel(BaseModel):
             try:
                 value = getattr(obj, attr_name, default)
                 # Mockオブジェクトの場合はデフォルト値を使用
-                if "Mock" in str(type(value)):
+                if hasattr(value, "__class__") and "Mock" in value.__class__.__name__:
                     return default
                 return value
             except (AttributeError, TypeError):
                 return default
-            
-        model_data = {
-            "_po_entry": po_entry,
-            "key": key,
-            "msgid": po_entry.msgid,
-            "msgstr": po_entry.msgstr,
-            "msgctxt": msgctxt,
-            "obsolete": safe_getattr(po_entry, "obsolete", False),
-            "position": position,
-            "previous_msgid": safe_getattr(po_entry, "previous_msgid", None),
-            "previous_msgid_plural": safe_getattr(po_entry, "previous_msgid_plural", None),
-            "previous_msgctxt": safe_getattr(po_entry, "previous_msgctxt", None),
-            "comment": safe_getattr(po_entry, "comment", None),
-            "tcomment": safe_getattr(po_entry, "tcomment", None),
-            "occurrences": safe_getattr(po_entry, "occurrences", []),
-        }
+        
+        # POEntryの属性を安全に取得
+        model = cls(
+            key=key,
+            msgid=po_entry.msgid,
+            msgstr=po_entry.msgstr,
+            msgctxt=msgctxt,
+            obsolete=safe_getattr(po_entry, "obsolete", False),
+            position=position,
+            previous_msgid=safe_getattr(po_entry, "previous_msgid", None),
+            previous_msgid_plural=safe_getattr(po_entry, "previous_msgid_plural", None),
+            previous_msgctxt=safe_getattr(po_entry, "previous_msgctxt", None),
+            comment=safe_getattr(po_entry, "comment", None),
+            tcomment=safe_getattr(po_entry, "tcomment", None),
+            occurrences=safe_getattr(po_entry, "occurrences", []),
+            references=[]
+        )
+        
+        # POEntryへの参照を保持
+        model._po_entry = po_entry
         
         # flagsの処理
-        flags = getattr(po_entry, "flags", [])
+        flags = safe_getattr(po_entry, "flags", [])
         if isinstance(flags, str):
-            model_data["flags"] = [flag.strip() for flag in flags.split(",") if flag.strip()]
+            model.flags = [flag.strip() for flag in flags.split(",") if flag.strip()]
         elif isinstance(flags, list):
-            model_data["flags"] = flags
+            model.flags = flags
         else:
-            model_data["flags"] = []
+            model.flags = []
             
         # referencesの処理（occurrencesから生成）
-        occurrences = getattr(po_entry, "occurrences", [])
-        references = []
+        occurrences = safe_getattr(po_entry, "occurrences", [])
         for occ in occurrences:
             if isinstance(occ, tuple) and len(occ) == 2:
-                references.append(f"{occ[0]}:{occ[1]}")
-        model_data["references"] = references
+                model.references.append(f"{occ[0]}:{occ[1]}")
         
-        return cls(**model_data)
-        
+        return model
+    
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'EntryModel':
         """辞書からEntryModelを作成"""
         return cls(**data)
-        
+    
     def add_flag(self, flag: str) -> None:
         """フラグを追加"""
         if flag not in self.flags:
             self.flags.append(flag)
-            
+    
     def remove_flag(self, flag: str) -> None:
         """フラグを削除"""
         if flag in self.flags:
             self.flags.remove(flag)
+    
+    # レビューコメント機能のメソッド
+    def add_review_comment(self, comment: str, author: str) -> str:
+        """レビューコメントを追加
+        
+        Args:
+            comment: コメント内容
+            author: コメント作成者
+        
+        Returns:
+            str: コメントID
+        """
+        comment_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+        
+        self.review_comments.append({
+            "id": comment_id,
+            "author": author,
+            "comment": comment,
+            "created_at": timestamp,
+        })
+        
+        return comment_id
+    
+    def remove_review_comment(self, comment_id: str) -> bool:
+        """特定のレビューコメントを削除
+        
+        Args:
+            comment_id: 削除するコメントのID
+            
+        Returns:
+            bool: 削除に成功したかどうか
+        """
+        original_length = len(self.review_comments)
+        self.review_comments = [c for c in self.review_comments if c["id"] != comment_id]
+        return len(self.review_comments) < original_length
+    
+    def clear_review_comments(self) -> None:
+        """すべてのレビューコメントをクリア"""
+        self.review_comments = []
+    
+    # 評価スコア機能のメソッド
+    def set_overall_quality_score(self, score: int) -> None:
+        """翻訳品質の全体スコアを設定
+        
+        Args:
+            score: 0-100の品質スコア
+        """
+        if not 0 <= score <= 100:
+            raise ValueError("品質スコアは0から100の範囲で指定してください")
+        self.overall_quality_score = score
+    
+    def set_category_score(self, category: str, score: int) -> None:
+        """カテゴリ別の品質スコアを設定
+        
+        Args:
+            category: スコアのカテゴリ (accuracy, fluency など)
+            score: 0-100の品質スコア
+        """
+        if not 0 <= score <= 100:
+            raise ValueError("品質スコアは0から100の範囲で指定してください")
+        self.category_quality_scores[category] = score
+    
+    def clear_quality_scores(self) -> None:
+        """品質スコアをクリア"""
+        self.overall_quality_score = None
+        self.category_quality_scores = {}
+    
+    def reset_scores(self) -> None:
+        """すべての品質スコアをリセット"""
+        self.clear_quality_scores()
+    
+    # 自動チェック結果の管理メソッド
+    def add_check_result(self, code: int, message: str, severity: str) -> None:
+        """自動チェック結果を追加
+        
+        Args:
+            code: チェックルールのエラーコード
+            message: エラーメッセージ
+            severity: 重要度 (error, warning, info など)
+        """
+        self.check_results.append({
+            "code": code,
+            "message": message,
+            "severity": severity,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def remove_check_result(self, code: int) -> bool:
+        """特定のコードのチェック結果を削除
+        
+        Args:
+            code: 削除するチェック結果のコード
+            
+        Returns:
+            bool: 削除に成功したかどうか
+        """
+        original_length = len(self.check_results)
+        self.check_results = [r for r in self.check_results if r["code"] != code]
+        return len(self.check_results) < original_length
+    
+    def clear_check_results(self) -> None:
+        """すべてのチェック結果をクリア"""
+        self.check_results = []

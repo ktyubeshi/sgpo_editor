@@ -350,8 +350,7 @@ class TestEntryModel(unittest.TestCase):
         result = EntryModel.validate_po_entry(po_entry)
         
         self.assertEqual(result["flags"], [])
-
-
+    
     def test_fuzzy_setter(self):
         # fuzzyプロパティのsetterメソッドのテスト
         # fuzzyフラグがない場合に追加する
@@ -372,6 +371,151 @@ class TestEntryModel(unittest.TestCase):
         self.assertFalse(entry2.fuzzy)
         self.assertNotIn("fuzzy", entry2.flags)
         self.assertIn("python-format", entry2.flags)  # 他のフラグは残っていることを確認
+
+    def test_review_comment(self):
+        # レビューコメント機能のテスト
+        entry = EntryModel(msgid="test", msgstr="テスト")
+        
+        # 初期状態ではレビューコメントは空のリスト
+        self.assertEqual(entry.review_comments, [])
+        
+        # レビューコメントを追加
+        entry.add_review_comment(author="reviewer1", comment="翻訳の改善が必要です")
+        self.assertEqual(len(entry.review_comments), 1)
+        self.assertEqual(entry.review_comments[0]["comment"], "翻訳の改善が必要です")
+        self.assertEqual(entry.review_comments[0]["author"], "reviewer1")
+        self.assertIn("created_at", entry.review_comments[0])
+        
+        # 複数のレビューコメントを追加
+        entry.add_review_comment(author="translator", comment="修正完了しました")
+        self.assertEqual(len(entry.review_comments), 2)
+        
+        # 特定のレビューコメントを削除
+        comment_id = entry.review_comments[0]["id"]
+        entry.remove_review_comment(comment_id)
+        self.assertEqual(len(entry.review_comments), 1)
+        
+        # すべてのレビューコメントをクリア
+        entry.clear_review_comments()
+        self.assertEqual(entry.review_comments, [])
+
+    def test_quality_score(self):
+        # 品質スコア機能のテスト
+        entry = EntryModel(msgid="test", msgstr="テスト")
+        
+        # 初期状態ではスコアは未設定
+        self.assertIsNone(entry.overall_quality_score)
+        
+        # 全体スコアを設定
+        entry.set_overall_quality_score(85)
+        self.assertEqual(entry.overall_quality_score, 85)
+        
+        # カテゴリスコアを設定
+        entry.set_category_score("accuracy", 90)
+        entry.set_category_score("fluency", 80)
+        
+        self.assertEqual(entry.category_quality_scores["accuracy"], 90)
+        self.assertEqual(entry.category_quality_scores["fluency"], 80)
+        
+        # スコアをリセット
+        entry.reset_scores()
+        self.assertIsNone(entry.overall_quality_score)
+        self.assertEqual(entry.category_quality_scores, {})
+
+    def test_check_results(self):
+        # 自動チェック結果のテスト
+        entry = EntryModel(msgid="test", msgstr="テスト")
+        
+        # 初期状態ではチェック結果は空のリスト
+        self.assertEqual(entry.check_results, [])
+        
+        # チェック結果を追加
+        entry.add_check_result(
+            code=1001,
+            message="句読点の使用が不適切です",
+            severity="warning"
+        )
+        self.assertEqual(len(entry.check_results), 1)
+        self.assertEqual(entry.check_results[0]["code"], 1001)
+        self.assertEqual(entry.check_results[0]["severity"], "warning")
+        
+        # 別のチェック結果を追加
+        entry.add_check_result(
+            code=2003,
+            message="用語の使用が一貫していません",
+            severity="error"
+        )
+        self.assertEqual(len(entry.check_results), 2)
+        
+        # 特定のコードのチェック結果を削除
+        entry.remove_check_result(1001)
+        self.assertEqual(len(entry.check_results), 1)
+        self.assertEqual(entry.check_results[0]["code"], 2003)
+        
+        # すべてのチェック結果をクリア
+        entry.clear_check_results()
+        self.assertEqual(entry.check_results, [])
+
+    def test_to_dict_with_review_data(self):
+        # 拡張フィールドを含むto_dictのテスト
+        entry = EntryModel(msgid="test", msgstr="テスト")
+        
+        # レビューデータを追加
+        entry.add_review_comment(author="reviewer", comment="レビューコメント")
+        entry.set_overall_quality_score(85)
+        entry.set_category_score("accuracy", 90)
+        entry.add_check_result(code=1001, message="警告", severity="warning")
+        
+        # 辞書に変換
+        data = entry.to_dict()
+        
+        # 拡張フィールドが辞書に含まれていることを確認
+        self.assertIn("review_comments", data)
+        self.assertIn("overall_quality_score", data)
+        self.assertIn("category_quality_scores", data)
+        self.assertIn("check_results", data)
+        
+        # 値が正しく変換されていることを確認
+        self.assertEqual(len(data["review_comments"]), 1)
+        self.assertEqual(data["overall_quality_score"], 85)
+        self.assertEqual(data["category_quality_scores"]["accuracy"], 90)
+        self.assertEqual(len(data["check_results"]), 1)
+        self.assertEqual(data["check_results"][0]["code"], 1001)
+
+    def test_from_dict_with_review_data(self):
+        # 拡張フィールドを含むfrom_dictのテスト
+        data = {
+            "msgid": "test",
+            "msgstr": "テスト",
+            "review_comments": [
+                {
+                    "id": "123",
+                    "comment": "レビューコメント",
+                    "author": "reviewer",
+                    "created_at": "2025-03-07T10:00:00"
+                }
+            ],
+            "overall_quality_score": 85,
+            "category_quality_scores": {"accuracy": 90, "fluency": 80},
+            "check_results": [
+                {
+                    "code": 1001,
+                    "message": "警告",
+                    "severity": "warning"
+                }
+            ]
+        }
+        
+        # 辞書からモデルに変換
+        entry = EntryModel.from_dict(data)
+        
+        # 拡張フィールドが正しく設定されていることを確認
+        self.assertEqual(len(entry.review_comments), 1)
+        self.assertEqual(entry.review_comments[0]["comment"], "レビューコメント")
+        self.assertEqual(entry.overall_quality_score, 85)
+        self.assertEqual(entry.category_quality_scores["accuracy"], 90)
+        self.assertEqual(len(entry.check_results), 1)
+        self.assertEqual(entry.check_results[0]["code"], 1001)
 
 
     def test_generate_key(self):
@@ -394,7 +538,11 @@ class TestEntryModel(unittest.TestCase):
         # EntryModel.from_po_entry内で定義されているsafe_getattrを再定義
         def safe_getattr(obj, attr_name, default=None):
             try:
-                return getattr(obj, attr_name)
+                value = getattr(obj, attr_name, default)
+                # Mockオブジェクトの場合はデフォルト値を使用
+                if hasattr(value, "__class__") and "Mock" in value.__class__.__name__:
+                    return default
+                return value
             except (AttributeError, TypeError):
                 return default
         

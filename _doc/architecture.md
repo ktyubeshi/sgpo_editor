@@ -146,6 +146,180 @@ ViewerPOFile.save()
 SGPOFile.save()
 ```
 
+## データアーキテクチャ
+
+SGPOエディタでは、POファイルの読み込み層と内部データモデル層を明確に分離し、拡張性と保守性を高めています。
+
+### データレイヤーの構成
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│  POファイル     │ ──→ │ データ変換レイヤー │ ──→ │ 内部データモデル │
+│  (外部データ)   │ ←── │                  │ ←── │               │
+└─────────────────┘      └──────────────────┘      └─────────────────┘
+```
+
+#### 1. POファイル操作層
+
+外部データ（POファイル）の読み書きを担当します。
+
+- **`sgpo_editor.po.PoFile`**: POファイルの基本的な読み書き機能を提供
+- **`sgpo_editor.core.ViewerPOFile`**: POファイルの拡張読み書き機能とデータベース連携
+- **`sgpo.SGPOFile`**: POファイル処理の基盤実装
+
+#### 2. データ変換レイヤー
+
+外部データから内部データモデルへの変換、およびその逆方向の変換を担当します。
+
+- **`sgpo_editor.models.EntryModel.from_po_entry`**: POEntryからEntryModelへの変換
+- **`sgpo_editor.models.EntryModel.update_po_entry`**: EntryModelからPOEntryへの反映
+- **`sgpo_editor.types.po_entry.POEntry`**: POEntryのプロトコル定義（型安全性の確保）
+
+#### 3. 内部データモデル層
+
+アプリケーション内部で使用するデータモデルを定義します。
+
+- **`sgpo_editor.models.EntryModel`**: POエントリの内部表現（Pydanticモデル）
+- **`sgpo_editor.models.StatsModel`**: 統計情報の内部表現
+- **`sgpo_editor.models.database.Database`**: データの永続化と検索機能
+
+### データの独立性と拡張性
+
+#### POファイルとデータモデルの分離
+
+SGPOエディタでは、POファイルのデータ構造と内部データモデルを明確に分離しています。これにより以下の利点があります：
+
+1. **拡張性の確保**
+   - 内部データモデルには、POファイルに存在しない独自のフィールドや計算プロパティを追加可能
+   - 例: `EntryModel.is_translated`, `EntryModel.is_untranslated`など
+
+2. **型安全性の向上**
+   - Pydanticを使用した型検証と変換
+   - プロトコルによるインターフェース定義
+
+3. **機能拡張の容易さ**
+   - LLMを利用した翻訳レビューなど、POファイルに保存できない情報を内部で扱える
+   - 独自のメタデータや状態管理が可能
+
+#### データ変換メカニズム
+
+データの双方向変換により、内部データと外部データの整合性を維持しています：
+
+```python
+# POエントリから内部モデルへの変換
+entry_model = EntryModel.from_po_entry(po_entry)
+
+# 内部モデルからPOエントリへの反映
+entry_model.update_po_entry()
+```
+
+### 将来的な拡張性
+
+このアーキテクチャにより、以下のような拡張が容易になります：
+
+1. **LLM連携機能**
+   - 翻訳候補の生成
+   - 翻訳品質の評価
+   - 翻訳レビューコメントの保存
+
+2. **高度な検索・フィルタリング**
+   - 内部データモデルに独自のインデックスやメタデータを追加
+   - 複雑なクエリによる検索
+
+3. **カスタムメタデータ**
+   - 翻訳者情報
+   - レビュー状態
+   - 優先度や期限などのプロジェクト管理情報
+
+4. **データ同期機能**
+   - 外部サービスとの連携
+   - バージョン管理システムとの統合
+
+### 実装例
+
+内部データモデルの例（EntryModel）：
+
+```python
+class EntryModel(BaseModel):
+    """POエントリのPydanticモデル実装"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    _po_entry: Optional[POEntry] = None  # 元のPOEntryへの参照
+    
+    # POエントリの基本フィールド
+    key: str = ""
+    msgid: str = ""
+    msgstr: str = ""
+    msgctxt: Optional[str] = None
+    flags: List[str] = Field(default_factory=list)
+    
+    # 計算プロパティ（POファイルには直接存在しない）
+    @computed_field
+    @property
+    def is_fuzzy(self) -> bool:
+        return "fuzzy" in self.flags
+        
+    @computed_field
+    @property
+    def is_translated(self) -> bool:
+        return bool(self.msgstr) and not self.is_fuzzy
+    
+    # POファイルとの変換メソッド
+    @classmethod
+    def from_po_entry(cls, po_entry: POEntry, position: int = 0) -> 'EntryModel':
+        """POEntryからEntryModelを作成"""
+        # 変換ロジック
+        
+    def update_po_entry(self) -> None:
+        """EntryModelの内容をPOEntryに反映"""
+        # 反映ロジック
+        
+    # 将来的な拡張フィールド例
+    # llm_review: Optional[str] = None
+    # llm_suggestions: List[str] = Field(default_factory=list)
+    # review_status: Optional[str] = None
+```
+
+## データモデル拡張仕様
+
+#### POエントリの完全対応
+
+内部データモデル（EntryModel）は、POファイルエントリの全ての情報を保持可能な設計になっています：
+
+```
+white-space
+#  translator-comments       -> tcomment フィールド
+#. extracted-comments        -> comment フィールド
+#: reference...              -> occurrences/references フィールド
+#, flag...                   -> flags フィールド
+#| msgctxt previous-context  -> previous_msgctxt フィールド
+#| msgid previous-untrans... -> previous_msgid フィールド
+msgctxt context              -> msgctxt フィールド
+msgid untranslated-string    -> msgid フィールド
+msgstr translated-string     -> msgstr フィールド
+```
+
+これらのフィールドは、POファイルと完全な互換性を持ちながら、内部処理のための最適化された形式で保持されます。
+
+#### 拡張レビュー機能
+
+アプリケーション独自の機能として、以下のレビュー関連フィールドを内部データモデルに追加しています：
+
+1. **レビューコメント**
+   - 翻訳者や校正者が追加できるコメント
+   - 複数の履歴を保持可能
+
+2. **評価スコア**
+   - 翻訳品質の評価（0-100のスコア）
+   - カテゴリ別評価（正確性、自然さ、一貫性など）
+
+3. **自動チェック結果**
+   - ルールベースの検証結果
+   - エラーコードとメッセージのリスト
+   - 重要度レベル（エラー、警告、情報）
+
+これらの拡張フィールドはPOファイルには保存されませんが、内部データベースに保存され、アプリケーション内で活用されます。将来的には、これらのデータをカスタムフォーマットで外部ファイルとしてエクスポート/インポートする機能も検討しています。
+
 ## 状態管理
 
 ### 1. アプリケーション設定

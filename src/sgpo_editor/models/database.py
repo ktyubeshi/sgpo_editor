@@ -74,6 +74,53 @@ class Database:
                     FOREIGN KEY (entry_id) REFERENCES entries (id) ON DELETE CASCADE
                 )
             """)
+            
+            # レビューコメントテーブル
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS review_comments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    entry_id INTEGER NOT NULL,
+                    comment_id TEXT NOT NULL,
+                    author TEXT,
+                    comment TEXT NOT NULL,
+                    created_at TIMESTAMP,
+                    FOREIGN KEY (entry_id) REFERENCES entries (id) ON DELETE CASCADE
+                )
+            """)
+            
+            # 品質スコアテーブル
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS quality_scores (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    entry_id INTEGER NOT NULL,
+                    overall_score INTEGER,
+                    FOREIGN KEY (entry_id) REFERENCES entries (id) ON DELETE CASCADE
+                )
+            """)
+            
+            # カテゴリースコアテーブル
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS category_scores (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    quality_score_id INTEGER NOT NULL,
+                    category TEXT NOT NULL,
+                    score INTEGER NOT NULL,
+                    FOREIGN KEY (quality_score_id) REFERENCES quality_scores (id) ON DELETE CASCADE
+                )
+            """)
+            
+            # チェック結果テーブル
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS check_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    entry_id INTEGER NOT NULL,
+                    code TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    created_at TIMESTAMP,
+                    FOREIGN KEY (entry_id) REFERENCES entries (id) ON DELETE CASCADE
+                )
+            """)
 
             # インデックス作成（テーブル作成後に実行）
             cur.execute("CREATE INDEX IF NOT EXISTS idx_msgid ON entries(msgid)")
@@ -82,6 +129,9 @@ class Database:
             cur.execute("CREATE INDEX IF NOT EXISTS idx_display_order_entry_id ON display_order(entry_id)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_entry_references ON entry_references(entry_id)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_entry_flags ON entry_flags(entry_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_review_comments_entry_id ON review_comments(entry_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_quality_scores_entry_id ON quality_scores(entry_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_check_results_entry_id ON check_results(entry_id)")
 
         logger.debug("テーブル作成完了")
 
@@ -271,6 +321,9 @@ class Database:
             )
             entry["flags"] = [r[0] for r in cur.fetchall()]
 
+            # レビュー関連データを取得
+            entry["review_data"] = self._get_review_data(entry_id)
+
             return entry
 
     def get_entry_by_key(self, key: str) -> Optional[Dict[str, Any]]:
@@ -304,6 +357,9 @@ class Database:
                 (entry["id"],)
             )
             entry["flags"] = [r[0] for r in cur.fetchall()]
+
+            # レビュー関連データを取得
+            entry["review_data"] = self._get_review_data(entry["id"])
 
             return entry
 
@@ -380,6 +436,10 @@ class Database:
                     """,
                     (entry["position"], key),
                 )
+
+            # レビュー関連データを更新
+            if "review_data" in entry:
+                self._save_review_data(self.get_entry_by_key(key)["id"], entry["review_data"])
 
         logger.debug("エントリ更新完了: %s", key)
 
@@ -501,7 +561,13 @@ class Database:
             query += " ORDER BY COALESCE(d.position, 0)"
 
         cursor = self._conn.execute(query, params)
-        return [dict(row) for row in cursor.fetchall()]
+        entries = [dict(row) for row in cursor.fetchall()]
+
+        # レビュー関連データを取得
+        for entry in entries:
+            entry["review_data"] = self._get_review_data(entry["id"])
+
+        return entries
 
     def reorder_entries(self, entry_ids: List[int]) -> None:
         """エントリの表示順序を変更"""
@@ -521,3 +587,380 @@ class Database:
             finally:
                 # 制約を有効化
                 cur.execute("PRAGMA foreign_keys = ON")
+
+    def _row_to_dict(self, row: sqlite3.Row) -> Dict[str, Any]:
+        """SQLiteの行を辞書に変換"""
+        result = dict(row)
+        
+        # flags文字列をリストに変換
+        if "flags" in result and result["flags"]:
+            result["flags"] = result["flags"].split(",")
+        else:
+            result["flags"] = []
+            
+        return result
+        
+    def _get_review_data(self, entry_id: int) -> Dict[str, Any]:
+        """エントリのレビュー関連データを取得"""
+        review_data = {
+            "review_comments": [],
+            "quality_score": None,
+            "category_scores": {},
+            "check_results": []
+        }
+        
+        with self.transaction() as cur:
+            # レビューコメントを取得
+            cur.execute("""
+                SELECT comment_id, author, comment, created_at
+                FROM review_comments
+                WHERE entry_id = ?
+            """, (entry_id,))
+            
+            for row in cur.fetchall():
+                review_data["review_comments"].append({
+                    "id": row[0],
+                    "author": row[1],
+                    "comment": row[2],
+                    "created_at": row[3]
+                })
+                
+            # 品質スコアを取得
+            cur.execute("""
+                SELECT id, overall_score
+                FROM quality_scores
+                WHERE entry_id = ?
+            """, (entry_id,))
+            
+            quality_score_row = cur.fetchone()
+            if quality_score_row:
+                quality_score_id, overall_score = quality_score_row
+                review_data["quality_score"] = overall_score
+                
+                # カテゴリースコアを取得
+                cur.execute("""
+                    SELECT category, score
+                    FROM category_scores
+                    WHERE quality_score_id = ?
+                """, (quality_score_id,))
+                
+                for category, score in cur.fetchall():
+                    review_data["category_scores"][category] = score
+                    
+            # チェック結果を取得
+            cur.execute("""
+                SELECT code, message, severity, created_at
+                FROM check_results
+                WHERE entry_id = ?
+            """, (entry_id,))
+            
+            for row in cur.fetchall():
+                review_data["check_results"].append({
+                    "code": row[0],
+                    "message": row[1],
+                    "severity": row[2],
+                    "created_at": row[3]
+                })
+                
+        return review_data
+    
+    def _save_review_data(self, entry_id: int, review_data: Dict[str, Any]) -> None:
+        """エントリのレビュー関連データを保存"""
+        with self.transaction() as cur:
+            # レビューコメント保存
+            if "review_comments" in review_data:
+                # 既存のレビューコメントを削除
+                cur.execute("DELETE FROM review_comments WHERE entry_id = ?", (entry_id,))
+                
+                # 新しいレビューコメントを保存
+                for comment in review_data["review_comments"]:
+                    cur.execute("""
+                        INSERT INTO review_comments 
+                        (entry_id, comment_id, author, comment, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (
+                        entry_id,
+                        comment["id"],
+                        comment.get("author"),
+                        comment["comment"],
+                        comment.get("created_at")
+                    ))
+            
+            # 品質スコア保存
+            if "quality_score" in review_data or "category_scores" in review_data:
+                # 既存の品質スコア情報を削除
+                cur.execute("DELETE FROM quality_scores WHERE entry_id = ?", (entry_id,))
+                
+                quality_score = review_data.get("quality_score")
+                category_scores = review_data.get("category_scores", {})
+                
+                if quality_score is not None or category_scores:
+                    # 新しい品質スコアを保存
+                    cur.execute("""
+                        INSERT INTO quality_scores (entry_id, overall_score)
+                        VALUES (?, ?)
+                    """, (entry_id, quality_score))
+                    
+                    quality_score_id = cur.lastrowid
+                    
+                    # カテゴリースコアを保存
+                    for category, score in category_scores.items():
+                        cur.execute("""
+                            INSERT INTO category_scores 
+                            (quality_score_id, category, score)
+                            VALUES (?, ?, ?)
+                        """, (quality_score_id, category, score))
+            
+            # チェック結果保存
+            if "check_results" in review_data:
+                # 既存のチェック結果を削除
+                cur.execute("DELETE FROM check_results WHERE entry_id = ?", (entry_id,))
+                
+                # 新しいチェック結果を保存
+                for result in review_data["check_results"]:
+                    cur.execute("""
+                        INSERT INTO check_results 
+                        (entry_id, code, message, severity, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (
+                        entry_id,
+                        result["code"],
+                        result["message"],
+                        result["severity"],
+                        result.get("created_at")
+                    ))
+
+    def update_entry_field(self, key: str, field: str, value: Any) -> bool:
+        """エントリの特定フィールドのみを更新する
+        
+        Args:
+            key: エントリのキー
+            field: 更新するフィールド名
+            value: 新しい値
+            
+        Returns:
+            bool: 更新が成功したかどうか
+        """
+        logger.debug("エントリフィールド更新開始: %s.%s", key, field)
+        try:
+            with self.transaction() as cur:
+                if field == "fuzzy":
+                    # fuzzyフラグの場合は特別な処理が必要
+                    entry_id = self._get_entry_id_by_key(cur, key)
+                    if entry_id is None:
+                        return False
+                        
+                    # 既存のフラグを取得
+                    cur.execute(
+                        "SELECT flag FROM entry_flags WHERE entry_id = ?",
+                        (entry_id,)
+                    )
+                    flags = [r[0] for r in cur.fetchall()]
+                    
+                    if value and "fuzzy" not in flags:
+                        # fuzzyフラグを追加
+                        cur.execute(
+                            "INSERT INTO entry_flags (entry_id, flag) VALUES (?, ?)",
+                            (entry_id, "fuzzy")
+                        )
+                    elif not value and "fuzzy" in flags:
+                        # fuzzyフラグを削除
+                        cur.execute(
+                            "DELETE FROM entry_flags WHERE entry_id = ? AND flag = ?",
+                            (entry_id, "fuzzy")
+                        )
+                elif field in ["msgctxt", "msgid", "msgstr", "comment", "tcomment"]:
+                    # 標準フィールドの場合は直接更新
+                    cur.execute(
+                        f"""
+                        UPDATE entries SET
+                            {field} = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE key = ?
+                        """,
+                        (value, key)
+                    )
+                else:
+                    # サポートされていないフィールド
+                    logger.warning("サポートされていないフィールド: %s", field)
+                    return False
+                    
+                return True
+        except Exception as e:
+            logger.error("エントリフィールド更新エラー: %s", e, exc_info=True)
+            return False
+    
+    def update_entry_review_data(self, key: str, field: str, value: Any) -> bool:
+        """エントリのレビュー関連データを部分的に更新する
+        
+        Args:
+            key: エントリのキー
+            field: 更新するフィールド名（quality_score, category_scores）
+            value: 新しい値
+            
+        Returns:
+            bool: 更新が成功したかどうか
+        """
+        logger.debug("エントリレビューデータ更新開始: %s.%s", key, field)
+        try:
+            entry_id = self._get_entry_id_by_key(None, key)
+            if entry_id is None:
+                return False
+                
+            # 現在のレビューデータを取得
+            review_data = self._get_review_data(entry_id)
+            
+            # 指定されたフィールドを更新
+            review_data[field] = value
+            
+            # 更新したレビューデータを保存
+            self._save_review_data(entry_id, review_data)
+            return True
+        except Exception as e:
+            logger.error("エントリレビューデータ更新エラー: %s", e, exc_info=True)
+            return False
+    
+    def add_review_comment(self, key: str, comment: Dict[str, Any]) -> bool:
+        """エントリにレビューコメントを追加する
+        
+        Args:
+            key: エントリのキー
+            comment: 追加するコメント情報
+            
+        Returns:
+            bool: 追加が成功したかどうか
+        """
+        logger.debug("レビューコメント追加開始: %s", key)
+        try:
+            entry_id = self._get_entry_id_by_key(None, key)
+            if entry_id is None:
+                return False
+                
+            # 現在のレビューデータを取得
+            review_data = self._get_review_data(entry_id)
+            
+            # コメントを追加
+            review_data["review_comments"].append(comment)
+            
+            # 更新したレビューデータを保存
+            self._save_review_data(entry_id, review_data)
+            return True
+        except Exception as e:
+            logger.error("レビューコメント追加エラー: %s", e, exc_info=True)
+            return False
+    
+    def remove_review_comment(self, key: str, comment_id: str) -> bool:
+        """エントリからレビューコメントを削除する
+        
+        Args:
+            key: エントリのキー
+            comment_id: 削除するコメントID
+            
+        Returns:
+            bool: 削除が成功したかどうか
+        """
+        logger.debug("レビューコメント削除開始: %s, %s", key, comment_id)
+        try:
+            entry_id = self._get_entry_id_by_key(None, key)
+            if entry_id is None:
+                return False
+                
+            # 現在のレビューデータを取得
+            review_data = self._get_review_data(entry_id)
+            
+            # コメントを削除
+            review_data["review_comments"] = [
+                c for c in review_data["review_comments"]
+                if c["id"] != comment_id
+            ]
+            
+            # 更新したレビューデータを保存
+            self._save_review_data(entry_id, review_data)
+            return True
+        except Exception as e:
+            logger.error("レビューコメント削除エラー: %s", e, exc_info=True)
+            return False
+    
+    def add_check_result(self, key: str, check_result: Dict[str, Any]) -> bool:
+        """エントリにチェック結果を追加する
+        
+        Args:
+            key: エントリのキー
+            check_result: 追加するチェック結果
+            
+        Returns:
+            bool: 追加が成功したかどうか
+        """
+        logger.debug("チェック結果追加開始: %s", key)
+        try:
+            entry_id = self._get_entry_id_by_key(None, key)
+            if entry_id is None:
+                return False
+                
+            # 現在のレビューデータを取得
+            review_data = self._get_review_data(entry_id)
+            
+            # チェック結果を追加
+            review_data["check_results"].append(check_result)
+            
+            # 更新したレビューデータを保存
+            self._save_review_data(entry_id, review_data)
+            return True
+        except Exception as e:
+            logger.error("チェック結果追加エラー: %s", e, exc_info=True)
+            return False
+    
+    def remove_check_result(self, key: str, code: str) -> bool:
+        """エントリからチェック結果を削除する
+        
+        Args:
+            key: エントリのキー
+            code: 削除するチェック結果のコード
+            
+        Returns:
+            bool: 削除が成功したかどうか
+        """
+        logger.debug("チェック結果削除開始: %s, %s", key, code)
+        try:
+            entry_id = self._get_entry_id_by_key(None, key)
+            if entry_id is None:
+                return False
+                
+            # 現在のレビューデータを取得
+            review_data = self._get_review_data(entry_id)
+            
+            # チェック結果を削除
+            review_data["check_results"] = [
+                r for r in review_data["check_results"]
+                if r["code"] != code
+            ]
+            
+            # 更新したレビューデータを保存
+            self._save_review_data(entry_id, review_data)
+            return True
+        except Exception as e:
+            logger.error("チェック結果削除エラー: %s", e, exc_info=True)
+            return False
+    
+    def _get_entry_id_by_key(self, cur: Optional[sqlite3.Cursor], key: str) -> Optional[int]:
+        """キーからエントリIDを取得する
+        
+        Args:
+            cur: SQLiteカーソル（Noneの場合は新しいカーソルを作成）
+            key: エントリのキー
+            
+        Returns:
+            Optional[int]: エントリID（存在しない場合はNone）
+        """
+        close_cur = False
+        if cur is None:
+            cur = self._conn.cursor()
+            close_cur = True
+            
+        try:
+            cur.execute("SELECT id FROM entries WHERE key = ?", (key,))
+            row = cur.fetchone()
+            return row[0] if row else None
+        finally:
+            if close_cur:
+                cur.close()

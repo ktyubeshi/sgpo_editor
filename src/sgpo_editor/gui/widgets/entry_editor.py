@@ -1,7 +1,7 @@
 """エントリ編集用ウィジェット"""
 
 import logging
-from typing import Optional, cast
+from typing import Optional, cast, Dict, Any, List
 from enum import Enum, auto
 
 from PySide6.QtWidgets import (
@@ -14,10 +14,21 @@ from PySide6.QtWidgets import (
     QComboBox,
     QSizePolicy,
     QCheckBox,
+    QSplitter,
+    QTabWidget,
+    QDialog,
 )
 from PySide6.QtCore import Signal, Qt, QSize, QTimer
 
 from sgpo_editor.models import EntryModel
+from sgpo_editor.models.database import Database
+from sgpo_editor.gui.widgets.review_widgets import (
+    TranslatorCommentWidget,
+    ReviewCommentWidget,
+    QualityScoreWidget,
+    CheckResultWidget,
+)
+from sgpo_editor.gui.widgets.debug_widgets import EntryDebugWidget
 
 logger = logging.getLogger(__name__)
 
@@ -90,10 +101,14 @@ class EntryEditor(QWidget):
         super().__init__(parent)
         self._current_entry = None
         self._current_layout = LayoutType.LAYOUT1
+        self._database = None  # データベース参照
         # テキスト変更通知を遅延させるためのタイマー
         self._text_change_timer = QTimer(self)
         self._text_change_timer.setSingleShot(True)
         self._text_change_timer.timeout.connect(self._emit_text_changed)
+        
+        # レビュー関連ダイアログの参照を保持
+        self._review_dialogs: Dict[str, QDialog] = {}
 
         # メインレイアウト
         main_layout = QVBoxLayout()
@@ -124,13 +139,13 @@ class EntryEditor(QWidget):
 
         # msgstr
         self.msgstr_edit = QPlainTextEdit(self)
-        self.msgstr_edit.textChanged.connect(self._on_text_changed)
+        self.msgstr_edit.textChanged.connect(self._on_msgstr_changed)
         self.editor_layout.addWidget(self.msgstr_edit)
 
         self.editor_widget.setLayout(self.editor_layout)
         main_layout.addWidget(self.editor_widget)
 
-        # 下部コントロール部分（fuzzyチェックボックスとApplyボタン）
+        # 下部コントロール部分（fuzzyチェックボックスとApplyボタン、各種機能ボタン）
         control_widget = QWidget()
         control_layout = QHBoxLayout()
         control_layout.setContentsMargins(0, 0, 0, 0)
@@ -142,6 +157,28 @@ class EntryEditor(QWidget):
 
         # スペーサーを追加して右寄せにする
         control_layout.addStretch()
+        
+        # 各機能ボタン
+        self.tcomment_button = QPushButton("翻訳者コメント", self)
+        self.tcomment_button.clicked.connect(lambda: self._show_review_dialog("translator_comment"))
+        control_layout.addWidget(self.tcomment_button)
+        
+        self.review_comment_button = QPushButton("レビューコメント", self)
+        self.review_comment_button.clicked.connect(lambda: self._show_review_dialog("review_comment"))
+        control_layout.addWidget(self.review_comment_button)
+        
+        self.quality_score_button = QPushButton("品質スコア", self)
+        self.quality_score_button.clicked.connect(lambda: self._show_review_dialog("quality_score"))
+        control_layout.addWidget(self.quality_score_button)
+        
+        self.check_result_button = QPushButton("チェック結果", self)
+        self.check_result_button.clicked.connect(lambda: self._show_review_dialog("check_result"))
+        control_layout.addWidget(self.check_result_button)
+        
+        # デバッグボタン
+        self.debug_button = QPushButton("デバッグ", self)
+        self.debug_button.clicked.connect(lambda: self._show_review_dialog("debug"))
+        control_layout.addWidget(self.debug_button)
 
         # Applyボタン
         self.apply_button = QPushButton("Apply", self)
@@ -154,6 +191,73 @@ class EntryEditor(QWidget):
 
         self.setLayout(main_layout)
         self.setEnabled(False)  # 初期状態では無効化
+        
+    def _show_review_dialog(self, dialog_type: str) -> None:
+        """レビュー関連ダイアログを表示"""
+        logger.debug(f"Show review dialog: {dialog_type}")
+        
+        if not self._current_entry:
+            logger.warning("Entry is not set. Cannot show review dialog.")
+            return
+            
+        if dialog_type not in self._review_dialogs:
+            # ダイアログが未作成の場合は新規作成
+            dialog = QDialog(self)
+            dialog.setWindowTitle(f"対訳表示: {dialog_type}")
+            
+            # ダイアログにレイアウトを設定
+            layout = QVBoxLayout(dialog)
+            
+            # ダイアログの種類に応じたウィジェットを作成
+            widget = None
+            if dialog_type == "translator_comment":
+                widget = TranslatorCommentWidget(dialog)
+                # シグナルを接続
+                widget.comment_changed.connect(self._on_text_changed)
+            elif dialog_type == "review_comment":
+                widget = ReviewCommentWidget(dialog)
+            elif dialog_type == "quality_score":
+                widget = QualityScoreWidget(dialog)
+            elif dialog_type == "check_result":
+                widget = CheckResultWidget(dialog)
+            elif dialog_type == "debug":
+                widget = EntryDebugWidget(dialog)
+                
+            # ウィジェットがNoneでない場合はレイアウトに追加
+            if widget:
+                layout.addWidget(widget)
+                widget.set_entry(self._current_entry)
+                
+                # データベース参照を設定（対応するメソッドがある場合）
+                if hasattr(widget, "set_database") and self._database:
+                    widget.set_database(self._database)
+                
+            # ダイアログを保存
+            dialog.widget = widget  # ウィジェットへの参照を保持
+            self._review_dialogs[dialog_type] = dialog
+        else:
+            dialog = self._review_dialogs[dialog_type]
+            # 現在のエントリを更新
+            if hasattr(dialog.widget, "set_entry"):
+                dialog.widget.set_entry(self._current_entry)
+            
+            # データベース参照を更新（対応するメソッドがある場合）
+            if hasattr(dialog.widget, "set_database") and self._database:
+                dialog.widget.set_database(self._database)
+        
+        # ダイアログを表示
+        dialog.show()
+        dialog.raise_()  # 前面に表示
+
+    def _update_open_review_dialogs(self) -> None:
+        """開いているすべてのレビューダイアログを更新"""
+        if not self._current_entry:
+            return
+            
+        for dialog_type, dialog in self._review_dialogs.items():
+            if dialog.isVisible() and hasattr(dialog.widget, "set_entry"):
+                # ダイアログが表示中の場合のみ更新
+                dialog.widget.set_entry(self._current_entry)
 
     @property
     def current_entry(self) -> Optional[EntryModel]:
@@ -185,13 +289,15 @@ class EntryEditor(QWidget):
 
     def _on_apply_clicked(self) -> None:
         """適用ボタンクリック時の処理"""
-        if not self.current_entry:
+        if not self.current_entry or not self._database:
             return
 
         # エントリを更新
         entry = self.current_entry
-        entry.msgstr = self.msgstr_edit.toPlainText()
-        entry.fuzzy = self.fuzzy_checkbox.isChecked()
+        
+        # データベースの更新
+        self._database.update_entry(entry.key, entry.to_dict())
+        
         self.text_changed.emit()
         self.apply_clicked.emit()
 
@@ -201,12 +307,24 @@ class EntryEditor(QWidget):
         self._text_change_timer.stop()
         self._text_change_timer.start(5)
 
+    def _on_msgstr_changed(self) -> None:
+        """翻訳文が変更されたときの処理"""
+        if not self._current_entry:
+            return
+            
+        # エントリのmsgstrを更新
+        new_msgstr = self.msgstr_edit.toPlainText()
+        self._current_entry.msgstr = new_msgstr
+        
+        # 変更通知タイマーをリセット
+        self._text_change_timer.start(200)
+
     def _emit_text_changed(self) -> None:
         """テキスト変更シグナルを発行"""
         if not self._current_entry:
             return
 
-        # エントリを更新
+        # エントリオブジェクトを更新（ただしデータベースには書き込まない）
         if self.msgstr_edit:
             self._current_entry.msgstr = self.msgstr_edit.toPlainText()
         if self.context_edit:
@@ -216,10 +334,17 @@ class EntryEditor(QWidget):
 
     def _on_fuzzy_changed(self, state: int) -> None:
         """Fuzzyチェックボックスの状態が変更されたときの処理"""
-        if self.fuzzy_checkbox and self._current_entry:
-            is_fuzzy = state == Qt.CheckState.Checked
-            self._current_entry.fuzzy = is_fuzzy
-            self.text_changed.emit()
+        if not self.fuzzy_checkbox or not self._current_entry or not self._database:
+            return
+            
+        is_fuzzy = state == Qt.CheckState.Checked
+        # エントリオブジェクトを更新
+        self._current_entry.fuzzy = is_fuzzy
+        
+        # データベースに即時反映
+        self._database.update_entry_field(self._current_entry.key, "fuzzy", is_fuzzy)
+        
+        self.text_changed.emit()
 
     def set_entry(self, entry: Optional[EntryModel]) -> None:
         """エントリを設定"""
@@ -240,6 +365,10 @@ class EntryEditor(QWidget):
                 self.fuzzy_checkbox.blockSignals(False)
             if self.context_edit:
                 self.context_edit.setText("")
+            
+            # 開いているダイアログがあれば更新
+            self._update_open_review_dialogs()
+            
             self.setEnabled(False)
             return
 
@@ -261,8 +390,27 @@ class EntryEditor(QWidget):
             context_text = entry.msgctxt if entry.msgctxt is not None else ""
             logger.debug("set_entry: setting context_edit.text to '%s'", context_text)
             self.context_edit.setText(context_text)
+            
+        # 開いているダイアログがあれば更新
+        self._update_open_review_dialogs()
+        
         self.entry_changed.emit(self.current_entry_number or -1)
 
+    @property
+    def database(self) -> Optional[Database]:
+        """データベース参照を取得"""
+        return self._database
+        
+    @database.setter
+    def database(self, db: Database) -> None:
+        """データベース参照を設定"""
+        self._database = db
+        
+        # 開いているダイアログがある場合は、それらにもデータベース参照を設定
+        for dialog_type, dialog in self._review_dialogs.items():
+            if hasattr(dialog.widget, "set_database"):
+                dialog.widget.set_database(db)
+        
     def get_layout_type(self) -> LayoutType:
         """現在のレイアウトタイプを取得"""
         return self._current_layout
@@ -306,5 +454,5 @@ class EntryEditor(QWidget):
             self.fuzzy_checkbox.setChecked(current_fuzzy)
 
     def sizeHint(self) -> QSize:
-        # デフォルトの幅はスーパークラスのサイズヒントから取得し、高さは 100px に設定
-        return QSize(super().sizeHint().width(), 100)
+        # デフォルトの幅はスーパークラスのサイズヒントから取得し、高さは 300px に設定（レビューウィジェット用に拡大）
+        return QSize(super().sizeHint().width(), 300)
