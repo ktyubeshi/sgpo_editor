@@ -174,6 +174,24 @@ class UIManager:
         layout_group.addAction(self.layout1_action)
         layout_group.addAction(self.layout2_action)
         layout_group.setExclusive(True)
+        
+        # ツールメニュー
+        tools_menu = self.main_window.menuBar().addMenu("ツール")
+        tools_menu.setObjectName("tools_menu")
+        
+        # POフォーマットエディタ
+        po_format_editor_action = QAction("POフォーマットエディタ", self.main_window)
+        po_format_editor_action.setObjectName("po_format_editor_action")
+        po_format_editor_action.setShortcut("Ctrl+P")
+        po_format_editor_action.triggered.connect(callbacks["open_po_format_editor"])
+        tools_menu.addAction(po_format_editor_action)
+        
+        # プレビュー
+        preview_action = QAction("プレビュー", self.main_window)
+        preview_action.setObjectName("preview_action")
+        preview_action.setShortcut("Ctrl+R")
+        preview_action.triggered.connect(callbacks["show_preview"])
+        tools_menu.addAction(preview_action)
 
     def update_recent_files_menu(self, callback: Callable[[str], None]) -> None:
         """最近使用したファイルメニューを更新する

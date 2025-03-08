@@ -197,3 +197,11 @@ class EventHandler(QObject):
             layout_type: レイアウトタイプ
         """
         self.entry_editor.set_layout_type(layout_type)
+        
+    def get_current_entry(self) -> Any:
+        """現在選択されているエントリを取得する
+        
+        Returns:
+            現在選択されているエントリ、またはNone
+        """
+        return self.entry_editor.current_entry

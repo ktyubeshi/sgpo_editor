@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.gui.widgets.search import SearchWidget
 from sgpo_editor.gui.widgets.stats import StatsWidget
+from sgpo_editor.gui.widgets.po_format_editor import POFormatEditor
+from sgpo_editor.gui.widgets.preview_widget import PreviewDialog
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.file_handler import FileHandler
 from sgpo_editor.gui.event_handler import EventHandler
@@ -86,6 +88,8 @@ class MainWindow(QMainWindow):
             "close": self.close,
             "change_layout": self._change_entry_layout,
             "open_recent_file": self._open_recent_file,
+            "open_po_format_editor": self._open_po_format_editor,
+            "show_preview": self._show_preview_dialog,
         })
         
         # ステータスバー
@@ -197,6 +201,30 @@ class MainWindow(QMainWindow):
             layout_type: レイアウトタイプ
         """
         self.event_handler.change_entry_layout(layout_type)
+        
+    def _show_preview_dialog(self) -> None:
+        """プレビューダイアログを表示する"""
+        # 現在選択されているエントリがない場合は何もしない
+        current_entry = self.event_handler.get_current_entry()
+        if not current_entry:
+            self.statusBar().showMessage("プレビューするエントリが選択されていません")
+            return
+            
+        # プレビューダイアログを表示
+        dialog = PreviewDialog(self)
+        dialog.set_entry(current_entry)
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+        
+    def _open_po_format_editor(self) -> None:
+        """POフォーマットエディタを開く"""
+        if not hasattr(self, "_po_format_editor"):
+            self._po_format_editor = POFormatEditor(self, self._get_current_po)
+            # エントリ更新シグナルを接続
+            self._po_format_editor.entry_updated.connect(self._on_entry_updated)
+        
+        self._po_format_editor.show()
 
 
 def main():

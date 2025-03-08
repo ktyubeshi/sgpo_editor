@@ -29,6 +29,8 @@ class TableManager:
         self._display_entries: List[str] = []
         self._current_sort_column: Optional[int] = None
         self._current_sort_order: Optional[Qt.SortOrder] = None
+        self._current_filter_text: Optional[str] = None
+        self._current_search_text: Optional[str] = None
         self._get_current_po = get_current_po
         # Entry cache
         self._entry_cache: Dict[str, Any] = {}
@@ -90,7 +92,14 @@ class TableManager:
         # Execute sort process if PO file exists
         po_file = self._get_current_po() if self._get_current_po else None
         if po_file:
-            self.update_table(po_file, logical_index, new_order)
+            # 現在のフィルタ条件を保持したままソートを実行
+            self.update_table(
+                po_file, 
+                logical_index, 
+                new_order, 
+                filter_text=self._current_filter_text, 
+                search_text=self._current_search_text
+            )
         
     def update_table(self, po_file: Optional["ViewerPOFile"], sort_column: int = None, 
                      sort_order: Qt.SortOrder = None, filter_text: str = None,
@@ -117,6 +126,10 @@ class TableManager:
             self._current_sort_column = sort_column
         if sort_order is not None:
             self._current_sort_order = sort_order
+            
+        # 現在のフィルタ条件を保存
+        self._current_filter_text = filter_text
+        self._current_search_text = search_text
 
         # Get entries to display
         entries = po_file.get_filtered_entries(
@@ -172,6 +185,14 @@ class TableManager:
             )
             
         return entries
+        
+    def _get_filter_conditions(self) -> tuple[Optional[str], Optional[str]]:
+        """現在のフィルタ条件を取得
+        
+        Returns:
+            フィルタテキストとキーワードのタプル
+        """
+        return (self._current_filter_text, self._current_search_text)
 
     def _sort_entries(self, entries: List[Any], column: int, order: Qt.SortOrder) -> List[Any]:
         """Sort entries
