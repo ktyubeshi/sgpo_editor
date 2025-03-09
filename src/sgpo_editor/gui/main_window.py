@@ -212,7 +212,11 @@ class MainWindow(QMainWindow):
             
         # プレビューダイアログを表示
         dialog = PreviewDialog(self)
+        # イベントハンドラーを設定してエントリ選択変更イベントを接続
+        dialog.set_event_handler(self.event_handler)
+        # 現在のエントリを設定
         dialog.set_entry(current_entry)
+        # ダイアログを表示
         dialog.show()
         dialog.raise_()
         dialog.activateWindow()

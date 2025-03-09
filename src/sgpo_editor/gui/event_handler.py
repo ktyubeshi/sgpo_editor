@@ -124,6 +124,10 @@ class EventHandler(QObject):
                 entry.msgid = str(entry.msgid)
 
             self.entry_editor.set_entry(entry)
+            
+            # エントリ選択変更時にシグナルを発行
+            if hasattr(entry, 'position'):
+                self.entry_updated.emit(entry.position)
         except Exception as e:
             self._show_status(f"詳細表示でエラー: {e}", 3000)
 
