@@ -157,28 +157,6 @@ class EntryEditor(QWidget):
 
         # スペーサーを追加して右寄せにする
         control_layout.addStretch()
-        
-        # 各機能ボタン
-        self.tcomment_button = QPushButton("翻訳者コメント", self)
-        self.tcomment_button.clicked.connect(lambda: self._show_review_dialog("translator_comment"))
-        control_layout.addWidget(self.tcomment_button)
-        
-        self.review_comment_button = QPushButton("レビューコメント", self)
-        self.review_comment_button.clicked.connect(lambda: self._show_review_dialog("review_comment"))
-        control_layout.addWidget(self.review_comment_button)
-        
-        self.quality_score_button = QPushButton("品質スコア", self)
-        self.quality_score_button.clicked.connect(lambda: self._show_review_dialog("quality_score"))
-        control_layout.addWidget(self.quality_score_button)
-        
-        self.check_result_button = QPushButton("チェック結果", self)
-        self.check_result_button.clicked.connect(lambda: self._show_review_dialog("check_result"))
-        control_layout.addWidget(self.check_result_button)
-        
-        # デバッグボタン
-        self.debug_button = QPushButton("デバッグ", self)
-        self.debug_button.clicked.connect(lambda: self._show_review_dialog("debug"))
-        control_layout.addWidget(self.debug_button)
 
         # Applyボタン
         self.apply_button = QPushButton("Apply", self)

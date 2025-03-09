@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QProgressBar,
     QMenu,
+    QToolBar,
 )
 
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
@@ -53,6 +54,9 @@ class UIManager:
         # 最近使用したファイルのアクション
         self.recent_file_actions: List[QAction] = []
         self.recent_files_menu: Optional[QMenu] = None
+        
+        # ツールバーアクション
+        self.toolbar_actions: Dict[str, QAction] = {}
         
     def setup_central_widget(self, table_widget) -> None:
         """中央ウィジェットの設定
@@ -242,6 +246,65 @@ class UIManager:
         settings.setValue("recent_files", [])
         self.update_recent_files_menu(lambda _: None)
 
+    def setup_toolbar(self, show_review_dialog_callback) -> None:
+        """ツールバーの設定
+
+        Args:
+            show_review_dialog_callback: レビュー関連ダイアログを表示するコールバック
+        """
+        # レビューツールバーの作成
+        toolbar = QToolBar("レビューツールバー", self.main_window)
+        toolbar.setObjectName("review_toolbar")
+        
+        # 翻訳者コメントアクション
+        translator_comment_action = QAction("翻訳者コメント", self.main_window)
+        translator_comment_action.setObjectName("translator_comment_action")
+        # ラムダ式ではなく、部分関数を使用してコールバックを設定
+        def translator_callback():
+            show_review_dialog_callback("translator_comment")
+        translator_comment_action.triggered.connect(translator_callback)
+        toolbar.addAction(translator_comment_action)
+        self.toolbar_actions["translator_comment"] = translator_comment_action
+        
+        # レビューコメントアクション
+        review_comment_action = QAction("レビューコメント", self.main_window)
+        review_comment_action.setObjectName("review_comment_action")
+        def review_callback():
+            show_review_dialog_callback("review_comment")
+        review_comment_action.triggered.connect(review_callback)
+        toolbar.addAction(review_comment_action)
+        self.toolbar_actions["review_comment"] = review_comment_action
+        
+        # 品質スコアアクション
+        quality_score_action = QAction("品質スコア", self.main_window)
+        quality_score_action.setObjectName("quality_score_action")
+        def quality_callback():
+            show_review_dialog_callback("quality_score")
+        quality_score_action.triggered.connect(quality_callback)
+        toolbar.addAction(quality_score_action)
+        self.toolbar_actions["quality_score"] = quality_score_action
+        
+        # チェック結果アクション
+        check_result_action = QAction("チェック結果", self.main_window)
+        check_result_action.setObjectName("check_result_action")
+        def check_callback():
+            show_review_dialog_callback("check_result")
+        check_result_action.triggered.connect(check_callback)
+        toolbar.addAction(check_result_action)
+        self.toolbar_actions["check_result"] = check_result_action
+        
+        # デバッグアクション
+        debug_action = QAction("デバッグ", self.main_window)
+        debug_action.setObjectName("debug_action")
+        def debug_callback():
+            show_review_dialog_callback("debug")
+        debug_action.triggered.connect(debug_callback)
+        toolbar.addAction(debug_action)
+        self.toolbar_actions["debug"] = debug_action
+        
+        # ツールバーをメインウィンドウに追加
+        self.main_window.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
+        
     def setup_statusbar(self) -> None:
         """ステータスバーの設定"""
         self.main_window.statusBar().showMessage("準備完了")

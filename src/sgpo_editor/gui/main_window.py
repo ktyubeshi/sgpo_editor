@@ -80,6 +80,9 @@ class MainWindow(QMainWindow):
         # ドックウィジェット
         self.ui_manager.setup_dock_widgets()
         
+        # ツールバー
+        self.ui_manager.setup_toolbar(self.entry_editor._show_review_dialog)
+        
         # メニューバー
         self.ui_manager.setup_menubar({
             "open_file": self._open_file,
