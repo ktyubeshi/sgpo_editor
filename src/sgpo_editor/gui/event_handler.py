@@ -4,8 +4,7 @@
 """
 
 import logging
-from typing import Optional, Callable, Dict, Any
-
+from typing import Optional, Callable, Any
 from PySide6.QtCore import Qt, QObject, Signal, QTimer
 from PySide6.QtWidgets import QApplication, QTableWidget, QMessageBox
 
@@ -45,17 +44,27 @@ class EventHandler(QObject):
         self._drag_timer.timeout.connect(self._process_drag_selection)
         self._pending_row = -1
         
-        # エントリキャッシュ（キー：エントリキー、値：エントリオブジェクト）
+        # エントリキャッシュを初期化（キー：エントリキー、値：エントリオブジェクト）
         self._entry_cache = {}
         # 行インデックスとキーのマッピング（キー：行インデックス、値：エントリキー）
         self._row_key_map = {}
-
+        
+        # プリフェッチタイマー
+        self._prefetch_timer = QTimer()
+        self._prefetch_timer.setSingleShot(True)
+        self._prefetch_timer.timeout.connect(self._prefetch_visible_entries)
+        
     def setup_connections(self) -> None:
         """イベント接続の設定"""
         # テーブル選択イベント
         self.table.cellPressed.connect(self._on_cell_selected)
         self.table.cellEntered.connect(self._on_cell_entered)
         self.table.currentCellChanged.connect(self._on_current_cell_changed)
+        
+        # テーブルスクロールイベント
+        self.table.verticalScrollBar().valueChanged.connect(
+            lambda: self._prefetch_timer.start(100)  # スクロール後にプリフェッチ
+        )
         
         # エントリエディタイベント
         self.entry_editor.text_changed.connect(self._on_entry_text_changed)
@@ -150,8 +159,64 @@ class EventHandler(QObject):
             # エントリ選択変更時にシグナルを発行
             if hasattr(entry, 'position'):
                 self.entry_updated.emit(entry.position)
+                
+            # 選択が完了したら、非同期でプリフェッチを開始
+            if not self._prefetch_timer.isActive():
+                self._prefetch_timer.start(10)
         except Exception as e:
             self._show_status(f"詳細表示でエラー: {e}", 3000)
+
+    def _prefetch_visible_entries(self) -> None:
+        """現在表示されているエリアのエントリをプリフェッチする"""
+        try:
+            current_po = self._get_current_po()
+            if not current_po:
+                return
+                
+            # 現在表示されている行の範囲を取得
+            scroll_bar = self.table.verticalScrollBar()
+            scroll_value = scroll_bar.value()
+            
+            # テーブルの表示領域の行数を推定
+            visible_height = self.table.viewport().height()
+            row_height = self.table.rowHeight(0) if self.table.rowCount() > 0 else 20
+            visible_rows = max(1, visible_height // row_height)
+            
+            # スクロール位置から表示されている行の範囲を計算
+            first_visible_row = max(0, scroll_value // row_height - 5)  # 上に余裕を持たせる
+            last_visible_row = min(self.table.rowCount() - 1, 
+                                first_visible_row + visible_rows + 10)  # 下にも余裕を持たせる
+            
+            # 表示されている行のエントリキーを収集（キャッシュにないもののみ）
+            keys_to_prefetch = []
+            for row in range(first_visible_row, last_visible_row + 1):
+                if row < 0 or row >= self.table.rowCount():
+                    continue
+                    
+                item = self.table.item(row, 0)
+                if item is None:
+                    continue
+                    
+                key = item.data(Qt.ItemDataRole.UserRole)
+                if key and key not in self._entry_cache:
+                    keys_to_prefetch.append(key)
+            
+            # キャッシュにないエントリを一つずつプリフェッチ
+            for key in keys_to_prefetch:
+                try:
+                    entry = current_po.get_entry_by_key(key)
+                    if entry:
+                        if not hasattr(entry, 'msgid') or entry.msgid is None:
+                            entry.msgid = ""
+                        elif not isinstance(entry.msgid, str):
+                            entry.msgid = str(entry.msgid)
+                        
+                        self._entry_cache[key] = entry
+                except Exception as e:
+                    logger.debug(f"エントリのプリフェッチ中にエラー {key}: {e}")
+                
+        except Exception as e:
+            logger.debug(f"プリフェッチエラー: {e}")
 
     def _on_entry_text_changed(self) -> None:
         """エントリのテキストが変更されたときの処理"""
@@ -208,17 +273,16 @@ class EventHandler(QObject):
             if entry.position == entry_number:
                 self.table.selectRow(i)
                 break
-
+            
+    def clear_cache(self) -> None:
+        """キャッシュをクリアする"""
+        self._entry_cache.clear()
+        self._row_key_map.clear()
+        
     def _on_current_cell_changed(self, current_row: int, current_column: int, previous_row: int, previous_column: int) -> None:
-        """現在のセルが変更されたときの処理（キーボード操作対応）
-
-        Args:
-            current_row: 現在の行インデックス
-            current_column: 現在の列インデックス
-            previous_row: 前の行インデックス
-            previous_column: 前の列インデックス
-        """
-        self._update_detail_view(current_row)
+        """現在のセルが変更されたときの処理"""
+        if current_row != previous_row:
+            self._update_detail_view(current_row)
 
     def change_entry_layout(self, layout_type: LayoutType) -> None:
         """エントリ編集のレイアウトを変更する
@@ -227,11 +291,6 @@ class EventHandler(QObject):
             layout_type: レイアウトタイプ
         """
         self.entry_editor.change_layout(layout_type)
-        
-    def clear_cache(self) -> None:
-        """キャッシュをクリアする"""
-        self._entry_cache.clear()
-        self._row_key_map.clear()
         
     def get_current_entry(self) -> Optional[Any]:
         """現在選択されているエントリを取得する

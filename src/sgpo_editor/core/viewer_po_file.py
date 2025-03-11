@@ -1,107 +1,245 @@
-"""POファイルを読み書きするクラス"""
+"""POファイルビューア
 
+このモジュールは、POファイルを読み込み、表示、編集するための機能を提供します。
+"""
+
+from pathlib import Path
 import logging
 import time
-from pathlib import Path
-from typing import List, Optional, Dict, Any, Union, cast, TypeVar, Sequence, Protocol, Type, Iterator, Collection, overload, runtime_checkable, Generic
-
+from typing import Any, Dict, List, Optional, Union
 import polib
-import sgpo as sgpo
-
 from sgpo_editor.models.database import Database
-from sgpo_editor.models import EntryModel, StatsModel
-from polib import POEntry
-from sgpo import SGPOFile
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
-T_co = TypeVar('T_co', covariant=True)
 
+class ViewerPOFile:
+    """POファイルを読み込み、表示するためのクラス"""
 
-class SequenceProtocol(Protocol[T_co]):
-    """シーケンスのプロトコル定義"""
+    def __init__(self):
+        """初期化"""
+        self.db = Database()
+        self.path = None
+        self.filtered_entries = []
+        self.filter_text = ""
+        self.search_text = ""
+        self.sort_column = None
+        self.sort_order = None
+        self.flag_conditions = {}
+        self.translation_status = None
+        
+        # エントリキャッシュを初期化
+        self._entry_cache = {}
+        self._basic_info_cache = {}
+        self._cache_enabled = True
+        self._is_loaded = False
 
-    def __iter__(self) -> Iterator[T_co]:
-        """イテレータ"""
-        ...
+    def load(self, path: Union[str, Path]) -> None:
+        """POファイルを読み込む"""
+        try:
+            start_time = time.time()
+            logger.debug(f"POファイル読み込み開始: {path}")
+            
+            # キャッシュをクリア
+            self._clear_cache()
 
-    def __len__(self) -> int:
-        """長さ"""
-        ...
+            path = Path(path)
+            self.path = path
 
-    def __contains__(self, item: object) -> bool:
-        """アイテムの存在確認"""
-        ...
+            # バイナリヘッダを読み込む
+            with open(path, "rb") as f:
+                header = f.read(10)
 
-    def __getitem__(self, index: int) -> T_co:
-        """インデックスによる値の取得"""
-        ...
+            pofile = None
+            if header.startswith(b"\xDE\xBB\xBF"):  # UTF-8 BOM
+                logger.debug("UTF-8 with BOM検出")
+                with open(path, encoding="utf-8-sig") as f:
+                    postr = f.read()
+                pofile = polib.pofile(postr)
+            else:
+                logger.debug("通常のPOファイル読み込み")
+                pofile = polib.pofile(str(path), encoding="utf-8")
 
+            # データベースをクリア
+            self.db.clear()
 
-@runtime_checkable
-class POFileProtocol(Protocol):
-    """POファイルのプロトコル定義"""
+            # すべてのエントリをデータベースに追加
+            entries = []
+            for i, entry in enumerate(pofile):
+                entry_data = self._convert_entry_to_dict(entry, i)
+                entries.append(entry_data)
 
-    def __iter__(self) -> Iterator[POEntry]:
-        """イテレータ"""
-        ...
+            # バルクインサートを使用（最適化）
+            self.db.add_entries_bulk(entries)
 
-    def __len__(self) -> int:
-        """長さ"""
-        ...
+            # 基本情報のキャッシュを一括ロード
+            self._load_all_basic_info()
+                
+            # 完全ロード終了フラグを設定
+            self._is_loaded = True
+                
+            # 処理時間をログに出力
+            elapsed = time.time() - start_time
+            logger.debug(f"POファイル読み込み完了: {elapsed:.2f}秒")
+            
+        except Exception as e:
+            logger.error(f"POファイル読み込みエラー: {e}")
+            raise
+            
+    def _load_all_basic_info(self) -> None:
+        """すべてのエントリの基本情報を一括ロード"""
+        try:
+            entries_basic_info = self.db.get_all_entries_basic_info()
+            for entry in entries_basic_info:
+                if 'key' in entry:
+                    self._basic_info_cache[entry['key']] = entry
+        except Exception as e:
+            logger.error(f"基本情報キャッシュロードエラー: {e}")
 
-    def __contains__(self, item: object) -> bool:
-        """アイテムの存在確認"""
-        ...
+    def get_entry_by_key(self, key: str) -> Optional[Dict[str, Any]]:
+        """キーでエントリを取得する（キャッシュ対応）"""
+        # キャッシュが無効化されている場合は直接DBから取得
+        if not self._cache_enabled:
+            return self.db.get_entry_by_key(key)
+            
+        # 完全なエントリがすでにキャッシュにある場合
+        if key in self._entry_cache:
+            return self._entry_cache[key]
+            
+        # 基本情報のみがキャッシュにある場合
+        if key in self._basic_info_cache:
+            basic_info = self._basic_info_cache[key]
+            # is_basic_infoフラグがある場合は詳細情報を取得
+            if basic_info.get('is_basic_info', False):
+                # DBから完全なエントリ情報を取得
+                full_entry = self.db.get_entry_by_key(key)
+                if full_entry:
+                    # 完全なエントリをキャッシュに保存
+                    self._entry_cache[key] = full_entry
+                    return full_entry
+                return basic_info  # 完全な情報がない場合は基本情報を返す
+            return basic_info
+            
+        # キャッシュにない場合はDBから取得
+        entry = self.db.get_entry_by_key(key)
+        if entry:
+            # 完全なエントリをキャッシュに保存
+            self._entry_cache[key] = entry
+        return entry
 
-    @overload
-    def __getitem__(self, key: int) -> POEntry:
-        """インデックスによる値の取得"""
-        ...
+    def get_entries_by_keys(self, keys: List[str]) -> Dict[str, Dict[str, Any]]:
+        """複数のキーに対応するエントリを一度に取得"""
+        if not keys:
+            return {}
+            
+        # キャッシュから取得できるエントリを確認
+        result = {}
+        missing_keys = []
+        
+        for key in keys:
+            if key in self._entry_cache:
+                # 完全なエントリがキャッシュにある場合
+                result[key] = self._entry_cache[key]
+            elif key in self._basic_info_cache and not self._basic_info_cache[key].get('is_basic_info', False):
+                # 基本情報のみがキャッシュにある場合
+                result[key] = self._basic_info_cache[key]
+            else:
+                # キャッシュにない場合は後でDBから取得するためリストに追加
+                missing_keys.append(key)
+                
+        # キャッシュにないエントリをDBから一括取得
+        if missing_keys:
+            missing_entries = self.db.get_entries_by_keys(missing_keys)
+            for key, entry in missing_entries.items():
+                result[key] = entry
+                # 完全な情報をキャッシュに保存
+                self._entry_cache[key] = entry
+                
+        return result
 
-    @overload
-    def __getitem__(self, key: str) -> POEntry:
-        """キーによる値の取得"""
-        ...
+    def get_entry_basic_info(self, key: str) -> Optional[Dict[str, Any]]:
+        """エントリの基本情報のみを取得する（高速）"""
+        # 基本情報がキャッシュにある場合
+        if key in self._basic_info_cache:
+            return self._basic_info_cache[key]
+            
+        # 完全なエントリがキャッシュにある場合
+        if key in self._entry_cache:
+            entry = self._entry_cache[key]
+            # 基本情報のみを返す
+            basic_info = {
+                'id': entry.get('id'),
+                'key': entry.get('key'),
+                'msgid': entry.get('msgid', ''),
+                'msgstr': entry.get('msgstr', ''),
+                'fuzzy': entry.get('fuzzy', False),
+                'obsolete': entry.get('obsolete', False),
+                'position': entry.get('position', 0),
+                'flags': entry.get('flags', []),
+                'is_basic_info': True
+            }
+            self._basic_info_cache[key] = basic_info
+            return basic_info
+            
+        # キャッシュにない場合はDBから取得
+        basic_info = self.db.get_entry_basic_info(key)
+        if basic_info:
+            self._basic_info_cache[key] = basic_info
+        return basic_info
 
-    def __getitem__(self, key: Union[str, int]) -> POEntry:
-        """キーまたはインデックスによる値の取得"""
-        ...
+    def _convert_entry_to_dict(self, entry: Any, position: int) -> Dict[str, Any]:
+        """polibエントリをディクショナリに変換する"""
+        key = f"{position}"
+        entry_dict = {
+            "key": key,
+            "msgid": entry.msgid,
+            "msgstr": entry.msgstr,
+            "fuzzy": "fuzzy" in entry.flags,
+            "obsolete": entry.obsolete,
+            "position": position,
+            "flags": entry.flags,
+            "references": [f"{ref[0]}:{ref[1]}" if isinstance(ref, tuple) and len(ref) == 2 else str(ref) for ref in entry.occurrences],
+        }
 
-    def save(self, path: Optional[str] = None) -> None:
-        """POファイルを保存する"""
-        ...
+        # 複数形
+        if hasattr(entry, "msgid_plural") and entry.msgid_plural:
+            entry_dict["msgid_plural"] = entry.msgid_plural
+            entry_dict["msgstr_plural"] = entry.msgstr_plural
 
-    def clear(self) -> None:
-        """全てのデータを削除"""
-        ...
+        # コンテキスト
+        if hasattr(entry, "msgctxt") and entry.msgctxt:
+            entry_dict["msgctxt"] = entry.msgctxt
 
-    def append(self, entry: POEntry) -> None:
-        """エントリを追加"""
-        ...
+        # 前バージョン
+        if hasattr(entry, "previous_msgid") and entry.previous_msgid:
+            entry_dict["previous_msgid"] = entry.previous_msgid
+        if hasattr(entry, "previous_msgid_plural") and entry.previous_msgid_plural:
+            entry_dict["previous_msgid_plural"] = entry.previous_msgid_plural
+        if hasattr(entry, "previous_msgctxt") and entry.previous_msgctxt:
+            entry_dict["previous_msgctxt"] = entry.previous_msgctxt
 
+        # コメント
+        if hasattr(entry, "comment") and entry.comment:
+            entry_dict["comment"] = entry.comment
+        if hasattr(entry, "tcomment") and entry.tcomment:
+            entry_dict["tcomment"] = entry.tcomment
 
-class DatabaseProtocol(Protocol):
-    """データベースのプロトコル定義"""
+        return entry_dict
 
-    def clear(self) -> None:
-        """全てのデータを削除"""
-        ...
+    def get_filtered_entries(self, update_filter: bool = False) -> List[Dict[str, Any]]:
+        """フィルタ条件に合ったエントリーを取得する"""
+        if update_filter or not self.filtered_entries:
+            self.filtered_entries = self.db.get_entries(
+                filter_text=self.filter_text,
+                search_text=self.search_text,
+                sort_column=self.sort_column,
+                sort_order=self.sort_order,
+                flag_conditions=self.flag_conditions,
+                translation_status=self.translation_status,
+            )
+        return self.filtered_entries
 
-    def add_entries_bulk(self, entries: List[Dict[str, Any]]) -> None:
-        """バルクインサートでエントリを追加"""
-        ...
-
-    def update_entry(self, key: str, entry: Dict[str, Any]) -> None:
-        """エントリを更新"""
-        ...
-
-    def reorder_entries(self, entry_ids: List[int]) -> None:
-        """エントリの表示順序を変更"""
-        ...
-
-    def get_entries(
+    def set_filter(
         self,
         filter_text: Optional[str] = None,
         search_text: Optional[str] = None,
@@ -109,372 +247,177 @@ class DatabaseProtocol(Protocol):
         sort_order: Optional[str] = None,
         flag_conditions: Optional[Dict[str, Any]] = None,
         translation_status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        """エントリの一覧を取得"""
-        ...
+    ) -> None:
+        """フィルタを設定する"""
+        update_needed = False
 
-    def get_entry(self, entry_id: int) -> Optional[Dict[str, Any]]:
-        """エントリを取得"""
-        ...
+        if filter_text is not None and filter_text != self.filter_text:
+            self.filter_text = filter_text
+            update_needed = True
 
-    def get_entry_by_key(self, key: str) -> Optional[Dict[str, Any]]:
-        """キーでエントリを取得"""
-        ...
+        if search_text is not None and search_text != self.search_text:
+            self.search_text = search_text
+            update_needed = True
 
+        if sort_column is not None and sort_column != self.sort_column:
+            self.sort_column = sort_column
+            update_needed = True
 
-def ensure_not_none(value: Optional[T], message: str = "値がNoneです") -> T:
-    """Noneでないことを保証する
+        if sort_order is not None and sort_order != self.sort_order:
+            self.sort_order = sort_order
+            update_needed = True
 
-    Args:
-        value: チェックする値
-        message: エラーメッセージ
+        if flag_conditions is not None and flag_conditions != self.flag_conditions:
+            self.flag_conditions = flag_conditions
+            update_needed = True
 
-    Returns:
-        T: Noneでない値
+        if (
+            translation_status is not None
+            and translation_status != self.translation_status
+        ):
+            self.translation_status = translation_status
+            update_needed = True
 
-    Raises:
-        ValueError: 値がNoneの場合
-    """
-    if value is None:
-        raise ValueError(message)
-    return value
+        if update_needed:
+            self.get_filtered_entries(update_filter=True)
 
-
-class ViewerPOFile:
-    """POファイルを読み書きするクラス"""
-
-    def __init__(self, path: Optional[Union[str, Path]] = None):
-        """初期化
-
-        Args:
-            path: POファイルのパス（Noneの場合は空のPOファイルを作成）
-        """
-        self._po_file: Optional[POFileProtocol] = None
-        self._db: DatabaseProtocol = Database()
-        self._modified = False
-        self._path: Optional[Path] = None
-        self._entries: List[EntryModel] = []
-        self._filtered_entries: List[EntryModel] = []
-        self._filter_text: str = ""
-        self._show_translated: bool = True
-        self._show_untranslated: bool = True
-        self._show_fuzzy: bool = True
-
-        if path:
-            self.load(path)
-
-    @property
-    def file_path(self) -> Optional[Path]:
-        """ファイルパスを取得"""
-        return self._path
-
-    @property
-    def modified(self) -> bool:
-        """変更フラグを取得"""
-        return self._modified
-
-    def load(self, path: Union[str, Path]) -> None:
-        """POファイルを読み込む
-
-        Args:
-            path: POファイルのパス
-        """
-        logger.info("POファイル読み込み開始: %s", path)
-        start_time = time.time()
-        error_count = 0
-
+    def update_entry(self, entry: Dict[str, Any]) -> None:
+        """エントリを更新する"""
         try:
-            # POファイルを読み込む
-            self._po_file = cast(POFileProtocol, SGPOFile.from_file(str(path)))
-            self._path = Path(path)
-            self._db.clear()
+            key = entry.get("key")
+            if not key:
+                logger.error("エントリの更新に失敗: キーがありません")
+                return
 
-            # エントリをデータベースに追加
-            entries_to_insert: List[Dict[str, Any]] = []
-            for i, entry in enumerate(self._po_file):
-                try:
-                    # エントリの作成
-                    entry_model = EntryModel.from_po_entry(entry, position=i)
-                    entries_to_insert.append(entry_model.model_dump())
-                except Exception as e:
-                    error_count += 1
-                    logger.error(
-                        "エントリの追加に失敗 [%d/%d]: %s",
-                        i + 1,
-                        len(self._po_file),
-                        e,
-                        exc_info=True
-                    )
-
-            # バルクインサート実行
-            if entries_to_insert:
-                self._db.add_entries_bulk(entries_to_insert)
-
-            self._entries = self.get_entries()
-            self._filtered_entries = self._entries.copy()
-
-            elapsed_time = time.time() - start_time
-            logger.info(
-                "POファイル読み込み完了: %d件のエントリを読み込みました（成功: %d件、失敗: %d件、所要時間: %.2f秒）",
-                len(self._po_file),
-                len(self._po_file) - error_count,
-                error_count,
-                elapsed_time
-            )
-            self._modified = False
+            self.db.update_entry(key, entry)
+            
+            # キャッシュを更新
+            self._entry_cache[key] = entry
+            
+            # 基本情報のキャッシュを更新
+            if key in self._basic_info_cache:
+                basic_info = {
+                    'id': entry.get('id'),
+                    'key': entry.get('key'),
+                    'msgid': entry.get('msgid', ''),
+                    'msgstr': entry.get('msgstr', ''),
+                    'fuzzy': entry.get('fuzzy', False),
+                    'obsolete': entry.get('obsolete', False),
+                    'position': entry.get('position', 0),
+                    'flags': entry.get('flags', []),
+                    'is_basic_info': True
+                }
+                self._basic_info_cache[key] = basic_info
+                
+            # フィルタされたエントリーを更新
+            for i, e in enumerate(self.filtered_entries):
+                if e.get("key") == key:
+                    self.filtered_entries[i] = entry
+                    break
 
         except Exception as e:
-            logger.error("POファイルの読み込みに失敗: %s", e, exc_info=True)
-            raise
+            logger.error(f"エントリの更新に失敗: {e}")
 
     def save(self, path: Optional[Union[str, Path]] = None) -> None:
-        """POファイルを保存する
-
-        Args:
-            path: 保存先のパス（Noneの場合は現在のパスに保存）
-        """
-        save_path = path or self._path
-        if not save_path:
-            raise ValueError("保存先のパスが指定されていません")
-
-        logger.info("POファイル保存開始: %s", save_path)
-        start_time = time.time()
-
+        """POファイルを保存する"""
         try:
-            # データベースからエントリを取得
-            entries = self.get_entries()
+            if path is None:
+                path = self.path
+            else:
+                path = Path(path)
 
-            # POファイルを更新
-            po_file = ensure_not_none(self._po_file, "POファイルが読み込まれていません")
-            po_file.clear()
-            for entry in entries:
-                po_entry = cast(POEntry, polib.POEntry(
-                    msgid=entry.msgid,
-                    msgstr=entry.msgstr,
-                    msgctxt=entry.msgctxt,
-                    occurrences=[(ref.split(":")[0], ref.split(":")[1]) for ref in entry.references],
-                    flags=entry.flags,
-                    obsolete=entry.obsolete,
-                    previous_msgid=entry.previous_msgid,
-                    previous_msgid_plural=entry.previous_msgid_plural,
-                    previous_msgctxt=entry.previous_msgctxt,
-                    comment=entry.comment,
-                    tcomment=entry.tcomment,
-                ))
-                po_file.append(po_entry)
+            # データベースからすべてのエントリを取得
+            entries = self.db.get_entries(sort_column="position", sort_order="ASC")
+            pofile = polib.POFile()
 
-            # POファイルを保存
-            po_file.save(str(save_path))
-            self._path = Path(save_path)
-            self._modified = False
+            for entry_dict in entries:
+                entry = polib.POEntry(
+                    msgid=entry_dict.get("msgid", ""),
+                    msgstr=entry_dict.get("msgstr", ""),
+                    occurrences=entry_dict.get("references", []),
+                    flags=entry_dict.get("flags", []),
+                    obsolete=entry_dict.get("obsolete", False),
+                )
 
-            elapsed_time = time.time() - start_time
-            logger.info(
-                "POファイル保存完了: %d件のエントリを保存しました（所要時間: %.2f秒）",
-                len(entries),
-                elapsed_time
-            )
+                # 複数形
+                if "msgid_plural" in entry_dict and entry_dict["msgid_plural"]:
+                    entry.msgid_plural = entry_dict["msgid_plural"]
+                    entry.msgstr_plural = entry_dict.get("msgstr_plural", {})
+
+                # コンテキスト
+                if "msgctxt" in entry_dict and entry_dict["msgctxt"]:
+                    entry.msgctxt = entry_dict["msgctxt"]
+
+                # 前バージョン
+                if "previous_msgid" in entry_dict and entry_dict["previous_msgid"]:
+                    entry.previous_msgid = entry_dict["previous_msgid"]
+                if (
+                    "previous_msgid_plural" in entry_dict
+                    and entry_dict["previous_msgid_plural"]
+                ):
+                    entry.previous_msgid_plural = entry_dict["previous_msgid_plural"]
+                if "previous_msgctxt" in entry_dict and entry_dict["previous_msgctxt"]:
+                    entry.previous_msgctxt = entry_dict["previous_msgctxt"]
+
+                # コメント
+                if "comment" in entry_dict and entry_dict["comment"]:
+                    entry.comment = entry_dict["comment"]
+                if "tcomment" in entry_dict and entry_dict["tcomment"]:
+                    entry.tcomment = entry_dict["tcomment"]
+
+                # Fuzzyフラグの設定
+                if entry_dict.get("fuzzy", False) and "fuzzy" not in entry.flags:
+                    entry.flags.append("fuzzy")
+
+                pofile.append(entry)
+
+            pofile.save(str(path))
+            logger.info(f"POファイルを保存しました: {path}")
 
         except Exception as e:
-            logger.error("POファイルの保存に失敗: %s", e, exc_info=True)
+            logger.error(f"POファイルの保存に失敗: {e}")
             raise
 
-    def get_entries(
-        self,
-        filter_text: Optional[str] = None,
-        filter_keyword: Optional[str] = None,
-        sort_column: Optional[str] = None,
-        sort_order: Optional[str] = None,
-        flags: Optional[List[str]] = None,
-        exclude_flags: Optional[List[str]] = None,
-        only_fuzzy: bool = False,
-        only_translated: bool = False,
-        only_untranslated: bool = False,
-    ) -> List[EntryModel]:
-        """エントリの一覧を取得"""
-        # フラグによるフィルタリング条件を構築
-        flag_conditions: Dict[str, Any] = {}
-        if flags:
-            flag_conditions["include_flags"] = flags
-        if exclude_flags:
-            flag_conditions["exclude_flags"] = exclude_flags
-        if only_fuzzy:
-            flag_conditions["only_fuzzy"] = True
-
-        # 翻訳状態によるフィルタリング
-        translation_status = None
-        if only_translated:
-            translation_status = "translated"
-        elif only_untranslated:
-            translation_status = "untranslated"
-
-        entries = self._db.get_entries(
-            filter_text=filter_text,
-            search_text=filter_keyword,  # データベースのインターフェースは変更しない
-            sort_column=sort_column,
-            sort_order=sort_order,
-            flag_conditions=flag_conditions,
-            translation_status=translation_status
-        )
-
-        # エントリをモデルに変換する前に、必要なフィールドが存在することを確認
-        for entry in entries:
-            if "flags" not in entry or entry["flags"] is None:
-                entry["flags"] = []
-            if "id" in entry and isinstance(entry["id"], int):
-                entry["id"] = str(entry["id"])
-
-        return [EntryModel.model_validate(entry) for entry in entries]
-
-    def get_entry(self, entry_id: int) -> Optional[EntryModel]:
-        """エントリを取得"""
-        entry = self._db.get_entry(entry_id)
-        return EntryModel.model_validate(entry) if entry else None
-
-    def get_entry_by_key(self, key: str) -> Optional[EntryModel]:
-        """キーでエントリを取得"""
-        entry = self._db.get_entry_by_key(key)
-        return EntryModel.model_validate(entry) if entry else None
-
-    def update_entry(self, entry: EntryModel) -> None:
-        """エントリを更新する
-
-        Args:
-            entry: 更新するエントリ
-        """
-        self._db.update_entry(entry.key, entry.model_dump())
-        self._modified = True
-
-        if self._po_file is None:
-            return
-
-        po_entry = self._po_file[entry.position]
-        po_entry = cast(POEntry, po_entry)
-        po_entry.msgstr = entry.msgstr
-        po_entry.flags = entry.flags
-
-        self._entries[entry.position] = entry
-        if entry in self._filtered_entries:
-            index = self._filtered_entries.index(entry)
-            self._filtered_entries[index] = entry
-
-    def reorder_entries(self, entry_ids: List[int]) -> None:
-        """エントリの表示順序を変更"""
-        self._db.reorder_entries(entry_ids)
-        self._modified = True
-
-    def get_stats(self) -> StatsModel:
-        """統計情報を取得する
-
-        Returns:
-            StatsModel: 統計情報
-        """
-        entries = self.get_entries()
-        total = len(entries)
-        translated = len([e for e in entries if e.is_translated])
-        fuzzy = len([e for e in entries if e.is_fuzzy])
-        untranslated = total - translated - fuzzy
-
-        return StatsModel(
-            total=total,
-            translated=translated,
-            fuzzy=fuzzy,
-            untranslated=untranslated,
-            file_name=str(self._path) if self._path else ""
-        )
-
-    def search_entries(self, filter_keyword: str) -> List[EntryModel]:
-        """エントリを検索する
-
-        Args:
-            filter_keyword: フィルターキーワード
-
-        Returns:
-            List[EntryModel]: 検索結果のエントリリスト
-        """
-        entries = self._db.get_entries(search_text=filter_keyword)
-        return [EntryModel.model_validate(entry) for entry in entries]
-
-    def save_po_file(self) -> None:
-        """現在のパスにPOファイルを保存する"""
-        if not self._path:
-            raise ValueError("保存先のパスが指定されていません")
-        self.save(self._path)
-
-    def get_filtered_entries(
-        self,
-        filter_text: Optional[str] = None,
-        show_translated: Optional[bool] = None,
-        show_untranslated: Optional[bool] = None,
-        show_fuzzy: Optional[bool] = None,
-        filter_keyword: Optional[str] = None,
-        sort_column: Optional[str] = None,
-        sort_order: Optional[str] = None,
-    ) -> List[EntryModel]:
-        """フィルタリングされたエントリの一覧を取得する
-
-        Args:
-            filter_text: フィルターテキスト
-            show_translated: 翻訳済みを表示するかどうか
-            show_untranslated: 未翻訳を表示するかどうか
-            show_fuzzy: 要確認を表示するかどうか
-            filter_keyword: フィルターキーワード
-            sort_column: ソート列
-            sort_order: ソート順序
-
-        Returns:
-            List[EntryModel]: フィルタリングされたエントリの一覧
-        """
-        # フィルター設定の更新
-        if filter_text is not None:
-            self._filter_text = filter_text
-        if show_translated is not None:
-            self._show_translated = show_translated
-        if show_untranslated is not None:
-            self._show_untranslated = show_untranslated
-        if show_fuzzy is not None:
-            self._show_fuzzy = show_fuzzy
+    def _clear_cache(self) -> None:
+        """キャッシュをクリアする"""
+        self._entry_cache.clear()
+        self._basic_info_cache.clear()
+        self._is_loaded = False
+        
+    def enable_cache(self, enabled: bool = True) -> None:
+        """キャッシュを有効/無効にする"""
+        self._cache_enabled = enabled
+        if not enabled:
+            self._clear_cache()
             
-        # 翻訳状態フィルターの設定
-        only_translated = False
-        only_untranslated = False
-        only_fuzzy = False
+    def prefetch_entries(self, keys: List[str]) -> None:
+        """指定されたキーのエントリをプリフェッチする"""
+        if not self._cache_enabled or not keys:
+            return
+            
+        # キャッシュにないキーを特定
+        missing_keys = [key for key in keys if key not in self._entry_cache]
+        if not missing_keys:
+            return
+            
+        # 一括取得
+        entries = self.db.get_entries_by_keys(missing_keys)
         
-        if self._filter_text == "翻訳済み":
-            only_translated = True
-            only_untranslated = False
-            only_fuzzy = False
-        elif self._filter_text == "未翻訳":
-            only_translated = False
-            only_untranslated = True
-            only_fuzzy = False
-        elif self._filter_text == "ファジー":
-            only_translated = False
-            only_untranslated = False
-            only_fuzzy = True
-
-        # データベースからエントリを取得
-        entries = self.get_entries(
-            filter_text=None,  # フィルターテキストは使用せず、翻訳状態で絞り込む
-            filter_keyword=filter_keyword,  # フィルターキーワードをデータベースクエリに渡す
-            sort_column=sort_column,
-            sort_order=sort_order,
-            only_fuzzy=only_fuzzy,
-            only_translated=only_translated,
-            only_untranslated=only_untranslated,
-        )
-        
-        # フィルターキーワードによる二次フィルタリング
-        if filter_keyword and filter_keyword.strip():
-            filter_keyword = filter_keyword.lower().strip()
-            filtered_entries = []
-            for entry in entries:
-                # msgid, msgstr, msgctxtのいずれかにフィルターキーワードが含まれるエントリを抽出
-                if ((entry.msgid and filter_keyword in entry.msgid.lower()) or
-                    (entry.msgstr and filter_keyword in entry.msgstr.lower()) or
-                    (entry.msgctxt and filter_keyword in entry.msgctxt.lower())):
-                    filtered_entries.append(entry)
-            entries = filtered_entries
-
-        self._filtered_entries = entries
-        return entries
+        # キャッシュに保存
+        for key, entry in entries.items():
+            self._entry_cache[key] = entry
+            
+            # 基本情報も更新
+            if key in self._basic_info_cache:
+                basic_info = {
+                    'id': entry.get('id'),
+                    'key': entry.get('key'),
+                    'msgid': entry.get('msgid', ''),
+                    'msgstr': entry.get('msgstr', ''),
+                    'fuzzy': entry.get('fuzzy', False),
+                    'obsolete': entry.get('obsolete', False),
+                    'position': entry.get('position', 0),
+                    'flags': entry.get('flags', []),
+                    'is_basic_info': True
+                }
+                self._basic_info_cache[key] = basic_info
