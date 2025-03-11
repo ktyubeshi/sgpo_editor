@@ -38,5 +38,14 @@ packages = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-pythonpath = [".", "src"]
-addopts = "--cov=sgpo_editor --cov-report=term-missing"
+pythonpath = ["src"]
+addopts = ["--cov=sgpo_editor", "--cov-report=term-missing", "--import-mode=importlib"]
+
+[tool.hatch.envs.test]
+dependencies = [
+  "pytest",
+  "pytest-cov",
+]
+[tool.hatch.envs.test.scripts]
+test = "pytest {args:tests}"
+test-cov = "pytest --cov=sgpo_editor {args:tests}"
