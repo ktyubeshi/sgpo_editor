@@ -1,9 +1,8 @@
 """POエントリのデータベース"""
 import sqlite3
-from pathlib import Path
 import logging
 from contextlib import contextmanager
-from typing import Any, Iterator, Optional, List, Dict
+from typing import Any, Iterator, Optional, List, Dict, Union
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +199,7 @@ class Database:
             for entry in entries:
                 entry_id = entry.get("id")
                 if entry_id:
-                    references.extend([(entry_id, ref) for ref in entry.get("references", [])])
+                    references.extend([(entry_id, ref) for ref in entry.get("references", []) or []])
             
             if references:
                 cur.executemany(
@@ -213,7 +212,7 @@ class Database:
             for entry in entries:
                 entry_id = entry.get("id")
                 if entry_id:
-                    flags.extend([(entry_id, flag) for flag in entry.get("flags", [])])
+                    flags.extend([(entry_id, flag) for flag in entry.get("flags", []) or []])
             
             if flags:
                 cur.executemany(
@@ -261,14 +260,14 @@ class Database:
             entry_id = cur.lastrowid
 
             # リファレンスを追加
-            for ref in entry.get("references", []):
+            for ref in entry.get("references", []) or []:
                 cur.execute(
                     "INSERT INTO entry_references (entry_id, reference) VALUES (?, ?)",
                     (entry_id, ref),
                 )
 
             # フラグを追加
-            for flag in entry.get("flags", []):
+            for flag in entry.get("flags", []) or []:
                 cur.execute(
                     "INSERT INTO entry_flags (entry_id, flag) VALUES (?, ?)",
                     (entry_id, flag),
@@ -363,13 +362,27 @@ class Database:
 
             return entry
 
-    def update_entry(self, key: str, entry: Dict[str, Any]) -> None:
+    def update_entry(self, key_or_entry: Union[str, Dict[str, Any]], entry: Optional[Dict[str, Any]] = None) -> None:
         """エントリを更新する
 
         Args:
-            key: エントリのキー
-            entry: 更新するエントリ
+            key_or_entry: 更新するエントリのキーまたはエントリデータ辞書
+            entry: エントリデータ辞書（key_or_entryが文字列の場合に使用）
         """
+        # 引数の形式に基づいて処理を分岐
+        if entry is not None:
+            # 古い形式: update_entry(key, entry_data)
+            key = key_or_entry
+            entry_data = entry
+        else:
+            # 新しい形式: update_entry(entry_data)
+            entry_data = key_or_entry
+            key = entry_data.get("key")
+            
+        if not key:
+            logger.error("エントリの更新に失敗: キーがありません")
+            return
+            
         logger.debug("エントリ更新開始: %s", key)
         with self.transaction() as cur:
             # エントリを更新
@@ -390,23 +403,24 @@ class Database:
                 WHERE key = ?
                 """,
                 (
-                    entry.get("msgctxt"),
-                    entry["msgid"],
-                    entry["msgstr"],
-                    entry.get("fuzzy", False),
-                    entry.get("obsolete", False),
-                    entry.get("previous_msgid"),
-                    entry.get("previous_msgid_plural"),
-                    entry.get("previous_msgctxt"),
-                    entry.get("comment"),
-                    entry.get("tcomment"),
+                    entry_data.get("msgctxt"),
+                    entry_data.get("msgid"),
+                    entry_data.get("msgstr"),
+                    entry_data.get("fuzzy", 0),
+                    entry_data.get("obsolete", 0),
+                    entry_data.get("previous_msgid"),
+                    entry_data.get("previous_msgid_plural"),
+                    entry_data.get("previous_msgctxt"),
+                    entry_data.get("comment"),
+                    entry_data.get("tcomment"),
                     key,
                 ),
             )
 
             # リファレンスを更新
             cur.execute("DELETE FROM entry_references WHERE entry_id IN (SELECT id FROM entries WHERE key = ?)", (key,))
-            for ref in entry.get("references", []):
+            references = entry_data.get("references", []) or []  # Noneの場合は空リストを使用
+            for ref in references:
                 cur.execute(
                     """
                     INSERT INTO entry_references (entry_id, reference)
@@ -417,7 +431,8 @@ class Database:
 
             # フラグを更新
             cur.execute("DELETE FROM entry_flags WHERE entry_id IN (SELECT id FROM entries WHERE key = ?)", (key,))
-            for flag in entry.get("flags", []):
+            flags = entry_data.get("flags", []) or []  # Noneの場合は空リストを使用
+            for flag in flags:
                 cur.execute(
                     """
                     INSERT INTO entry_flags (entry_id, flag)
@@ -427,19 +442,19 @@ class Database:
                 )
 
             # 表示順を更新
-            if "position" in entry:
+            if "position" in entry_data:
                 cur.execute(
                     """
                     UPDATE display_order SET
                         position = ?
                     WHERE entry_id IN (SELECT id FROM entries WHERE key = ?)
                     """,
-                    (entry["position"], key),
+                    (entry_data["position"], key),
                 )
 
             # レビュー関連データを更新
-            if "review_data" in entry:
-                self._save_review_data(self.get_entry_by_key(key)["id"], entry["review_data"])
+            if "review_data" in entry_data:
+                self._save_review_data(self.get_entry_by_key(key)["id"], entry_data["review_data"])
 
         logger.debug("エントリ更新完了: %s", key)
 

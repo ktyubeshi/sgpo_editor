@@ -46,24 +46,26 @@ def test_load_po_file(tmp_path):
     with open(file_path, "w", encoding="utf-8") as f:
         f.write('msgid "test"\nmsgstr "テスト"')
     po_file.load(file_path)
-    assert po_file.file_path == file_path
+    assert po_file.path == file_path
 
 
 def test_get_entries(test_po_file):
     """エントリを取得できることを確認する"""
-    entries = test_po_file.get_entries()
+    # get_entriesメソッドが削除されたため、get_filtered_entriesを使用
+    entries = test_po_file.get_filtered_entries()
     assert len(entries) == 3
     assert all(isinstance(entry, dict) for entry in entries)
 
     # フィルタリングのテスト
-    filtered = test_po_file.get_filtered_entries(filter_keyword="test1")
+    test_po_file.filter_text = "test1"
+    filtered = test_po_file.get_filtered_entries(update_filter=True)
     assert len(filtered) == 1
     assert filtered[0]["msgid"] == "test1"
 
 
 def test_update_entry(test_po_file):
     """エントリを更新できることを確認する"""
-    entries = test_po_file.get_entries()
+    entries = test_po_file.get_filtered_entries()
     entry = entries[0]
     entry_key = entry["key"]
     
@@ -80,7 +82,13 @@ def test_update_entry(test_po_file):
 
 def test_search_entries(test_po_file):
     """エントリを検索できることを確認する"""
-    results = test_po_file.search_entries("test1")
+    # search_entriesメソッドが存在する場合は使用し、存在しない場合はフィルタリングで代用
+    if hasattr(test_po_file, 'search_entries'):
+        results = test_po_file.search_entries("test1")
+    else:
+        test_po_file.search_text = "test1"
+        results = test_po_file.get_filtered_entries(update_filter=True)
+    
     assert len(results) == 1
     assert results[0]["msgid"] == "test1"
 
@@ -104,5 +112,5 @@ def test_save_po_file(test_po_file, tmp_path):
     # 保存したファイルを読み込んで内容を確認
     loaded = ViewerPOFile()
     loaded.load(save_path)
-    entries = loaded.get_entries()
+    entries = loaded.get_filtered_entries()
     assert len(entries) == 3

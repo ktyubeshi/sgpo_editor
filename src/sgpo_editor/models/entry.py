@@ -2,7 +2,7 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Optional, List, Union, Any, Dict
+from typing import Optional, List, Any, Dict
 from pydantic import BaseModel, Field, computed_field, model_validator, field_validator, ConfigDict
 
 from polib import POEntry
@@ -316,6 +316,14 @@ class EntryModel(BaseModel):
         if not 0 <= score <= 100:
             raise ValueError("品質スコアは0から100の範囲で指定してください")
         self.overall_quality_score = score
+    
+    def set_quality_score(self, score: int) -> None:
+        """翻訳品質の全体スコアを設定（互換性のためのエイリアス）
+        
+        Args:
+            score: 0-100の品質スコア
+        """
+        self.set_overall_quality_score(score)
     
     def set_category_score(self, category: str, score: int) -> None:
         """カテゴリ別の品質スコアを設定

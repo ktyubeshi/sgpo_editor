@@ -481,7 +481,7 @@ class QualityScoreWidget(QWidget):
         self._current_entry.overall_quality_score = score
         
         # データベースに即時反映
-        self._db.update_entry_field(self._current_entry.key, "overall_quality_score", score)
+        self._db.update_entry_review_data(self._current_entry.key, "quality_score", score)
         
         # 変更通知
         self.score_updated.emit()

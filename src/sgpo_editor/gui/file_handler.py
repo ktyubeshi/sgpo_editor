@@ -124,7 +124,8 @@ class FileHandler:
             
             # POファイルを開く
             from sgpo_editor.core.viewer_po_file import ViewerPOFile
-            po_file = ViewerPOFile(filepath)
+            po_file = ViewerPOFile()
+            po_file.load(filepath)
             
             self.current_po = po_file
             self.current_filepath = Path(filepath)
