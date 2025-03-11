@@ -4,7 +4,6 @@ import os
 import pytest
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
-from sgpo_editor.models.entry import EntryModel
 
 
 @pytest.fixture
@@ -54,32 +53,36 @@ def test_get_entries(test_po_file):
     """エントリを取得できることを確認する"""
     entries = test_po_file.get_entries()
     assert len(entries) == 3
-    assert all(isinstance(entry, EntryModel) for entry in entries)
+    assert all(isinstance(entry, dict) for entry in entries)
 
     # フィルタリングのテスト
     filtered = test_po_file.get_filtered_entries(filter_keyword="test1")
     assert len(filtered) == 1
-    assert filtered[0].msgid == "test1"
+    assert filtered[0]["msgid"] == "test1"
 
 
 def test_update_entry(test_po_file):
     """エントリを更新できることを確認する"""
     entries = test_po_file.get_entries()
     entry = entries[0]
-    entry.msgstr = "更新テスト"
-    test_po_file.update_entry(entry)
+    entry_key = entry["key"]
+    
+    # エントリを更新
+    updated_entry = entry.copy()
+    updated_entry["msgstr"] = "更新テスト"
+    test_po_file.update_entry(updated_entry)
 
     # 更新されたことを確認
-    updated = test_po_file.get_entry_by_key(entry.key)
+    updated = test_po_file.get_entry_by_key(entry_key)
     assert updated is not None
-    assert updated.msgstr == "更新テスト"
+    assert updated["msgstr"] == "更新テスト"
 
 
 def test_search_entries(test_po_file):
     """エントリを検索できることを確認する"""
     results = test_po_file.search_entries("test1")
     assert len(results) == 1
-    assert results[0].msgid == "test1"
+    assert results[0]["msgid"] == "test1"
 
 
 def test_get_stats(test_po_file):
@@ -99,6 +102,7 @@ def test_save_po_file(test_po_file, tmp_path):
     assert not test_po_file.modified
 
     # 保存したファイルを読み込んで内容を確認
-    loaded = ViewerPOFile(save_path)
+    loaded = ViewerPOFile()
+    loaded.load(save_path)
     entries = loaded.get_entries()
     assert len(entries) == 3
