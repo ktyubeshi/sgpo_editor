@@ -266,27 +266,30 @@ class UIManager:
         toolbar.addAction(translator_comment_action)
         self.toolbar_actions["translator_comment"] = translator_comment_action
         
-        # レビューコメントアクション
+        # レビューコメントアクション - 非表示
         review_comment_action = QAction("レビューコメント", self.main_window)
         review_comment_action.setObjectName("review_comment_action")
+        review_comment_action.setVisible(False)  # 非表示に設定
         def review_callback():
             show_review_dialog_callback("review_comment")
         review_comment_action.triggered.connect(review_callback)
         toolbar.addAction(review_comment_action)
         self.toolbar_actions["review_comment"] = review_comment_action
         
-        # 品質スコアアクション
+        # 品質スコアアクション - 非表示
         quality_score_action = QAction("品質スコア", self.main_window)
         quality_score_action.setObjectName("quality_score_action")
+        quality_score_action.setVisible(False)  # 非表示に設定
         def quality_callback():
             show_review_dialog_callback("quality_score")
         quality_score_action.triggered.connect(quality_callback)
         toolbar.addAction(quality_score_action)
         self.toolbar_actions["quality_score"] = quality_score_action
         
-        # チェック結果アクション
+        # チェック結果アクション - 非表示
         check_result_action = QAction("チェック結果", self.main_window)
         check_result_action.setObjectName("check_result_action")
+        check_result_action.setVisible(False)  # 非表示に設定
         def check_callback():
             show_review_dialog_callback("check_result")
         check_result_action.triggered.connect(check_callback)
