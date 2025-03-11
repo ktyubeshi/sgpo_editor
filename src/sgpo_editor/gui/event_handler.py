@@ -44,6 +44,11 @@ class EventHandler(QObject):
         self._drag_timer.setSingleShot(True)
         self._drag_timer.timeout.connect(self._process_drag_selection)
         self._pending_row = -1
+        
+        # エントリキャッシュ（キー：エントリキー、値：エントリオブジェクト）
+        self._entry_cache = {}
+        # 行インデックスとキーのマッピング（キー：行インデックス、値：エントリキー）
+        self._row_key_map = {}
 
     def setup_connections(self) -> None:
         """イベント接続の設定"""
@@ -107,8 +112,22 @@ class EventHandler(QObject):
                 return
 
             key = item.data(Qt.ItemDataRole.UserRole)
+            
+            # 行インデックスとキーのマッピングを更新
+            self._row_key_map[row] = key
+            
+            # キャッシュにエントリがあればそれを使用
+            if key in self._entry_cache:
+                entry = self._entry_cache[key]
+                self.entry_editor.set_entry(entry)
+                
+                # エントリ選択変更時にシグナルを発行
+                if hasattr(entry, 'position'):
+                    self.entry_updated.emit(entry.position)
+                return
+            
+            # キャッシュになければPOファイルから取得
             current_po = self._get_current_po()
-
             if not current_po:
                 self.entry_editor.set_entry(None)
                 return
@@ -122,6 +141,9 @@ class EventHandler(QObject):
                 entry.msgid = ""
             elif not isinstance(entry.msgid, str):
                 entry.msgid = str(entry.msgid)
+            
+            # エントリをキャッシュに保存
+            self._entry_cache[key] = entry
 
             self.entry_editor.set_entry(entry)
             
@@ -148,6 +170,10 @@ class EventHandler(QObject):
                 
             # エントリの更新
             current_po.update_entry(entry)
+            
+            # キャッシュの更新
+            if hasattr(entry, 'key') and entry.key:
+                self._entry_cache[entry.key] = entry
             
             # テーブルの更新
             self._update_table()
@@ -200,12 +226,17 @@ class EventHandler(QObject):
         Args:
             layout_type: レイアウトタイプ
         """
-        self.entry_editor.set_layout_type(layout_type)
+        self.entry_editor.change_layout(layout_type)
         
-    def get_current_entry(self) -> Any:
+    def clear_cache(self) -> None:
+        """キャッシュをクリアする"""
+        self._entry_cache.clear()
+        self._row_key_map.clear()
+        
+    def get_current_entry(self) -> Optional[Any]:
         """現在選択されているエントリを取得する
         
         Returns:
-            現在選択されているエントリ、またはNone
+            Optional[Any]: 現在選択されているエントリ（なければNone）
         """
         return self.entry_editor.current_entry

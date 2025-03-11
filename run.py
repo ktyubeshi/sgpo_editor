@@ -16,7 +16,7 @@ log_dir.mkdir(exist_ok=True)
 log_file = log_dir / "po_viewer.log"
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.CRITICAL,  # DEBUGからCRITICALに変更してログを実質的に無効化
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
         logging.FileHandler(log_file, encoding="utf-8"),
