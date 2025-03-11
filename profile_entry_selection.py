@@ -1,28 +1,31 @@
 """エントリ選択時のパフォーマンス計測スクリプト"""
 import cProfile
-import pstats
-import time
-import sys
+import logging
 import os
+import pstats
+import random
+import sys
+import time
 from pathlib import Path
 
 # srcディレクトリをPYTHONPATHに追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 # ロギングを無効化
-import logging
 logging.basicConfig(level=logging.CRITICAL)
 
-# Qt設定
-from PySide6.QtCore import QCoreApplication, QSettings
-QCoreApplication.setOrganizationName("SGPO")
-QCoreApplication.setApplicationName("POEditor")
+# Qt関連のインポート
+from PySide6.QtCore import QCoreApplication, Qt
+from PySide6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
 
+# SGPOエディタ関連のインポート
+from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.event_handler import EventHandler
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
-from sgpo_editor.models.entry import EntryModel
-from PySide6.QtWidgets import QApplication, QTableWidget
+
+# Qt設定
+QCoreApplication.setOrganizationName("SGPO")
+QCoreApplication.setApplicationName("POEditor")
 
 # プロファイリング結果の出力ディレクトリ
 profile_dir = Path(__file__).parent / "profile_results"
@@ -38,14 +41,14 @@ def dummy_get_current_po():
     else:
         # サンプルデータがない場合はダミーデータを作成
         for i in range(100):
-            entry = EntryModel(
-                key=f"key_{i}",
-                position=i,
-                msgid=f"Source text {i}",
-                msgstr=f"翻訳テキスト {i}",
-                flags=["fuzzy"] if i % 3 == 0 else [],
-                references=[f"file.py:{i+10}"] if i % 2 == 0 else []
-            )
+            entry = {
+                "key": f"key_{i}",
+                "position": i,
+                "msgid": f"Source text {i}",
+                "msgstr": f"翻訳テキスト {i}",
+                "flags": ["fuzzy"] if i % 3 == 0 else [],
+                "references": [f"file.py:{i+10}"] if i % 2 == 0 else []
+            }
             po_file._entries.append(entry)
     return po_file
 
@@ -59,7 +62,8 @@ def dummy_show_status(msg, duration=0):
 
 def profile_entry_selection():
     """エントリ選択時のパフォーマンスを計測"""
-    app = QApplication([])
+    # アプリケーションは初期化するが変数として使用しない
+    QApplication([])
     
     # テスト用のコンポーネントを作成
     table = QTableWidget()
@@ -82,20 +86,17 @@ def profile_entry_selection():
     table.setColumnCount(3)
     
     for i, entry in enumerate(entries):
-        from PySide6.QtWidgets import QTableWidgetItem
-        from PySide6.QtCore import Qt
-        
         # キー列
-        key_item = QTableWidgetItem(entry.key)
-        key_item.setData(Qt.ItemDataRole.UserRole, entry.key)
+        key_item = QTableWidgetItem(entry["key"])
+        key_item.setData(Qt.ItemDataRole.UserRole, entry["key"])
         table.setItem(i, 0, key_item)
         
         # 原文列
-        msgid_item = QTableWidgetItem(entry.msgid)
+        msgid_item = QTableWidgetItem(entry["msgid"])
         table.setItem(i, 1, msgid_item)
         
         # 訳文列
-        msgstr_item = QTableWidgetItem(entry.msgstr)
+        msgstr_item = QTableWidgetItem(entry["msgstr"])
         table.setItem(i, 2, msgstr_item)
     
     # プロファイリング開始
@@ -124,7 +125,6 @@ def profile_entry_selection():
     
     # ランダムな順序で選択してキャッシュの効果を確認
     print("\n=== ランダムな順序での再選択 ===")
-    import random
     random_rows = [random.randint(0, total_rows-1) for _ in range(10)]
     for i, row in enumerate(random_rows):
         row_start_time = time.time()
