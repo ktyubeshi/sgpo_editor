@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Optional, Callable, Dict, List, Any
+from typing import Optional, Callable, Dict, List
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSettings
@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QWidget,
     QVBoxLayout,
-    QProgressBar,
     QMenu,
     QToolBar,
 )
