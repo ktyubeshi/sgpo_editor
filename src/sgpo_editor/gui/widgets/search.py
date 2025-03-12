@@ -33,10 +33,16 @@ class SearchWidget(QWidget):
         self._on_search_changed: Callable[[], None] = on_search_changed
         
         # フィルタ用タイマー
+        self._filter_timer = QTimer(self)
+        self._filter_timer.setSingleShot(True)
+        self._filter_timer.setInterval(100)  # 100ミリ秒のデバウンス時間
+        self._filter_timer.timeout.connect(self._on_filter_changed)
+        
+        # キーワードフィルタ用タイマー
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.setInterval(100)  # 100ミリ秒のデバウンス時間
-        self._search_timer.timeout.connect(self._on_criteria_changed)
+        self._search_timer.timeout.connect(self._on_search_changed)
         
         self._setup_ui()
 
@@ -51,11 +57,11 @@ class SearchWidget(QWidget):
         layout.addWidget(QLabel("表示:"))
         self.filter_combo = QComboBox()
         self.filter_combo.addItems(["すべて", "翻訳済み", "未翻訳", "ファジー"])
-        self.filter_combo.currentTextChanged.connect(self._on_criteria_changed)
+        self.filter_combo.currentTextChanged.connect(self._start_filter_timer)
         layout.addWidget(self.filter_combo)
         
         # フィルタ用のラベルとテキストボックス
-        layout.addWidget(QLabel("フィルタ:"))
+        layout.addWidget(QLabel("キーワード:"))
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("キーワードを入力...")
         self.search_edit.textChanged.connect(self._start_search_timer)
@@ -78,19 +84,21 @@ class SearchWidget(QWidget):
             match_mode=self.get_match_mode()
         )
 
-    def _start_search_timer(self) -> None:
+    def _start_filter_timer(self) -> None:
         """フィルタタイマーを開始"""
-        self._search_timer.start()
+        self._filter_timer.start()
 
-    def _on_criteria_changed(self) -> None:
-        """フィルタ条件が変更されたときの処理"""
-        self._on_filter_changed()
+    def _start_search_timer(self) -> None:
+        """キーワードフィルタタイマーを開始"""
+        self._search_timer.start()
 
     def _clear_filter(self) -> None:
         """フィルタ条件をクリア"""
         self.search_edit.clear()
         self.filter_combo.setCurrentText("すべて")
-        self._on_criteria_changed()
+        # 両方のコールバックを呼び出してテーブルを更新
+        self._on_filter_changed()
+        self._on_search_changed()
 
     def get_filter(self) -> str:
         """現在のフィルタを取得"""

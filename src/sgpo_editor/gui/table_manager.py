@@ -92,31 +92,51 @@ class TableManager:
         # Execute sort process if PO file exists
         po_file = self._get_current_po() if self._get_current_po else None
         if po_file:
+            # フィルタ条件を取得
+            from sgpo_editor.gui.widgets.search import SearchCriteria
+            criteria = SearchCriteria(
+                filter=self._current_filter_text,
+                filter_keyword=self._current_search_text,
+                match_mode="部分一致"
+            )
+            
             # 現在のフィルタ条件を保持したままソートを実行
+            entries = po_file.get_filtered_entries(
+                filter_text=self._current_filter_text,
+                filter_keyword=self._current_search_text
+            )
+            
+            # テーブルを更新
             self.update_table(
-                po_file, 
-                logical_index, 
-                new_order, 
-                filter_text=self._current_filter_text, 
-                search_text=self._current_search_text
+                entries,
+                criteria,
+                logical_index,
+                new_order
             )
         
-    def update_table(self, po_file: Optional["ViewerPOFile"], sort_column: int = None, 
-                     sort_order: Qt.SortOrder = None, filter_text: str = None,
-                     search_text: str = None) -> List[Any]:
+    def update_table(self, entries: Optional[List[Any]], criteria=None, sort_column: int = None, 
+                     sort_order: Qt.SortOrder = None) -> List[Any]:
         """Update table
 
         Args:
-            po_file: PO file
+            entries: List of entries to display
+            criteria: Search criteria (contains filter_text and filter_keyword)
             sort_column: Sort column (maintains current setting if omitted)
             sort_order: Sort order (maintains current setting if omitted)
-            filter_text: Filter text ("All", "Translated", "Untranslated", "Fuzzy")
-            search_text: Search text for keyword filtering
             
         Returns:
-            List of entries displayed (None if no PO file)
+            List of entries displayed (None if no entries)
         """
-        if not po_file:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # デバッグログ
+        print(f"テーブル更新開始: entries={len(entries) if entries else 0}件")
+        if criteria:
+            print(f"フィルタ条件: filter={criteria.filter}, keyword={criteria.filter_keyword}")
+        
+        if not entries:
+            print("エントリが空のため、テーブルをクリアします")
             self.table.setRowCount(0)
             self._display_entries = []
             self._entry_cache.clear()  # Clear cache
@@ -128,29 +148,38 @@ class TableManager:
             self._current_sort_order = sort_order
             
         # 現在のフィルタ条件を保存
-        self._current_filter_text = filter_text
-        self._current_search_text = search_text
+        if criteria:
+            self._current_filter_text = criteria.filter
+            self._current_search_text = criteria.filter_keyword
 
-        # Get entries to display
-        entries = po_file.get_filtered_entries(
-            filter_text=filter_text,
-            filter_keyword=search_text
-        )
+        # エントリのキーを保存
         self._display_entries = [entry.key for entry in entries]
+        print(f"表示エントリキー数: {len(self._display_entries)}件")
         
         # Update cache
         self._entry_cache = {entry.key: entry for entry in entries}
+        print(f"キャッシュ更新: {len(self._entry_cache)}件")
         
         # Sort
         if self._current_sort_column is not None and self._current_sort_order is not None:
+            print(f"ソート実行: column={self._current_sort_column}, order={self._current_sort_order}")
             entries = self._sort_entries(entries, self._current_sort_column, self._current_sort_order)
 
         # Temporarily disable table updates for better drawing performance
+        print("テーブル更新を一時停止")
         self.table.setUpdatesEnabled(False)
         
         try:
             # Update table
+            print(f"テーブル行数設定: {len(entries)}行")
             self.table.setRowCount(len(entries))
+            
+            # サンプルエントリの表示（最大3件）
+            if len(entries) > 0:
+                print("表示するエントリのサンプル:")
+                for i, entry in enumerate(entries[:3]):
+                    print(f"  エントリ {i+1}: msgid={entry.msgid[:30] if entry.msgid else ''}... msgstr={entry.msgstr[:30] if entry.msgstr else ''}...")
+            
             for i, entry in enumerate(entries):
                 # Entry number
                 item = QTableWidgetItem(str(entry.position + 1))
@@ -174,8 +203,16 @@ class TableManager:
                 status_item = QTableWidgetItem(status)
                 self.table.setItem(i, 4, status_item)
             
+            print(f"テーブル更新完了: {len(entries)}行設定済み")
+            
+        except Exception as e:
+            print(f"テーブル更新中にエラーが発生: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
         finally:
             # Resume table updates
+            print("テーブル更新を再開")
             self.table.setUpdatesEnabled(True)
             
         # Update sort indicator
@@ -184,6 +221,7 @@ class TableManager:
                 self._current_sort_column, self._current_sort_order
             )
             
+        print(f"テーブル更新処理完了: {len(entries)}件表示")
         return entries
         
     def _get_filter_conditions(self) -> tuple[Optional[str], Optional[str]]:
