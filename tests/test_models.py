@@ -1,4 +1,5 @@
 """モデルのテスト"""
+
 from unittest.mock import Mock
 
 from sgpo_editor.models.entry import EntryModel
@@ -17,7 +18,7 @@ def test_entry_model():
         references=["test.py:10"],
         comment="コメント",
         tcomment="翻訳者コメント",
-        flags=["fuzzy"]  # fuzzyフラグをflagsリストで設定
+        flags=["fuzzy"],  # fuzzyフラグをflagsリストで設定
     )
 
     assert entry.key == "context\x04test"
@@ -136,11 +137,7 @@ def test_entry_model():
 def test_stats_model():
     """StatsModelのテスト"""
     stats = StatsModel(
-        total=100,
-        translated=60,
-        untranslated=30,
-        fuzzy=10,
-        file_name="test.po"
+        total=100, translated=60, untranslated=30, fuzzy=10, file_name="test.po"
     )
 
     assert stats.total == 100

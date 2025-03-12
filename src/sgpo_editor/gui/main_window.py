@@ -2,28 +2,22 @@
 
 import logging
 import sys
-from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
-from PySide6.QtCore import Qt, QEvent
-from PySide6.QtWidgets import (
-    QMainWindow,
-    QTableWidget,
-    QWidget,
-    QApplication,
-    QMessageBox,
-)
+from PySide6.QtCore import QEvent
+from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidget, QWidget
 
+from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.gui.event_handler import EventHandler
+from sgpo_editor.gui.file_handler import FileHandler
+from sgpo_editor.gui.table_manager import TableManager
+from sgpo_editor.gui.ui_setup import UIManager
 # ViewerPOFileのインポートを遅延させる
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
-from sgpo_editor.gui.widgets.search import SearchWidget
-from sgpo_editor.gui.widgets.stats import StatsWidget
 from sgpo_editor.gui.widgets.po_format_editor import POFormatEditor
 from sgpo_editor.gui.widgets.preview_widget import PreviewDialog
-from sgpo_editor.gui.table_manager import TableManager
-from sgpo_editor.gui.file_handler import FileHandler
-from sgpo_editor.gui.event_handler import EventHandler
-from sgpo_editor.gui.ui_setup import UIManager
+from sgpo_editor.gui.widgets.search import SearchWidget
+from sgpo_editor.gui.widgets.stats import StatsWidget
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +39,7 @@ class MainWindow(QMainWindow):
             on_search_changed=self._on_search_changed,
         )
         self.table = QTableWidget()
-        
+
         # 各マネージャの初期化
         self.table_manager = TableManager(self.table, self._get_current_po)
         self.ui_manager = UIManager(
@@ -64,10 +58,10 @@ class MainWindow(QMainWindow):
             self._update_table,
             self.statusBar().showMessage,
         )
-        
+
         # UIの初期化
         self._setup_ui()
-        
+
         # イベント接続
         self.event_handler.setup_connections()
         self.event_handler.entry_updated.connect(self._on_entry_updated)
@@ -76,28 +70,30 @@ class MainWindow(QMainWindow):
         """UIの初期化"""
         # 中央ウィジェット（テーブル）
         self.ui_manager.setup_central_widget(self.table)
-        
+
         # ドックウィジェット
         self.ui_manager.setup_dock_widgets()
-        
+
         # ツールバー
         self.ui_manager.setup_toolbar(self.entry_editor._show_review_dialog)
-        
+
         # メニューバー
-        self.ui_manager.setup_menubar({
-            "open_file": self._open_file,
-            "save_file": self._save_file,
-            "save_file_as": self._save_file_as,
-            "close": self.close,
-            "change_layout": self._change_entry_layout,
-            "open_recent_file": self._open_recent_file,
-            "open_po_format_editor": self._open_po_format_editor,
-            "show_preview": self._show_preview_dialog,
-        })
-        
+        self.ui_manager.setup_menubar(
+            {
+                "open_file": self._open_file,
+                "save_file": self._save_file,
+                "save_file_as": self._save_file_as,
+                "close": self.close,
+                "change_layout": self._change_entry_layout,
+                "open_recent_file": self._open_recent_file,
+                "open_po_format_editor": self._open_po_format_editor,
+                "show_preview": self._show_preview_dialog,
+            }
+        )
+
         # ステータスバー
         self.ui_manager.setup_statusbar()
-        
+
         # ウィンドウ状態の復元
         self.ui_manager.restore_dock_states()
         self.ui_manager.restore_window_state()
@@ -160,22 +156,21 @@ class MainWindow(QMainWindow):
         current_po = self._get_current_po()
         if not current_po:
             return
-            
+
         # フィルタ条件を取得
         criteria = self.search_widget.get_search_criteria()
         filter_text = criteria.filter
         filter_keyword = criteria.filter_keyword
-        
+
         try:
             # POファイルからフィルタ条件に合ったエントリを取得
             entries = current_po.get_filtered_entries(
-                filter_text=filter_text,
-                filter_keyword=filter_keyword
+                filter_text=filter_text, filter_keyword=filter_keyword
             )
-            
+
             # テーブルを更新（フィルタ条件を渡す）
             self.table_manager.update_table(entries, criteria)
-            
+
             # フィルタ結果の件数をステータスバーに表示
             self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
         except Exception as e:
@@ -186,20 +181,19 @@ class MainWindow(QMainWindow):
         current_po = self._get_current_po()
         if not current_po:
             return
-            
+
         try:
             # フィルタ条件を取得
             criteria = self.search_widget.get_search_criteria()
-            
+
             # POファイルからフィルタ条件に合ったエントリを取得
             entries = current_po.get_filtered_entries(
-                filter_text=criteria.filter,
-                filter_keyword=criteria.filter_keyword
+                filter_text=criteria.filter, filter_keyword=criteria.filter_keyword
             )
-            
+
             # テーブルを更新
             self.table_manager.update_table(entries, criteria)
-            
+
             # フィルタ結果の件数をステータスバーに表示
             self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
         except Exception as e:
@@ -208,49 +202,100 @@ class MainWindow(QMainWindow):
     def _on_search_changed(self) -> None:
         """フィルターキーワードが変更されたときの処理"""
         import logging
+
         current_po = self._get_current_po()
         if not current_po:
             logging.debug("現在のPOファイルが存在しません")
             return
-            
+
         try:
             # フィルタ条件を取得
             criteria = self.search_widget.get_search_criteria()
-            
+
             # 空のキーワードを処理
-            if criteria.filter_keyword:
+            if criteria.filter_keyword is None:
+                # Noneの場合はそのまま処理
+                logging.debug("キーワードがNoneのため、全エントリを取得します")
+            elif isinstance(criteria.filter_keyword, str):
+                # 文字列の場合は空白除去してチェック
                 criteria.filter_keyword = criteria.filter_keyword.strip()
-            
+                if not criteria.filter_keyword:  # 空白文字のみの場合はNoneに設定
+                    criteria.filter_keyword = None
+                    logging.debug("キーワードが空文字のため、全エントリを取得します")
+                    # 検索テキストを明示的に空に設定
+                    self.search_widget.search_edit.setText("")
+
+                    # ★重要: キーワードがクリアされたとき、ViewerPOFileの内部状態をリセット
+                    current_po.search_text = None
+                    # キャッシュされたフィルタリング結果をクリア
+                    current_po.filtered_entries = []
+
             # デバッグ用ログ出力
             print(f"キーワードフィルタ変更: {criteria.filter_keyword}")
-            print(f"フィルタ条件: filter={criteria.filter}, keyword={criteria.filter_keyword}, match_mode={criteria.match_mode}")
-            logging.debug(f"MainWindow._on_search_changed: filter={criteria.filter}, keyword={criteria.filter_keyword}")
-            
+            print(
+                f"フィルタ条件: filter={
+                    criteria.filter}, keyword={
+                    criteria.filter_keyword}, match_mode={
+                    criteria.match_mode}"
+            )
+            logging.debug(
+                f"MainWindow._on_search_changed: filter={
+                    criteria.filter}, keyword={
+                    criteria.filter_keyword}"
+            )
+
+            # エントリを取得する前に、キーワードがNoneまたは空文字の場合はViewerPOFileの内部状態を明示的にリセット
+            if criteria.filter_keyword is None:
+                logging.debug(
+                    "キーワードがNoneのため、ViewerPOFileの内部状態をリセットします"
+                )
+                current_po.search_text = None
+                current_po.filtered_entries = []
+            elif (
+                isinstance(criteria.filter_keyword, str)
+                and not criteria.filter_keyword.strip()
+            ):
+                logging.debug(
+                    "キーワードが空文字のため、ViewerPOFileの内部状態をリセットします"
+                )
+                current_po.search_text = None
+                current_po.filtered_entries = []
+
             # POファイルからフィルタ条件に合ったエントリを取得
             print("フィルタ条件に合ったエントリを取得中...")
-            
-            # キーワードが空の場合はフィルタしない
-            if not criteria.filter_keyword:
-                logging.debug("キーワードが空のため、全エントリを取得します")
-            
+            print(
+                f"現在のViewerPOFile状態: search_text={
+                    current_po.search_text}, filter_text={
+                    current_po.filter_text}"
+            )
+
             entries = current_po.get_filtered_entries(
                 update_filter=True,  # 強制的にフィルタを更新
                 filter_text=criteria.filter,
-                filter_keyword=criteria.filter_keyword
+                filter_keyword=criteria.filter_keyword,
             )
             print(f"取得完了: {len(entries)}件のエントリが見つかりました")
-            
+            print(
+                f"更新後のViewerPOFile状態: search_text={
+                    current_po.search_text}, filter_text={
+                    current_po.filter_text}"
+            )
+
             # テーブルを更新
             print("テーブル更新開始...")
             updated_entries = self.table_manager.update_table(entries, criteria)
-            print(f"テーブル更新完了: {len(updated_entries) if updated_entries else 0}件表示")
-            
+            print(
+                f"テーブル更新完了: {
+                    len(updated_entries) if updated_entries else 0}件表示"
+            )
+
             # フィルタ結果の件数をステータスバーに表示
             self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
         except Exception as e:
             print(f"キーワードフィルタ処理中にエラーが発生しました: {str(e)}")
             logging.error(f"キーワードフィルタエラー: {str(e)}")
             import traceback
+
             traceback.print_exc()
             self.statusBar().showMessage(f"エラー: {str(e)}")
 
@@ -273,7 +318,7 @@ class MainWindow(QMainWindow):
             layout_type: レイアウトタイプ
         """
         self.event_handler.change_entry_layout(layout_type)
-        
+
     def _show_preview_dialog(self) -> None:
         """プレビューダイアログを表示する"""
         # 現在選択されているエントリがない場合は何もしない
@@ -281,7 +326,7 @@ class MainWindow(QMainWindow):
         if not current_entry:
             self.statusBar().showMessage("プレビューするエントリが選択されていません")
             return
-            
+
         # プレビューダイアログを表示
         dialog = PreviewDialog(self)
         # イベントハンドラーを設定してエントリ選択変更イベントを接続
@@ -292,14 +337,14 @@ class MainWindow(QMainWindow):
         dialog.show()
         dialog.raise_()
         dialog.activateWindow()
-        
+
     def _open_po_format_editor(self) -> None:
         """POフォーマットエディタを開く"""
         if not hasattr(self, "_po_format_editor"):
             self._po_format_editor = POFormatEditor(self, self._get_current_po)
             # エントリ更新シグナルを接続
             self._po_format_editor.entry_updated.connect(self._on_entry_updated)
-        
+
         self._po_format_editor.show()
 
 
@@ -307,10 +352,10 @@ def main():
     """アプリケーションのエントリーポイント"""
     app = QApplication(sys.argv)
     app.setApplicationName("PO Editor")
-    
+
     main_window = MainWindow()
     main_window.show()
-    
+
     sys.exit(app.exec())
 
 

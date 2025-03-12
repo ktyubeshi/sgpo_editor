@@ -29,7 +29,9 @@ class MockMainWindow:
         criteria = self.search_widget.get_search_criteria()
         if self.file_handler.current_po:
             try:
-                entries = self.file_handler.current_po.get_filtered_entries(criteria.filter)
+                entries = self.file_handler.current_po.get_filtered_entries(
+                    criteria.filter
+                )
                 self.table_manager.update_table(entries, criteria)
             except Exception as e:
                 self.status_bar.showMessage(f"エラー: {str(e)}")
@@ -67,7 +69,9 @@ class TestMainWindowSearch(unittest.TestCase):
     def test_search_filter(self):
         """検索/フィルタリング機能のテスト"""
         # SearchCriteriaのモック
-        mock_criteria = SearchCriteria(filter="translated", search_text="test", match_mode="部分一致")
+        mock_criteria = SearchCriteria(
+            filter="translated", search_text="test", match_mode="部分一致"
+        )
         self.main_window.search_widget.get_search_criteria.return_value = mock_criteria
 
         # ViewerPOFileのモック
@@ -77,13 +81,17 @@ class TestMainWindowSearch(unittest.TestCase):
         self.main_window._on_filter_changed()
 
         # 検証
-        self.main_window.file_handler.current_po.get_filtered_entries.assert_called_once_with(mock_criteria.filter)
+        self.main_window.file_handler.current_po.get_filtered_entries.assert_called_once_with(
+            mock_criteria.filter
+        )
         self.main_window.table_manager.update_table.assert_called_once()
 
     def test_state_based_filtering(self):
         """エントリの状態ベースフィルタ機能のテスト"""
         # SearchCriteriaのモック
-        mock_criteria = SearchCriteria(filter="untranslated", search_text="", match_mode="部分一致")
+        mock_criteria = SearchCriteria(
+            filter="untranslated", search_text="", match_mode="部分一致"
+        )
         self.main_window.search_widget.get_search_criteria.return_value = mock_criteria
 
         # ViewerPOFileのモック
@@ -93,13 +101,17 @@ class TestMainWindowSearch(unittest.TestCase):
         self.main_window._on_filter_changed()
 
         # 検証
-        self.main_window.file_handler.current_po.get_filtered_entries.assert_called_once_with(mock_criteria.filter)
+        self.main_window.file_handler.current_po.get_filtered_entries.assert_called_once_with(
+            mock_criteria.filter
+        )
         self.main_window.table_manager.update_table.assert_called_once()
 
     def test_keyword_based_filtering(self):
         """キーワードベースのフィルタリング機能のテスト"""
         # SearchCriteriaのモック
-        mock_criteria = SearchCriteria(filter="", search_text="keyword", match_mode="部分一致")
+        mock_criteria = SearchCriteria(
+            filter="", search_text="keyword", match_mode="部分一致"
+        )
         self.main_window.search_widget.get_search_criteria.return_value = mock_criteria
 
         # ViewerPOFileのモック
@@ -109,7 +121,9 @@ class TestMainWindowSearch(unittest.TestCase):
         self.main_window._on_filter_changed()
 
         # 検証
-        self.main_window.file_handler.current_po.get_filtered_entries.assert_called_once_with(mock_criteria.filter)
+        self.main_window.file_handler.current_po.get_filtered_entries.assert_called_once_with(
+            mock_criteria.filter
+        )
         self.main_window.table_manager.update_table.assert_called_once()
 
     def test_gui_state_filter_interaction(self):
@@ -152,27 +166,37 @@ class TestMainWindowSearch(unittest.TestCase):
     def test_search_with_error(self):
         """検索中にエラーが発生した場合のテスト"""
         # SearchCriteriaのモック
-        mock_criteria = SearchCriteria(filter="", search_text="error", match_mode="部分一致")
+        mock_criteria = SearchCriteria(
+            filter="", search_text="error", match_mode="部分一致"
+        )
         self.main_window.search_widget.get_search_criteria.return_value = mock_criteria
 
         # ViewerPOFileのモックがエラーを発生させるように設定
-        self.main_window.file_handler.current_po.get_filtered_entries.side_effect = Exception("Test error")
+        self.main_window.file_handler.current_po.get_filtered_entries.side_effect = (
+            Exception("Test error")
+        )
 
         # テスト対象メソッドを実行
         self.main_window._update_table()
 
         # 検証 - エラーメッセージが表示されることを確認
-        self.main_window.status_bar.showMessage.assert_called_with("テーブル更新エラー: Test error")
+        self.main_window.status_bar.showMessage.assert_called_with(
+            "テーブル更新エラー: Test error"
+        )
 
     def test_exact_match_search(self):
         """完全一致検索のテスト"""
         # SearchCriteriaのモック
-        mock_criteria = SearchCriteria(filter="", search_text="exact", match_mode="完全一致")
+        mock_criteria = SearchCriteria(
+            filter="", search_text="exact", match_mode="完全一致"
+        )
         self.main_window.search_widget.get_search_criteria.return_value = mock_criteria
 
         # ViewerPOFileのモック
         mock_entries = []
-        self.main_window.file_handler.current_po.get_filtered_entries.return_value = mock_entries
+        self.main_window.file_handler.current_po.get_filtered_entries.return_value = (
+            mock_entries
+        )
 
         # テーブルマネージャーのモック
         self.main_window.table_manager.update_table.return_value = mock_entries
@@ -181,8 +205,12 @@ class TestMainWindowSearch(unittest.TestCase):
         self.main_window._update_table()
 
         # 検証
-        self.main_window.file_handler.current_po.get_filtered_entries.assert_called_once_with(mock_criteria.filter)
-        self.main_window.table_manager.update_table.assert_called_once_with(mock_entries, mock_criteria)
+        self.main_window.file_handler.current_po.get_filtered_entries.assert_called_once_with(
+            mock_criteria.filter
+        )
+        self.main_window.table_manager.update_table.assert_called_once_with(
+            mock_entries, mock_criteria
+        )
         self.main_window.status_bar.showMessage.assert_called_with("フィルタ結果: 0件")
 
 

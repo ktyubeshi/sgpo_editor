@@ -1,12 +1,15 @@
 """統計情報のデータモデル"""
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Dict, Any
+
+from typing import Any, Dict
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StatsModel(BaseModel):
     """統計情報のデータモデル"""
+
     model_config = ConfigDict()
-    
+
     total: int = Field(0, description="全エントリ数")
     translated: int = Field(0, description="翻訳済みエントリ数")
     untranslated: int = Field(0, description="未翻訳エントリ数")

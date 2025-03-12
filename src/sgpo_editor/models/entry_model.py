@@ -2,13 +2,15 @@
 
 このモジュールは、POファイルのエントリを表現するためのモデルを提供します。
 """
+
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class Entry:
     """POファイルのエントリを表現するクラス"""
+
     key: str
     msgid: str
     msgstr: str = ""
@@ -27,14 +29,14 @@ class Entry:
     references: List[str] = field(default_factory=list)
     occurrences: List[tuple] = field(default_factory=list)
     linenum: Optional[int] = None
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Entry':
+    def from_dict(cls, data: Dict[str, Any]) -> "Entry":
         """辞書からEntryオブジェクトを作成する"""
         # 必須フィールド
         key = data.get("key", "")
         msgid = data.get("msgid", "")
-        
+
         # その他のフィールド
         entry = cls(
             key=key,
@@ -53,15 +55,15 @@ class Entry:
             previous_msgctxt=data.get("previous_msgctxt"),
             references=data.get("references", []),
             occurrences=data.get("occurrences", []),
-            linenum=data.get("linenum")
+            linenum=data.get("linenum"),
         )
-        
+
         # msgstr_pluralがある場合は設定
         if "msgstr_plural" in data:
             entry.msgstr_plural = data["msgstr_plural"]
-            
+
         return entry
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Entryオブジェクトを辞書に変換する"""
         result = {
@@ -71,9 +73,9 @@ class Entry:
             "flags": self.flags,
             "position": self.position,
             "obsolete": self.obsolete,
-            "fuzzy": self.fuzzy
+            "fuzzy": self.fuzzy,
         }
-        
+
         # Noneでないフィールドのみ追加
         if self.tcomment is not None:
             result["tcomment"] = self.tcomment
@@ -97,19 +99,19 @@ class Entry:
             result["linenum"] = self.linenum
         if self.msgstr_plural:
             result["msgstr_plural"] = self.msgstr_plural
-            
+
         return result
-    
+
     def __getitem__(self, key: str) -> Any:
         """辞書のような添え字アクセスをサポート（entry["key"]）"""
         if hasattr(self, key):
             return getattr(self, key)
         raise KeyError(f"Entryオブジェクトに '{key}' キーがありません")
-    
+
     def __contains__(self, key: str) -> bool:
         """in演算子をサポート（"key" in entry）"""
         return hasattr(self, key)
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """辞書のようなgetメソッドをサポート"""
         if hasattr(self, key):

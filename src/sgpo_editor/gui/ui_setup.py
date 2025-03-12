@@ -4,23 +4,17 @@
 """
 
 import logging
-from typing import Optional, Callable, Dict, List
 from pathlib import Path
+from typing import Callable, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QSettings
-from PySide6.QtGui import QAction, QKeySequence, QActionGroup
-from PySide6.QtWidgets import (
-    QMainWindow,
-    QDockWidget,
-    QWidget,
-    QVBoxLayout,
-    QMenu,
-    QToolBar,
-)
+from PySide6.QtCore import QSettings, Qt
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence
+from PySide6.QtWidgets import (QDockWidget, QMainWindow, QMenu, QToolBar,
+                               QVBoxLayout, QWidget)
 
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
-from sgpo_editor.gui.widgets.stats import StatsWidget
 from sgpo_editor.gui.widgets.search import SearchWidget
+from sgpo_editor.gui.widgets.stats import StatsWidget
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +22,13 @@ logger = logging.getLogger(__name__)
 class UIManager:
     """UI管理クラス"""
 
-    def __init__(self, main_window: QMainWindow, entry_editor: EntryEditor, 
-                stats_widget: StatsWidget, search_widget: SearchWidget) -> None:
+    def __init__(
+        self,
+        main_window: QMainWindow,
+        entry_editor: EntryEditor,
+        stats_widget: StatsWidget,
+        search_widget: SearchWidget,
+    ) -> None:
         """初期化
 
         Args:
@@ -42,21 +41,21 @@ class UIManager:
         self.entry_editor = entry_editor
         self.stats_widget = stats_widget
         self.search_widget = search_widget
-        
+
         # ドックウィジェット
         self.entry_editor_dock = QDockWidget("エントリ編集", main_window)
-        
+
         # メニューアクション
         self.layout1_action: Optional[QAction] = None
         self.layout2_action: Optional[QAction] = None
-        
+
         # 最近使用したファイルのアクション
         self.recent_file_actions: List[QAction] = []
         self.recent_files_menu: Optional[QMenu] = None
-        
+
         # ツールバーアクション
         self.toolbar_actions: Dict[str, QAction] = {}
-        
+
     def setup_central_widget(self, table_widget) -> None:
         """中央ウィジェットの設定
 
@@ -66,10 +65,10 @@ class UIManager:
         central_widget = QWidget()
         self.main_window.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
-        
+
         # 検索/フィルタリング
         layout.addWidget(self.search_widget)
-        
+
         # エントリ一覧
         layout.addWidget(table_widget)
 
@@ -79,20 +78,22 @@ class UIManager:
         self.entry_editor_dock.setObjectName("entry_dock")
         self.entry_editor_dock.setWidget(self.entry_editor)
         self.entry_editor_dock.setAllowedAreas(
-            Qt.DockWidgetArea.TopDockWidgetArea | 
-            Qt.DockWidgetArea.BottomDockWidgetArea
+            Qt.DockWidgetArea.TopDockWidgetArea | Qt.DockWidgetArea.BottomDockWidgetArea
         )
-        self.main_window.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, self.entry_editor_dock)
+        self.main_window.addDockWidget(
+            Qt.DockWidgetArea.TopDockWidgetArea, self.entry_editor_dock
+        )
 
         # 統計情報
         stats_dock = QDockWidget("統計情報", self.main_window)
         stats_dock.setObjectName("stats_dock")
         stats_dock.setWidget(self.stats_widget)
         stats_dock.setAllowedAreas(
-            Qt.DockWidgetArea.LeftDockWidgetArea | 
-            Qt.DockWidgetArea.RightDockWidgetArea
+            Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
         )
-        self.main_window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, stats_dock)
+        self.main_window.addDockWidget(
+            Qt.DockWidgetArea.RightDockWidgetArea, stats_dock
+        )
 
     def setup_menubar(self, callbacks) -> None:
         """メニューバーの設定
@@ -119,7 +120,7 @@ class UIManager:
         self.recent_files_menu = QMenu("最近使用した項目を開く", self.main_window)
         self.recent_files_menu.setObjectName("recent_files_menu")
         file_menu.addMenu(self.recent_files_menu)
-        
+
         # 最近使用したファイルアクションのリストを作成
         self.update_recent_files_menu(callbacks.get("open_recent_file"))
 
@@ -148,11 +149,11 @@ class UIManager:
         # 表示メニュー
         display_menu = self.main_window.menuBar().addMenu("表示")
         display_menu.setObjectName("display_menu")
-        
+
         # エントリ編集サブメニュー
         entry_edit_menu = display_menu.addMenu("エントリ編集")
         entry_edit_menu.setObjectName("entry_edit_menu")
-        
+
         # レイアウト1
         self.layout1_action = QAction("レイアウト1", self.main_window)
         self.layout1_action.setObjectName("layout1_action")
@@ -162,7 +163,7 @@ class UIManager:
             lambda: callbacks["change_layout"](LayoutType.LAYOUT1)
         )
         entry_edit_menu.addAction(self.layout1_action)
-        
+
         # レイアウト2
         self.layout2_action = QAction("レイアウト2", self.main_window)
         self.layout2_action.setObjectName("layout2_action")
@@ -171,24 +172,24 @@ class UIManager:
             lambda: callbacks["change_layout"](LayoutType.LAYOUT2)
         )
         entry_edit_menu.addAction(self.layout2_action)
-        
+
         # アクショングループの作成（排他的選択）
         layout_group = QActionGroup(self.main_window)
         layout_group.addAction(self.layout1_action)
         layout_group.addAction(self.layout2_action)
         layout_group.setExclusive(True)
-        
+
         # ツールメニュー
         tools_menu = self.main_window.menuBar().addMenu("ツール")
         tools_menu.setObjectName("tools_menu")
-        
+
         # POフォーマットエディタ
         po_format_editor_action = QAction("POフォーマットエディタ", self.main_window)
         po_format_editor_action.setObjectName("po_format_editor_action")
         po_format_editor_action.setShortcut("Ctrl+P")
         po_format_editor_action.triggered.connect(callbacks["open_po_format_editor"])
         tools_menu.addAction(po_format_editor_action)
-        
+
         # プレビュー
         preview_action = QAction("プレビュー", self.main_window)
         preview_action.setObjectName("preview_action")
@@ -212,7 +213,7 @@ class UIManager:
         # 設定から最近使用したファイルのリストを取得
         settings = QSettings()
         recent_files = settings.value("recent_files", [])
-        
+
         if not recent_files:
             # 最近使用したファイルがない場合
             no_files_action = QAction("最近使用した項目はありません", self.main_window)
@@ -224,16 +225,18 @@ class UIManager:
         for filepath in recent_files:
             if not isinstance(filepath, str):
                 continue
-                
+
             action = QAction(Path(filepath).name, self.main_window)
             action.setData(filepath)
             action.setStatusTip(filepath)
-            action.triggered.connect(lambda checked=False, path=filepath: callback(path))
+            action.triggered.connect(
+                lambda checked=False, path=filepath: callback(path)
+            )
             self.recent_files_menu.addAction(action)
             self.recent_file_actions.append(action)
 
         self.recent_files_menu.addSeparator()
-        
+
         # クリアアクション
         clear_action = QAction("履歴をクリア", self.main_window)
         clear_action.triggered.connect(self._clear_recent_files)
@@ -254,59 +257,69 @@ class UIManager:
         # レビューツールバーの作成
         toolbar = QToolBar("レビューツールバー", self.main_window)
         toolbar.setObjectName("review_toolbar")
-        
+
         # 翻訳者コメントアクション
         translator_comment_action = QAction("翻訳者コメント", self.main_window)
         translator_comment_action.setObjectName("translator_comment_action")
         # ラムダ式ではなく、部分関数を使用してコールバックを設定
+
         def translator_callback():
             show_review_dialog_callback("translator_comment")
+
         translator_comment_action.triggered.connect(translator_callback)
         toolbar.addAction(translator_comment_action)
         self.toolbar_actions["translator_comment"] = translator_comment_action
-        
+
         # レビューコメントアクション - 非表示
         review_comment_action = QAction("レビューコメント", self.main_window)
         review_comment_action.setObjectName("review_comment_action")
         review_comment_action.setVisible(False)  # 非表示に設定
+
         def review_callback():
             show_review_dialog_callback("review_comment")
+
         review_comment_action.triggered.connect(review_callback)
         toolbar.addAction(review_comment_action)
         self.toolbar_actions["review_comment"] = review_comment_action
-        
+
         # 品質スコアアクション - 非表示
         quality_score_action = QAction("品質スコア", self.main_window)
         quality_score_action.setObjectName("quality_score_action")
         quality_score_action.setVisible(False)  # 非表示に設定
+
         def quality_callback():
             show_review_dialog_callback("quality_score")
+
         quality_score_action.triggered.connect(quality_callback)
         toolbar.addAction(quality_score_action)
         self.toolbar_actions["quality_score"] = quality_score_action
-        
+
         # チェック結果アクション - 非表示
         check_result_action = QAction("チェック結果", self.main_window)
         check_result_action.setObjectName("check_result_action")
         check_result_action.setVisible(False)  # 非表示に設定
+
         def check_callback():
             show_review_dialog_callback("check_result")
+
         check_result_action.triggered.connect(check_callback)
         toolbar.addAction(check_result_action)
         self.toolbar_actions["check_result"] = check_result_action
-        
+
         # デバッグアクション
         debug_action = QAction("デバッグ", self.main_window)
         debug_action.setObjectName("debug_action")
+
         def debug_callback():
             show_review_dialog_callback("debug")
+
         debug_action.triggered.connect(debug_callback)
         toolbar.addAction(debug_action)
         self.toolbar_actions["debug"] = debug_action
-        
+
         # ツールバーをメインウィンドウに追加
         self.main_window.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
-        
+
     def setup_statusbar(self) -> None:
         """ステータスバーの設定"""
         self.main_window.statusBar().showMessage("準備完了")

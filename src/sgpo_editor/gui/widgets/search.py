@@ -1,20 +1,16 @@
 """フィルタリング用ウィジェット"""
+
 from typing import Callable, Optional
-from PySide6.QtWidgets import (
-    QWidget,
-    QHBoxLayout,
-    QComboBox,
-    QLineEdit,
-    QPushButton,
-    QLabel,
-)
-from PySide6.QtCore import Qt, QTimer
+
 from pydantic import BaseModel, ConfigDict
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QLineEdit,
+                               QPushButton, QWidget)
 
 
 class SearchCriteria(BaseModel):
     model_config = ConfigDict()
-    
+
     filter: str = "すべて"
     filter_keyword: str = ""
     match_mode: str = "部分一致"
@@ -22,51 +18,52 @@ class SearchCriteria(BaseModel):
 
 class SearchWidget(QWidget):
     """フィルタリング用ウィジェット"""
+
     def __init__(
         self,
         on_filter_changed: Callable[[], None],
         on_search_changed: Callable[[], None],
-        parent: Optional[QWidget] = None
+        parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
         self._on_filter_changed: Callable[[], None] = on_filter_changed
         self._on_search_changed: Callable[[], None] = on_search_changed
-        
+
         # フィルタ用タイマー
         self._filter_timer = QTimer(self)
         self._filter_timer.setSingleShot(True)
         self._filter_timer.setInterval(100)  # 100ミリ秒のデバウンス時間
         self._filter_timer.timeout.connect(self._on_filter_changed)
-        
+
         # キーワードフィルタ用タイマー
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.setInterval(100)  # 100ミリ秒のデバウンス時間
         self._search_timer.timeout.connect(self._on_search_changed)
-        
+
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         """UIの初期化"""
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # POファイルを開くボタンを削除
-        
+
         # フィルタリング用のラベルとコンボボックス
         layout.addWidget(QLabel("表示:"))
         self.filter_combo = QComboBox()
         self.filter_combo.addItems(["すべて", "翻訳済み", "未翻訳", "ファジー"])
         self.filter_combo.currentTextChanged.connect(self._start_filter_timer)
         layout.addWidget(self.filter_combo)
-        
+
         # フィルタ用のラベルとテキストボックス
         layout.addWidget(QLabel("キーワード:"))
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("キーワードを入力...")
         self.search_edit.textChanged.connect(self._start_search_timer)
         layout.addWidget(self.search_edit)
-        
+
         # クリアボタン
         clear_button = QPushButton("クリア")
         clear_button.clicked.connect(self._clear_filter)
@@ -81,7 +78,7 @@ class SearchWidget(QWidget):
         return SearchCriteria(
             filter=self.filter_combo.currentText(),
             filter_keyword=self.search_edit.text(),
-            match_mode=self.get_match_mode()
+            match_mode=self.get_match_mode(),
         )
 
     def _start_filter_timer(self) -> None:

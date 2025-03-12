@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import gc
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-from PySide6.QtCore import Qt, QEvent
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QTableWidget
 
 
@@ -19,35 +18,35 @@ class TestMainWindowKeyboard(unittest.TestCase):
         # テーブルウィジェットのモック
         self.table = MagicMock(spec=QTableWidget)
         self.table.rowCount.return_value = 5
-        
+
         # エントリエディタのモック
         self.entry_editor = MagicMock()
-        
+
         # 現在のPOファイル取得用コールバックのモック
         self.get_current_po = MagicMock()
         mock_po = MagicMock()
         mock_entry = MagicMock()
         mock_po.get_entry_by_key.return_value = mock_entry
         self.get_current_po.return_value = mock_po
-        
+
         # テーブル更新用コールバックのモック
         self.update_table = MagicMock()
-        
+
         # ステータス表示用コールバックのモック
         self.show_status = MagicMock()
-        
+
         # テスト対象のイベントハンドラーをインポート
         from sgpo_editor.gui.event_handler import EventHandler
-        
+
         # イベントハンドラーのインスタンス作成
         self.event_handler = EventHandler(
             self.table,
             self.entry_editor,
             self.get_current_po,
             self.update_table,
-            self.show_status
+            self.show_status,
         )
-        
+
         # テーブルアイテムのモック
         self.mock_item = MagicMock()
         self.mock_item.data.return_value = "test_key"
@@ -67,15 +66,15 @@ class TestMainWindowKeyboard(unittest.TestCase):
         """キーボードナビゲーションのテスト"""
         # イベント接続を設定
         self.event_handler.setup_connections()
-        
+
         # currentCellChangedシグナルが接続されていることを確認
         # 注：このテストはイベントハンドラーの実装が修正された後に成功する
         self.table.currentCellChanged.connect.assert_called_once()
-        
+
         # キーボード操作をシミュレート（currentCellChangedシグナルを発火）
         # 現在の実装では接続されていないため、直接メソッドを呼び出す
         self.event_handler._on_current_cell_changed(1, 0, 0, 0)
-        
+
         # 詳細ビューが更新されたことを確認
         self.entry_editor.set_entry.assert_called_once()
 
@@ -83,11 +82,11 @@ class TestMainWindowKeyboard(unittest.TestCase):
         """キーボードナビゲーションで詳細ビューが更新されることを確認するテスト"""
         # イベント接続を設定
         self.event_handler.setup_connections()
-        
+
         # キーボード操作をシミュレート（currentCellChangedシグナルを発火）
         # 現在の実装では接続されていないため、直接メソッドを呼び出す
         self.event_handler._on_current_cell_changed(2, 0, 1, 0)
-        
+
         # 詳細ビューが更新されたことを確認
         self.table.item.assert_called_with(2, 0)
         self.mock_item.data.assert_called_with(Qt.ItemDataRole.UserRole)

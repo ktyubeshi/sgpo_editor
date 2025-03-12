@@ -8,7 +8,7 @@ import gc
 from unittest.mock import MagicMock
 
 import pytest
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtCore, QtWidgets
 
 # QApplicationのグローバルインスタンス
 _qapp = None
@@ -75,40 +75,46 @@ def cleanup_windows():
 @pytest.fixture(scope="function")
 def mock_qt_dialogs(monkeypatch):
     """Qt対話型ダイアログをモック化するフィクスチャ
-    
+
     テストガイドラインに従い、ファイル選択やメッセージボックスなどのダイアログを
     モック化してテストの一時停止を防ぎます。
     """
     # ファイル選択ダイアログのモック
     monkeypatch.setattr(
-        QtWidgets.QFileDialog, "getOpenFileName",
-        lambda *args, **kwargs: ("/mock/path/to/test.po", "All Files (*)")
+        QtWidgets.QFileDialog,
+        "getOpenFileName",
+        lambda *args, **kwargs: ("/mock/path/to/test.po", "All Files (*)"),
     )
 
     monkeypatch.setattr(
-        QtWidgets.QFileDialog, "getSaveFileName",
-        lambda *args, **kwargs: ("/mock/path/to/save.po", "All Files (*)")
+        QtWidgets.QFileDialog,
+        "getSaveFileName",
+        lambda *args, **kwargs: ("/mock/path/to/save.po", "All Files (*)"),
     )
 
     # メッセージボックスのモック
     monkeypatch.setattr(
-        QtWidgets.QMessageBox, "question",
-        lambda *args, **kwargs: QtWidgets.QMessageBox.StandardButton.Yes
+        QtWidgets.QMessageBox,
+        "question",
+        lambda *args, **kwargs: QtWidgets.QMessageBox.StandardButton.Yes,
     )
 
     monkeypatch.setattr(
-        QtWidgets.QMessageBox, "information",
-        lambda *args, **kwargs: QtWidgets.QMessageBox.StandardButton.Ok
+        QtWidgets.QMessageBox,
+        "information",
+        lambda *args, **kwargs: QtWidgets.QMessageBox.StandardButton.Ok,
     )
 
     monkeypatch.setattr(
-        QtWidgets.QMessageBox, "warning",
-        lambda *args, **kwargs: QtWidgets.QMessageBox.StandardButton.Ok
+        QtWidgets.QMessageBox,
+        "warning",
+        lambda *args, **kwargs: QtWidgets.QMessageBox.StandardButton.Ok,
     )
 
     monkeypatch.setattr(
-        QtWidgets.QMessageBox, "critical",
-        lambda *args, **kwargs: QtWidgets.QMessageBox.StandardButton.Ok
+        QtWidgets.QMessageBox,
+        "critical",
+        lambda *args, **kwargs: QtWidgets.QMessageBox.StandardButton.Ok,
     )
 
     yield
@@ -117,7 +123,7 @@ def mock_qt_dialogs(monkeypatch):
 @pytest.fixture(scope="function")
 def mock_main_window_components(monkeypatch):
     """MainWindowのコンポーネントをモック化するフィクスチャ
-    
+
     テストガイドラインのMockMainWindowパターンに従い、
     MainWindowの依存コンポーネントをモック化します。
     """
@@ -138,30 +144,30 @@ def mock_main_window_components(monkeypatch):
 
     # モックの適用
     monkeypatch.setattr(
-        'sgpo_editor.gui.widgets.entry_editor.EntryEditor',
-        lambda *args, **kwargs: mock_entry_editor
+        "sgpo_editor.gui.widgets.entry_editor.EntryEditor",
+        lambda *args, **kwargs: mock_entry_editor,
     )
 
     monkeypatch.setattr(
-        'sgpo_editor.gui.widgets.stats.StatsWidget',
-        lambda *args, **kwargs: mock_stats_widget
+        "sgpo_editor.gui.widgets.stats.StatsWidget",
+        lambda *args, **kwargs: mock_stats_widget,
     )
 
     monkeypatch.setattr(
-        'sgpo_editor.gui.widgets.search.SearchWidget',
-        lambda *args, **kwargs: mock_search_widget
+        "sgpo_editor.gui.widgets.search.SearchWidget",
+        lambda *args, **kwargs: mock_search_widget,
     )
 
     monkeypatch.setattr(
-        'sgpo_editor.gui.table_manager.TableManager',
-        lambda *args, **kwargs: mock_table_manager
+        "sgpo_editor.gui.table_manager.TableManager",
+        lambda *args, **kwargs: mock_table_manager,
     )
 
     return {
-        'entry_editor': mock_entry_editor,
-        'stats_widget': mock_stats_widget,
-        'search_widget': mock_search_widget,
-        'table_manager': mock_table_manager
+        "entry_editor": mock_entry_editor,
+        "stats_widget": mock_stats_widget,
+        "search_widget": mock_search_widget,
+        "table_manager": mock_table_manager,
     }
 
 

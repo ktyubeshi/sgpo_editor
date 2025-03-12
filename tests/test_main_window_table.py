@@ -75,8 +75,8 @@ class TestMainWindowTable(unittest.TestCase):
         self.mock_po.get_filtered_entries.return_value = mock_entries
 
         # SearchWidgetのメソッドをモック
-        self.main_window.search_widget.get_search_criteria.return_value = SearchCriteria(
-            filter="", search_text="", match_mode="部分一致"
+        self.main_window.search_widget.get_search_criteria.return_value = (
+            SearchCriteria(filter="", search_text="", match_mode="部分一致")
         )
 
         # テーブルマネージャーの戻り値を設定
@@ -107,8 +107,8 @@ class TestMainWindowTable(unittest.TestCase):
         self.mock_po.get_filtered_entries.return_value = mock_entries
 
         # SearchWidgetのメソッドをモック（フィルタ条件あり）
-        self.main_window.search_widget.get_search_criteria.return_value = SearchCriteria(
-            filter="未翻訳", search_text="", match_mode="部分一致"
+        self.main_window.search_widget.get_search_criteria.return_value = (
+            SearchCriteria(filter="未翻訳", search_text="", match_mode="部分一致")
         )
 
         # テーブルマネージャーの戻り値を設定
@@ -139,8 +139,8 @@ class TestMainWindowTable(unittest.TestCase):
         self.mock_po.get_filtered_entries.return_value = mock_entries
 
         # SearchWidgetのメソッドをモック（検索条件あり）
-        self.main_window.search_widget.get_search_criteria.return_value = SearchCriteria(
-            filter="", search_text="test2", match_mode="部分一致"
+        self.main_window.search_widget.get_search_criteria.return_value = (
+            SearchCriteria(filter="", search_text="test2", match_mode="部分一致")
         )
 
         # テーブルマネージャーの戻り値を設定

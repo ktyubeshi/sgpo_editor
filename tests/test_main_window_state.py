@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import gc
 import unittest
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 
 class MockMainWindow:
@@ -20,22 +18,22 @@ class MockMainWindow:
         self.current_po = MagicMock()
         self.statusBar = MagicMock()
         self.showMessage = self.statusBar.showMessage
-        
+
         # テーブルの行数を設定
         self.table.rowCount.return_value = 0
-        
+
         # エントリリストのアイテム
         self.entry_list_items = []
         for i in range(3):
             item = MagicMock()
             item.text.return_value = str(i + 1)
             self.entry_list_items.append(item)
-            
+
     def _save_file(self, path=None):
         """ファイル保存メソッド"""
         if self.current_po is None:
             raise Exception("POファイルが開かれていません")
-            
+
         if path:
             self.current_po.save(path)
         elif hasattr(self.current_po, "path") and self.current_po.path:
@@ -54,7 +52,7 @@ class MockMainWindow:
         """テーブルの進捗状況を更新"""
         if self.current_po is None:
             return
-            
+
         entries = self.current_po.get_entries()
         self.table.setRowCount(len(entries))
         # 進捗状況の更新処理
@@ -76,20 +74,20 @@ class TestMainWindowState(unittest.TestCase):
         """無効な状態でのエントリ表示テスト"""
         # テーブルの選択行を-1に設定（選択なし）
         self.main_window.table.currentRow.return_value = -1
-        
+
         # テスト対象メソッドを実行
         self.main_window._show_current_entry()
-        
+
         # エントリが設定されなかったことを確認
         self.main_window.entry_editor.set_entry.assert_not_called()
-        
+
         # POファイルがない場合
         self.main_window.table.currentRow.return_value = 0
         self.main_window.current_po = None
-        
+
         # テスト対象メソッドを実行
         self.main_window._show_current_entry()
-        
+
         # エントリが設定されなかったことを確認
         self.main_window.entry_editor.set_entry.assert_not_called()
 
@@ -98,10 +96,10 @@ class TestMainWindowState(unittest.TestCase):
         # モックエントリを設定
         mock_entries = [MagicMock(), MagicMock()]
         self.main_window.current_po.get_entries.return_value = mock_entries
-        
+
         # テスト対象メソッドを実行
         self.main_window._update_table_progress()
-        
+
         # テーブルの行数が更新されたことを確認
         self.main_window.table.setRowCount.assert_called_once_with(2)
 
@@ -109,10 +107,10 @@ class TestMainWindowState(unittest.TestCase):
         """テーブルのエントリ数検証テスト"""
         # POファイルがない場合
         self.main_window.current_po = None
-        
+
         # テスト対象メソッドを実行
         self.main_window._update_table_progress()
-        
+
         # テーブルの行数が更新されなかったことを確認
         self.main_window.table.setRowCount.assert_not_called()
 
@@ -120,13 +118,13 @@ class TestMainWindowState(unittest.TestCase):
         """パス属性を持つPOファイルの保存テスト"""
         # パス属性を持つPOファイルのモック
         self.main_window.current_po.path = "/mock/path/to/file.po"
-        
+
         # saveメソッドをモック
         self.main_window.current_po.save = MagicMock()
-        
+
         # パスなしで保存を実行
         self.main_window._save_file()
-        
+
         # パスなしでsaveメソッドが呼ばれたことを確認
         self.main_window.current_po.save.assert_called_once()
 
@@ -135,18 +133,18 @@ class TestMainWindowState(unittest.TestCase):
         # モックエントリを設定
         mock_entry = MagicMock()
         mock_entry.msgstr = "テスト"
-        
+
         # エントリエディタのテキスト変更をシミュレート
         self.main_window.entry_editor.get_current_entry.return_value = mock_entry
         self.main_window.entry_editor.get_msgstr.return_value = "新しいテスト"
-        
+
         # エントリの更新メソッドをモック
         update_entry = MagicMock()
         self.main_window.entry_editor.update_entry = update_entry
-        
+
         # 更新メソッドを実行
         self.main_window.entry_editor.update_entry(mock_entry)
-        
+
         # エントリが更新されたことを確認
         update_entry.assert_called_once_with(mock_entry)
 
@@ -154,7 +152,7 @@ class TestMainWindowState(unittest.TestCase):
         """エントリリストのデータテスト"""
         # エントリリストのアイテムを確認
         for i, item in enumerate(self.main_window.entry_list_items):
-            assert item.text() == str(i + 1), f"エントリ番号が正しく表示されていません"
+            assert item.text() == str(i + 1), "エントリ番号が正しく表示されていません"
 
 
 if __name__ == "__main__":

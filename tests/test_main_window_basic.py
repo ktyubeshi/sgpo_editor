@@ -8,12 +8,9 @@ from unittest.mock import MagicMock
 import pytest
 
 # テスト用のモックモジュールをインポート
-from tests.mock_helpers import (
-    mock_file_dialog_get_open_file_name,
-    mock_file_dialog_get_save_file_name,
-    MockMainWindow,
-    mock_entire_app
-)
+from tests.mock_helpers import (MockMainWindow, mock_entire_app,
+                                mock_file_dialog_get_open_file_name,
+                                mock_file_dialog_get_save_file_name)
 
 
 # pytestのフィクスチャを定義
@@ -23,7 +20,7 @@ def mock_app(monkeypatch):
     # mock_helpers.py のヘルパー関数を使用してアプリ全体をモック化
     mocks = mock_entire_app(monkeypatch)
     yield mocks
-    mocks['cleanup']()
+    mocks["cleanup"]()
 
 
 @pytest.fixture
@@ -63,7 +60,7 @@ class TestMainWindowBasic:
         mock_window.file_handler.current_filepath = Path("test.po")
         mock_window.file_handler.current_po = MagicMock()
         mock_window.file_handler.current_po.get_stats = MagicMock(return_value={})
-        mock_window.file_handler.current_po.file_path = 'test.po'
+        mock_window.file_handler.current_po.file_path = "test.po"
 
         # ファイルを開くアクションを実行
         mock_window._open_file()
@@ -79,7 +76,7 @@ class TestMainWindowBasic:
         # 現在のPOファイルをモック
         mock_po = MagicMock()
         mock_po.save = MagicMock()
-        mock_po.file_path = 'original.po'
+        mock_po.file_path = "original.po"
         mock_window.file_handler.current_po = mock_po
 
         # FileHandlerのsave_fileメソッドをモック
@@ -95,7 +92,9 @@ class TestMainWindowBasic:
     def test_open_file_cancel(self, mock_window, monkeypatch):
         """ファイルを開くのキャンセルテスト"""
         # キャンセルをシミュレートするダイアログのモック
-        mock_file_dialog_get_open_file_name(monkeypatch, None)  # Noneはキャンセルを意味する
+        mock_file_dialog_get_open_file_name(
+            monkeypatch, None
+        )  # Noneはキャンセルを意味する
 
         # 元の状態を保存
         original_po = mock_window.file_handler.current_po
@@ -109,12 +108,14 @@ class TestMainWindowBasic:
     def test_save_file_as_cancel(self, mock_window, monkeypatch):
         """名前を付けて保存のキャンセルテスト"""
         # キャンセルをシミュレートするダイアログのモック
-        mock_file_dialog_get_save_file_name(monkeypatch, None)  # Noneはキャンセルを意味する
+        mock_file_dialog_get_save_file_name(
+            monkeypatch, None
+        )  # Noneはキャンセルを意味する
 
         # 現在のPOファイルをモック
         mock_po = MagicMock()
         mock_po.save = MagicMock()
-        mock_po.file_path = 'original.po'
+        mock_po.file_path = "original.po"
         mock_window.file_handler.current_po = mock_po
 
         # 元の状態を保存

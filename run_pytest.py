@@ -1,4 +1,5 @@
 """Pythonパスを設定してテストを実行するスクリプト"""
+
 import os
 import sys
 import traceback
@@ -17,11 +18,11 @@ try:
     print(f"Pythonパス: {sys.path}")
     print("すべてのテストを実行します...")
     import pytest
-    
+
     # すべてのテストを実行
     exit_code = pytest.main(["-v"])
     print(f"テスト実行結果: {exit_code}")
-    
+
 except Exception as e:
     print(f"エラーが発生しました: {e}")
     traceback.print_exc()

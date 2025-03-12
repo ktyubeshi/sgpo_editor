@@ -1,4 +1,5 @@
 """テスト実行用スクリプト"""
+
 import os
 import sys
 import traceback
@@ -14,14 +15,15 @@ if os.path.exists(src_dir):
 
 try:
     import pytest
+
     # テストを実行
     print("テストを実行します...")
     print(f"Pythonパス: {sys.path}")
-    
+
     # コマンドライン引数を処理
     args = sys.argv[1:] if len(sys.argv) > 1 else ["tests"]
     pytest_args = ["pytest"] + args
-    
+
     print(f"実行コマンド: {' '.join(pytest_args)}")
     pytest.main(args)
 except Exception as e:

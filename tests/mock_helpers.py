@@ -10,14 +10,14 @@ Qt UIコンポーネントをモック化するヘルパーを提供します。
 import gc
 from unittest.mock import MagicMock
 
-from PySide6 import QtWidgets, QtCore
-
+from PySide6 import QtCore, QtWidgets
 
 # モッククラスの定義
 
+
 class MockMainWindow(MagicMock):
     """テストガイドラインに基づく MainWindow のモック実装
-    
+
     MainWindowクラスの振る舞いをシミュレートし、実際のQtウィジェットを作成せずに
     テストを実行できるようにします。
     """
@@ -79,7 +79,7 @@ class MockMainWindow(MagicMock):
 
     def close(self):
         """明示的にリソースを解放する
-        
+
         テスト実行後に呼び出して、全てのモックをクリーンアップします。
         """
         self.entry_editor = None
@@ -95,7 +95,7 @@ class MockMainWindow(MagicMock):
 
 class MockQApplication(MagicMock):
     """テスト用のQApplicationモック
-    
+
     実際のQApplicationを作成せずに、テストに必要な機能を提供します。
     """
 
@@ -114,7 +114,7 @@ class MockQApplication(MagicMock):
 
 class MockTableView(MagicMock):
     """テスト用のQTableViewモック
-    
+
     選択状態や表示状態をシミュレートします。
     """
 
@@ -131,7 +131,7 @@ class MockTableView(MagicMock):
 def mock_file_dialog_get_open_file_name(monkeypatch, file_path=None, file_type=None):
     """
     QFileDialog.getOpenFileNameをモック化する
-    
+
     Args:
         monkeypatch: pytestのmonkepatchフィクスチャ
         file_path: 返すファイルパス（Noneの場合はキャンセル）
@@ -146,13 +146,15 @@ def mock_file_dialog_get_open_file_name(monkeypatch, file_path=None, file_type=N
     def mock_get_open_file_name(*args, **kwargs):
         return return_value
 
-    monkeypatch.setattr(QtWidgets.QFileDialog, "getOpenFileName", mock_get_open_file_name)
+    monkeypatch.setattr(
+        QtWidgets.QFileDialog, "getOpenFileName", mock_get_open_file_name
+    )
 
 
 def mock_file_dialog_get_save_file_name(monkeypatch, file_path=None, file_type=None):
     """
     QFileDialog.getSaveFileNameをモック化する
-    
+
     Args:
         monkeypatch: pytestのmonkepatchフィクスチャ
         file_path: 返すファイルパス（Noneの場合はキャンセル）
@@ -167,13 +169,15 @@ def mock_file_dialog_get_save_file_name(monkeypatch, file_path=None, file_type=N
     def mock_get_save_file_name(*args, **kwargs):
         return return_value
 
-    monkeypatch.setattr(QtWidgets.QFileDialog, "getSaveFileName", mock_get_save_file_name)
+    monkeypatch.setattr(
+        QtWidgets.QFileDialog, "getSaveFileName", mock_get_save_file_name
+    )
 
 
 def mock_message_box_question(monkeypatch, return_value=None):
     """
     QMessageBox.questionをモック化する
-    
+
     Args:
         monkeypatch: pytestのmonkepatchフィクスチャ
         return_value: 返す値（デフォルトはQMessageBox.Yes）
@@ -191,7 +195,7 @@ def mock_message_box_question(monkeypatch, return_value=None):
 def mock_message_box_information(monkeypatch):
     """
     QMessageBox.informationをモック化する
-    
+
     Args:
         monkeypatch: pytestのmonkepatchフィクスチャ
     """
@@ -206,7 +210,7 @@ def mock_message_box_information(monkeypatch):
 def mock_message_box_warning(monkeypatch):
     """
     QMessageBox.warningをモック化する
-    
+
     Args:
         monkeypatch: pytestのmonkepatchフィクスチャ
     """
@@ -221,7 +225,7 @@ def mock_message_box_warning(monkeypatch):
 def mock_message_box_critical(monkeypatch):
     """
     QMessageBox.criticalをモック化する
-    
+
     Args:
         monkeypatch: pytestのmonkepatchフィクスチャ
     """
@@ -236,7 +240,7 @@ def mock_message_box_critical(monkeypatch):
 def wait_for_window_shown(qtbot, window):
     """
     ウィンドウが表示されるのを待機する
-    
+
     Args:
         qtbot: pytest-qtのqtbotフィクスチャ
         window: 待機対象のウィンドウ
@@ -259,7 +263,7 @@ def wait_for_window_shown(qtbot, window):
 def click_button(qtbot, button):
     """
     ボタンをクリックする
-    
+
     Args:
         qtbot: pytest-qtのqtbotフィクスチャ
         button: クリック対象のボタン
@@ -274,7 +278,7 @@ def click_button(qtbot, button):
 def enter_text(qtbot, widget, text):
     """
     テキストを入力する
-    
+
     Args:
         qtbot: pytest-qtのqtbotフィクスチャ
         widget: 入力対象のウィジェット
@@ -290,15 +294,16 @@ def enter_text(qtbot, widget, text):
 
 # 高レベルモックヘルパー関数
 
+
 def setup_mock_main_window(monkeypatch):
     """テスト用にMainWindowをモック化する高レベルヘルパー
-    
+
     テストガイドラインにMockMainWindowパターンに従って、実際のウィジェットを
     作成せずにテストできるようにMainWindowをモック化します。
-    
+
     Args:
         monkeypatch: pytestのmonkeypatchフィクスチャ
-    
+
     Returns:
         MockMainWindowのインスタンス
     """
@@ -312,17 +317,20 @@ def setup_mock_main_window(monkeypatch):
 
     # MainWindowクラスをモック化
     mock_main_window = MockMainWindow()
-    monkeypatch.setattr('sgpo_editor.gui.main_window.MainWindow', lambda *args, **kwargs: mock_main_window)
+    monkeypatch.setattr(
+        "sgpo_editor.gui.main_window.MainWindow",
+        lambda *args, **kwargs: mock_main_window,
+    )
 
     return mock_main_window
 
 
 def setup_mock_entry_model(monkeypatch):
     """テスト用にEntryModelをモック化する
-    
+
     Args:
         monkeypatch: pytestのmonkeypatchフィクスチャ
-    
+
     Returns:
         モック化されたEntryModel
     """
@@ -333,17 +341,20 @@ def setup_mock_entry_model(monkeypatch):
     mock_entry_model.is_fuzzy = False
     mock_entry_model.is_translated = False
 
-    monkeypatch.setattr('sgpo_editor.models.entry_model.EntryModel', lambda *args, **kwargs: mock_entry_model)
+    monkeypatch.setattr(
+        "sgpo_editor.models.entry_model.EntryModel",
+        lambda *args, **kwargs: mock_entry_model,
+    )
 
     return mock_entry_model
 
 
 def setup_mock_po_file(monkeypatch):
     """テスト用にViewerPOFileをモック化する
-    
+
     Args:
         monkeypatch: pytestのmonkeypatchフィクスチャ
-    
+
     Returns:
         モック化されたViewerPOFile
     """
@@ -361,20 +372,23 @@ def setup_mock_po_file(monkeypatch):
     mock_po_file.load = MagicMock(return_value=True)
     mock_po_file.save = MagicMock(return_value=True)
 
-    monkeypatch.setattr('sgpo_editor.models.viewer_po_file.ViewerPOFile', lambda *args, **kwargs: mock_po_file)
+    monkeypatch.setattr(
+        "sgpo_editor.models.viewer_po_file.ViewerPOFile",
+        lambda *args, **kwargs: mock_po_file,
+    )
 
     return mock_po_file
 
 
 def mock_entire_app(monkeypatch):
     """アプリケーション全体をモック化する
-    
+
     テストガイドラインに従い、主要なコンポーネントを全てモック化して
     実際のグラフィカルコンポーネントが必要ない状態でテストを実行できるようにします。
-    
+
     Args:
         monkeypatch: pytestのmonkeypatchフィクスチャ
-    
+
     Returns:
         各種モックオブジェクトを含む辞書
     """
@@ -398,8 +412,8 @@ def mock_entire_app(monkeypatch):
 
     # 全てのモックを返却
     return {
-        'main_window': mock_main_window,
-        'entry_model': mock_entry_model,
-        'po_file': mock_po_file,
-        'cleanup': cleanup
+        "main_window": mock_main_window,
+        "entry_model": mock_entry_model,
+        "po_file": mock_po_file,
+        "cleanup": cleanup,
     }

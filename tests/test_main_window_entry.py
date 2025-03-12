@@ -66,13 +66,17 @@ class TestMainWindowEntry(unittest.TestCase):
     def test_entry_text_changed(self):
         """エントリテキスト変更時の処理のテスト"""
         # 本物のメソッドを呼び出すようにモックを設定
-        self.main_window._entry_text_changed = lambda: self.main_window.entry_editor.apply_button.setEnabled(True)
+        self.main_window._entry_text_changed = (
+            lambda: self.main_window.entry_editor.apply_button.setEnabled(True)
+        )
 
         # テスト対象メソッドを実行
         self.main_window._entry_text_changed()
 
         # 検証（apply_buttonが有効化されたことを確認）
-        self.main_window.entry_editor.apply_button.setEnabled.assert_called_once_with(True)
+        self.main_window.entry_editor.apply_button.setEnabled.assert_called_once_with(
+            True
+        )
 
     def test_apply_clicked(self):
         """適用ボタンクリック時の処理のテスト"""
@@ -82,14 +86,24 @@ class TestMainWindowEntry(unittest.TestCase):
         # ViewerPOFileのモック
         self.main_window.current_po = MagicMock()
         self.main_window.current_po.get_entry_at.return_value = mock_entry
-        self.main_window.current_po.get_stats.return_value = {"translated": 1, "untranslated": 0, "total": 1}
+        self.main_window.current_po.get_stats.return_value = {
+            "translated": 1,
+            "untranslated": 0,
+            "total": 1,
+        }
 
         # 本物のメソッドを呼び出すようにモックを設定
         def apply_clicked():
-            entry = self.main_window.current_po.get_entry_at(self.main_window.table.currentRow())
+            entry = self.main_window.current_po.get_entry_at(
+                self.main_window.table.currentRow()
+            )
             entry.msgstr = self.main_window.entry_editor.get_msgstr()
-            self.main_window.table_manager.update_row(self.main_window.table.currentRow(), entry)
-            self.main_window.stats_widget.update_stats(self.main_window.current_po.get_stats())
+            self.main_window.table_manager.update_row(
+                self.main_window.table.currentRow(), entry
+            )
+            self.main_window.stats_widget.update_stats(
+                self.main_window.current_po.get_stats()
+            )
             self.main_window.entry_editor.apply_button.setEnabled(False)
 
         self.main_window._apply_clicked = apply_clicked
@@ -102,7 +116,8 @@ class TestMainWindowEntry(unittest.TestCase):
         self.assertEqual(mock_entry.msgstr, "updated_msgstr")
         # StatsWidgetの更新が呼び出されたことを確認
         self.main_window.stats_widget.update_stats.assert_called_once_with(
-            {"translated": 1, "untranslated": 0, "total": 1})
+            {"translated": 1, "untranslated": 0, "total": 1}
+        )
         # apply_buttonが無効化されたことを確認
         self.main_window.entry_editor.apply_button.setEnabled.assert_called_with(False)
 
@@ -113,7 +128,9 @@ class TestMainWindowEntry(unittest.TestCase):
 
         # ViewerPOFileのモック
         self.main_window.current_po = MagicMock()
-        self.main_window.current_po.get_entry_at.side_effect = lambda idx: mock_entries[idx]
+        self.main_window.current_po.get_entry_at.side_effect = lambda idx: mock_entries[
+            idx
+        ]
 
         # エントリエディタのモック
         self.main_window.entry_editor.apply_button.isEnabled.return_value = False
@@ -165,7 +182,9 @@ class TestMainWindowEntry(unittest.TestCase):
             if self.main_window.table.currentRow() == -1:
                 self.main_window.entry_editor.clear()
                 return
-            entry = self.main_window.current_po.get_entry_at(self.main_window.table.currentRow())
+            entry = self.main_window.current_po.get_entry_at(
+                self.main_window.table.currentRow()
+            )
             self.main_window.entry_editor.set_entry(entry)
 
         self.main_window._on_selection_changed = on_selection_changed
@@ -191,7 +210,9 @@ class TestMainWindowEntry(unittest.TestCase):
 
         # 本物のメソッドを呼び出すようにモックを設定
         def on_selection_changed():
-            entry = self.main_window.current_po.get_entry_at(self.main_window.table.currentRow())
+            entry = self.main_window.current_po.get_entry_at(
+                self.main_window.table.currentRow()
+            )
             self.main_window.entry_editor.set_entry(entry)
 
         self.main_window._on_selection_changed = on_selection_changed
@@ -212,14 +233,24 @@ class TestMainWindowEntry(unittest.TestCase):
         # ViewerPOFileのモック
         self.main_window.current_po = MagicMock()
         self.main_window.current_po.get_entry_at.return_value = mock_entry
-        self.main_window.current_po.get_stats.return_value = {"translated": 1, "untranslated": 0, "total": 1}
+        self.main_window.current_po.get_stats.return_value = {
+            "translated": 1,
+            "untranslated": 0,
+            "total": 1,
+        }
 
         # 本物のメソッドを呼び出すようにモックを設定
         def apply_clicked():
-            entry = self.main_window.current_po.get_entry_at(self.main_window.table.currentRow())
+            entry = self.main_window.current_po.get_entry_at(
+                self.main_window.table.currentRow()
+            )
             entry.msgstr = self.main_window.entry_editor.get_msgstr()
-            self.main_window.table_manager.update_row(self.main_window.table.currentRow(), entry)
-            self.main_window.stats_widget.update_stats(self.main_window.current_po.get_stats())
+            self.main_window.table_manager.update_row(
+                self.main_window.table.currentRow(), entry
+            )
+            self.main_window.stats_widget.update_stats(
+                self.main_window.current_po.get_stats()
+            )
             self.main_window.entry_editor.apply_button.setEnabled(False)
 
         self.main_window._apply_clicked = apply_clicked

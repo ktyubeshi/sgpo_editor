@@ -2,14 +2,13 @@
 """POフォーマットエディタウィジェット"""
 import logging
 import re
-from typing import List, Optional, Dict, Any, Callable, Tuple
+from typing import List, Optional, Tuple
 
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton,
-    QLabel, QMessageBox, QSplitter, QDialog, QDialogButtonBox
-)
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QTextCursor, QColor, QTextCharFormat, QSyntaxHighlighter
+from PySide6.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat
+from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout, QLabel,
+                               QMessageBox, QPushButton, QSplitter, QTextEdit,
+                               QVBoxLayout)
 
 from sgpo_editor.models.entry import EntryModel
 
@@ -60,7 +59,9 @@ class POSyntaxHighlighter(QSyntaxHighlighter):
         for keyword in ["msgid", "msgstr", "msgctxt"]:
             pattern = f"^{keyword}\\s+"
             for match in re.finditer(pattern, text):
-                self.setFormat(match.start(), match.end() - match.start(), self._formats[keyword])
+                self.setFormat(
+                    match.start(), match.end() - match.start(), self._formats[keyword]
+                )
 
         # コメントのハイライト
         if text.startswith("#"):
@@ -68,17 +69,19 @@ class POSyntaxHighlighter(QSyntaxHighlighter):
 
         # 文字列のハイライト (引用符で囲まれた部分)
         for match in re.finditer(r'"(.*?)"', text):
-            self.setFormat(match.start(), match.end() - match.start(), self._formats["string"])
+            self.setFormat(
+                match.start(), match.end() - match.start(), self._formats["string"]
+            )
 
 
 class POFormatEditor(QDialog):
     """POフォーマットエディタダイアログ"""
-    
+
     entry_updated = Signal(str, str)  # key, msgstr
 
     def __init__(self, parent=None, get_current_po=None):
         """初期化
-        
+
         Args:
             parent: 親ウィジェット
             get_current_po: 現在のPOファイルを取得するコールバック
@@ -87,15 +90,15 @@ class POFormatEditor(QDialog):
         self.setWindowTitle("POフォーマットエディタ")
         self.resize(800, 600)
         self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
-        
+
         self._get_current_po = get_current_po
         self._entry_map = {}  # キーとEntryModelのマッピング
         self._setup_ui()
-        
+
     def _setup_ui(self):
         """UIの初期化"""
         layout = QVBoxLayout(self)
-        
+
         # 説明ラベル
         info_label = QLabel(
             "POファイルのエントリと同じフォーマットでエントリを確認・編集できます。\n"
@@ -103,11 +106,11 @@ class POFormatEditor(QDialog):
         )
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
-        
+
         # スプリッター
         splitter = QSplitter(Qt.Vertical)
         layout.addWidget(splitter, 1)
-        
+
         # エディタ
         self.editor = QTextEdit()
         self.editor.setAcceptRichText(False)
@@ -115,68 +118,68 @@ class POFormatEditor(QDialog):
         font = QFont("Monospace", 10)
         font.setFixedPitch(True)
         self.editor.setFont(font)
-        
+
         # 構文ハイライト
         self.highlighter = POSyntaxHighlighter(self.editor.document())
-        
+
         # プレビュー
         self.preview = QTextEdit()
         self.preview.setReadOnly(True)
         self.preview.setFont(font)
-        
+
         splitter.addWidget(self.editor)
         splitter.addWidget(self.preview)
         splitter.setSizes([400, 200])
-        
+
         # ボタンレイアウト
         button_layout = QHBoxLayout()
-        
+
         # 現在のエントリを取得ボタン
         self.get_current_button = QPushButton("現在のエントリを取得")
         self.get_current_button.clicked.connect(self._on_get_current_clicked)
         button_layout.addWidget(self.get_current_button)
-        
+
         # すべてのエントリを取得ボタン
         self.get_all_button = QPushButton("すべてのエントリを取得")
         self.get_all_button.clicked.connect(self._on_get_all_clicked)
         button_layout.addWidget(self.get_all_button)
-        
+
         # フィルタされたエントリを取得ボタン
         self.get_filtered_button = QPushButton("フィルタされたエントリを取得")
         self.get_filtered_button.clicked.connect(self._on_get_filtered_clicked)
         button_layout.addWidget(self.get_filtered_button)
-        
+
         # プレビューボタン
         self.preview_button = QPushButton("プレビュー")
         self.preview_button.clicked.connect(self._on_preview_clicked)
         button_layout.addWidget(self.preview_button)
-        
+
         # 適用ボタン
         self.apply_button = QPushButton("適用")
         self.apply_button.clicked.connect(self._on_apply_clicked)
         button_layout.addWidget(self.apply_button)
-        
+
         layout.addLayout(button_layout)
-        
+
         # ダイアログボタン
         button_box = QDialogButtonBox(QDialogButtonBox.Close)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
-        
+
         # エディタの内容が変更されたときのシグナル接続
         self.editor.textChanged.connect(self._on_text_changed)
-        
+
     def _on_get_current_clicked(self):
         """現在のエントリを取得"""
         if not self._get_current_po:
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return
-            
+
         po_file = self._get_current_po()
         if not po_file:
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return
-            
+
         # 親ウィンドウからテーブルを取得
         if hasattr(self.parent(), "table"):
             table = self.parent().table
@@ -193,194 +196,193 @@ class POFormatEditor(QDialog):
                         # エントリをPO形式に変換してエディタに表示
                         self._set_entries([current_entry])
                         return
-        
+
         QMessageBox.warning(self, "エラー", "現在選択されているエントリがありません")
-        
+
     def _on_get_all_clicked(self):
         """すべてのエントリを取得"""
         if not self._get_current_po:
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return
-            
+
         po_file = self._get_current_po()
         if not po_file:
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return
-            
+
         # すべてのエントリを取得
         entries = po_file.get_entries()
         if not entries:
             QMessageBox.warning(self, "エラー", "エントリがありません")
             return
-            
+
         # エントリをPO形式に変換してエディタに表示
         self._set_entries(entries)
-        
+
     def _on_get_filtered_clicked(self):
         """フィルタされたエントリを取得"""
         if not self._get_current_po:
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return
-            
+
         po_file = self._get_current_po()
         if not po_file:
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return
-        
+
         # メインウィンドウからフィルタ条件を取得
         main_window = None
         parent = self.parent()
         while parent:
-            if hasattr(parent, 'search_widget') and hasattr(parent, 'table_manager'):
+            if hasattr(parent, "search_widget") and hasattr(parent, "table_manager"):
                 main_window = parent
                 break
             parent = parent.parent()
-        
+
         filter_text = None
         filter_keyword = None
-        
-        if main_window and hasattr(main_window, 'search_widget'):
+
+        if main_window and hasattr(main_window, "search_widget"):
             # SearchWidgetからフィルタ条件を取得
             criteria = main_window.search_widget.get_search_criteria()
             filter_text = criteria.filter
             filter_keyword = criteria.filter_keyword
-            
+
         # フィルタされたエントリを取得
         entries = po_file.get_filtered_entries(
-            filter_text=filter_text,
-            filter_keyword=filter_keyword
+            filter_text=filter_text, filter_keyword=filter_keyword
         )
-        
+
         if not entries:
             QMessageBox.warning(self, "エラー", "フィルタされたエントリがありません")
             return
-            
+
         # エントリをPO形式に変換してエディタに表示
         self._set_entries(entries)
-        
+
     def _set_entries(self, entries: List[EntryModel]):
         """エントリをPO形式に変換してエディタに表示
-        
+
         Args:
             entries: エントリのリスト
         """
         self._entry_map = {}  # マッピングをリセット
         po_text = ""
-        
+
         for entry in entries:
             # エントリをPO形式に変換
             entry_text = self._entry_to_po_format(entry)
             po_text += entry_text + "\n\n"
-            
+
             # キーとエントリのマッピングを保存
             self._entry_map[entry.key] = entry
-            
+
         # エディタに表示
         self.editor.setPlainText(po_text)
-        
+
         # プレビューも更新
         self._update_preview()
-        
+
     def _entry_to_po_format(self, entry: EntryModel) -> str:
         """エントリをPO形式に変換
-        
+
         Args:
             entry: 変換するエントリ
-            
+
         Returns:
             str: PO形式の文字列
         """
         lines = []
-        
+
         # コメント
         if entry.comment:
             lines.append(f"# {entry.comment}")
-        
+
         # 翻訳者コメント
         if entry.tcomment:
             lines.append(f"#. {entry.tcomment}")
-        
+
         # 参照
         if entry.occurrences:
             for src, line in entry.occurrences:
                 lines.append(f"#: {src}:{line}")
-        
+
         # フラグ
         if entry.flags:
             lines.append(f"#, {', '.join(entry.flags)}")
-        
+
         # 以前のmsgctxt
         if entry.previous_msgctxt:
-            lines.append(f"#| msgctxt \"{entry.previous_msgctxt}\"")
-        
+            lines.append(f'#| msgctxt "{entry.previous_msgctxt}"')
+
         # 以前のmsgid
         if entry.previous_msgid:
-            lines.append(f"#| msgid \"{entry.previous_msgid}\"")
-        
+            lines.append(f'#| msgid "{entry.previous_msgid}"')
+
         # msgctxt
         if entry.msgctxt:
-            lines.append(f"msgctxt \"{entry.msgctxt}\"")
-        
+            lines.append(f'msgctxt "{entry.msgctxt}"')
+
         # msgid
-        lines.append(f"msgid \"{entry.msgid}\"")
-        
+        lines.append(f'msgid "{entry.msgid}"')
+
         # msgstr
-        lines.append(f"msgstr \"{entry.msgstr}\"")
-        
+        lines.append(f'msgstr "{entry.msgstr}"')
+
         return "\n".join(lines)
-        
+
     def _on_preview_clicked(self):
         """プレビューボタンがクリックされたときの処理"""
         self._update_preview()
-        
+
     def _update_preview(self):
         """プレビューを更新"""
         try:
             # エディタのテキストを解析
             entries = self._parse_po_format(self.editor.toPlainText())
-            
+
             # プレビューテキスト
             preview_text = ""
             for i, (key, msgid, msgstr, msgctxt) in enumerate(entries):
                 if i > 0:
                     preview_text += "\n\n"
-                    
-                preview_text += f"エントリ {i+1}:\n"
+
+                preview_text += f"エントリ {i + 1}:\n"
                 if msgctxt:
                     preview_text += f"コンテキスト: {msgctxt}\n"
                 preview_text += f"原文: {msgid}\n"
                 preview_text += f"訳文: {msgstr}"
-                
+
             self.preview.setPlainText(preview_text)
-            
+
         except Exception as e:
             logger.exception("プレビュー更新中にエラーが発生しました")
             self.preview.setPlainText(f"エラー: {str(e)}")
-            
+
     def _on_text_changed(self):
         """エディタのテキストが変更されたときの処理"""
         # 自動的にプレビューを更新
         self._update_preview()
-        
+
     def _on_apply_clicked(self):
         """適用ボタンがクリックされたときの処理"""
         if not self._get_current_po:
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return
-            
+
         po_file = self._get_current_po()
         if not po_file:
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return
-            
+
         try:
             # エディタのテキストを解析
             entries = self._parse_po_format(self.editor.toPlainText())
-            
+
             # 更新されたエントリの数
             updated_count = 0
             not_found_count = 0
-            
+
             # 各エントリを処理
             for key, msgid, msgstr, msgctxt in entries:
                 # キーの生成
@@ -388,7 +390,7 @@ class POFormatEditor(QDialog):
                     entry_key = f"{msgctxt}\x04{msgid}"
                 else:
                     entry_key = f"|{msgid}"
-                
+
                 # エントリを検索
                 entry = po_file.get_entry_by_key(entry_key)
                 if not entry:
@@ -400,7 +402,7 @@ class POFormatEditor(QDialog):
                         if e.msgid == msgid and e.msgctxt == msgctxt:
                             entry = e
                             break
-                
+
                 if entry:
                     # エントリが見つかった場合は更新
                     if entry.msgstr != msgstr:
@@ -413,62 +415,62 @@ class POFormatEditor(QDialog):
                         self.entry_updated.emit(entry.key, msgstr)
                 else:
                     not_found_count += 1
-            
+
             # 結果を表示
             if not_found_count > 0:
                 QMessageBox.warning(
-                    self, 
-                    "警告", 
+                    self,
+                    "警告",
                     f"{updated_count}個のエントリを更新しました。\n"
-                    f"{not_found_count}個のエントリが見つかりませんでした。"
+                    f"{not_found_count}個のエントリが見つかりませんでした。",
                 )
             else:
                 QMessageBox.information(
-                    self, 
-                    "成功", 
-                    f"{updated_count}個のエントリを更新しました。"
+                    self, "成功", f"{updated_count}個のエントリを更新しました。"
                 )
-                
+
         except Exception as e:
             logger.exception("エントリ適用中にエラーが発生しました")
-            QMessageBox.critical(self, "エラー", f"エントリの適用に失敗しました: {str(e)}")
-            
+            QMessageBox.critical(
+                self, "エラー", f"エントリの適用に失敗しました: {str(e)}"
+            )
+
     def _parse_po_format(self, text: str) -> List[Tuple[str, str, str, Optional[str]]]:
         """PO形式のテキストを解析
-        
+
         Args:
             text: PO形式のテキスト
-            
+
         Returns:
             List[Tuple[str, str, str, Optional[str]]]: (key, msgid, msgstr, msgctxt)のリスト
         """
         entries = []
-        
+
         # エントリごとに分割
-        entry_texts = re.split(r'\n\s*\n', text)
-        
+        entry_texts = re.split(r"\n\s*\n", text)
+
         for entry_text in entry_texts:
             if not entry_text.strip():
                 continue
-                
+
             # msgid, msgstr, msgctxtを抽出
             msgid_match = re.search(r'msgid\s+"(.*?)"', entry_text, re.DOTALL)
             msgstr_match = re.search(r'msgstr\s+"(.*?)"', entry_text, re.DOTALL)
             msgctxt_match = re.search(r'msgctxt\s+"(.*?)"', entry_text, re.DOTALL)
-            
+
             if not msgid_match or not msgstr_match:
                 continue
-                
+
             msgid = msgid_match.group(1)
             msgstr = msgstr_match.group(1)
             msgctxt = msgctxt_match.group(1) if msgctxt_match else None
-            
+
             # キーの生成
             if msgctxt:
                 key = f"{msgctxt}\x04{msgid}"
             else:
                 key = f"|{msgid}"
-                
+
             entries.append((key, msgid, msgstr, msgctxt))
-            
+
         return entries

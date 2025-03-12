@@ -1,8 +1,8 @@
 """データベースのレビュー機能テスト"""
+
 import unittest
-from datetime import datetime
 import uuid
-from typing import Dict, Any
+from datetime import datetime
 
 from sgpo_editor.models.database import Database
 
@@ -41,28 +41,27 @@ class TestDatabaseReviewFeatures(unittest.TestCase):
                 }
             ],
         }
-        
+
         # エントリを更新用にコピー
         entry_to_update = self.entry_from_db.copy()
         entry_to_update["review_data"] = review_data
-        
+
         # データベースに保存
         self.db.update_entry(self.test_entry["key"], entry_to_update)
-        
+
         # 更新後のエントリを取得
         updated_entry = self.db.get_entry_by_key(self.test_entry["key"])
-        
+
         # 検証
         self.assertIn("review_data", updated_entry)
         self.assertIn("review_comments", updated_entry["review_data"])
         self.assertEqual(len(updated_entry["review_data"]["review_comments"]), 1)
         self.assertEqual(
-            updated_entry["review_data"]["review_comments"][0]["author"], 
-            "テスト太郎"
+            updated_entry["review_data"]["review_comments"][0]["author"], "テスト太郎"
         )
         self.assertEqual(
-            updated_entry["review_data"]["review_comments"][0]["comment"], 
-            "これはテストコメントです"
+            updated_entry["review_data"]["review_comments"][0]["comment"],
+            "これはテストコメントです",
         )
 
     def test_update_quality_score(self):
@@ -76,17 +75,17 @@ class TestDatabaseReviewFeatures(unittest.TestCase):
                 "一貫性": 85,
             },
         }
-        
+
         # エントリを更新用にコピー
         entry_to_update = self.entry_from_db.copy()
         entry_to_update["review_data"] = review_data
-        
+
         # データベースに保存
         self.db.update_entry(self.test_entry["key"], entry_to_update)
-        
+
         # 更新後のエントリを取得
         updated_entry = self.db.get_entry_by_key(self.test_entry["key"])
-        
+
         # 検証
         self.assertIn("review_data", updated_entry)
         self.assertEqual(updated_entry["review_data"]["quality_score"], 85)
@@ -114,22 +113,22 @@ class TestDatabaseReviewFeatures(unittest.TestCase):
                 },
             ],
         }
-        
+
         # エントリを更新用にコピー
         entry_to_update = self.entry_from_db.copy()
         entry_to_update["review_data"] = review_data
-        
+
         # データベースに保存
         self.db.update_entry(self.test_entry["key"], entry_to_update)
-        
+
         # 更新後のエントリを取得
         updated_entry = self.db.get_entry_by_key(self.test_entry["key"])
-        
+
         # 検証
         self.assertIn("review_data", updated_entry)
         self.assertIn("check_results", updated_entry["review_data"])
         self.assertEqual(len(updated_entry["review_data"]["check_results"]), 2)
-        
+
         # 各チェック結果の検証
         for result in updated_entry["review_data"]["check_results"]:
             self.assertIn(result["code"], ["format-error", "grammar-error"])
@@ -166,33 +165,39 @@ class TestDatabaseReviewFeatures(unittest.TestCase):
                 }
             ],
         }
-        
+
         # エントリを更新用にコピー
         entry_to_update = self.entry_from_db.copy()
         entry_to_update["review_data"] = review_data
-        
+
         # データベースに保存
         self.db.update_entry(self.test_entry["key"], entry_to_update)
-        
+
         # 更新後のエントリを取得
         updated_entry = self.db.get_entry_by_key(self.test_entry["key"])
-        
+
         # 検証
         self.assertIn("review_data", updated_entry)
-        
+
         # レビューコメントの検証
         self.assertEqual(len(updated_entry["review_data"]["review_comments"]), 1)
-        self.assertEqual(updated_entry["review_data"]["review_comments"][0]["author"], "山田太郎")
-        
+        self.assertEqual(
+            updated_entry["review_data"]["review_comments"][0]["author"], "山田太郎"
+        )
+
         # 品質スコアの検証
         self.assertEqual(updated_entry["review_data"]["quality_score"], 90)
         self.assertEqual(len(updated_entry["review_data"]["category_scores"]), 2)
         self.assertEqual(updated_entry["review_data"]["category_scores"]["正確性"], 95)
-        
+
         # チェック結果の検証
         self.assertEqual(len(updated_entry["review_data"]["check_results"]), 1)
-        self.assertEqual(updated_entry["review_data"]["check_results"][0]["code"], "spelling")
-        self.assertEqual(updated_entry["review_data"]["check_results"][0]["severity"], "info")
+        self.assertEqual(
+            updated_entry["review_data"]["check_results"][0]["code"], "spelling"
+        )
+        self.assertEqual(
+            updated_entry["review_data"]["check_results"][0]["severity"], "info"
+        )
 
 
 if __name__ == "__main__":

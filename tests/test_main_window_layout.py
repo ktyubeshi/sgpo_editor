@@ -24,11 +24,11 @@ class MockMainWindow:
         self.dock_widgets = {
             "search": MagicMock(),
             "stats": MagicMock(),
-            "entry_editor": MagicMock()
+            "entry_editor": MagicMock(),
         }
 
         # 状態保存用のメソッド
-        self.saveState = MagicMock(return_value=bytearray(b'saved_state'))
+        self.saveState = MagicMock(return_value=bytearray(b"saved_state"))
         self.restoreState = MagicMock(return_value=True)
 
     def _save_dock_states(self):
@@ -45,7 +45,7 @@ class MockMainWindow:
         # QSettingsはモック済みなので実際のオブジェクトは作成しない
         # 代わりにモックオブジェクトを返す
         settings = MagicMock()
-        settings.value = MagicMock(return_value=bytearray(b'test'))
+        settings.value = MagicMock(return_value=bytearray(b"test"))
         state = settings.value("mainWindow/geometry")
         if state:
             self.restoreState(state)
@@ -105,13 +105,19 @@ class TestMainWindowLayout(unittest.TestCase):
         self.main_window._set_layout_full()
 
         # 検証（エントリエディタのレイアウトが変更されたことを確認）
-        self.main_window.entry_editor.set_layout_type.assert_any_call(LayoutType.LAYOUT1)
-        self.main_window.entry_editor.set_layout_type.assert_any_call(LayoutType.LAYOUT2)
+        self.main_window.entry_editor.set_layout_type.assert_any_call(
+            LayoutType.LAYOUT1
+        )
+        self.main_window.entry_editor.set_layout_type.assert_any_call(
+            LayoutType.LAYOUT2
+        )
 
     def test_layout_switching(self) -> None:
         """レイアウト切り替えの動作テスト"""
         # LayoutTypeを直接パッチするのではなく、メソッドをモック
-        with patch.object(self.main_window.entry_editor, 'set_layout_type') as mock_set_layout_type:
+        with patch.object(
+            self.main_window.entry_editor, "set_layout_type"
+        ) as mock_set_layout_type:
             # レイアウトをCOMPACT（LAYOUT1）に切り替え
             self.main_window._set_layout_compact()
             # レイアウトタイプがLAYOUT1に設定されたことを確認
@@ -146,7 +152,9 @@ class TestMainWindowLayout(unittest.TestCase):
         self.main_window._set_layout_compact()
 
         # 検証（レイアウトが変更されたことを確認）
-        self.main_window.entry_editor.set_layout_type.assert_called_with(LayoutType.LAYOUT1)
+        self.main_window.entry_editor.set_layout_type.assert_called_with(
+            LayoutType.LAYOUT1
+        )
 
 
 if __name__ == "__main__":

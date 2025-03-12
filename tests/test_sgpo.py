@@ -113,7 +113,9 @@ class TestSgpo(unittest.TestCase):
 
     def test_format_sgpo_with_unnecessary_header_items(self) -> None:
         po_file = get_test_data_path("format", "formatted.po")
-        unnecessary_header_po_file = get_test_data_path("format", "unnecessary_header.po")
+        unnecessary_header_po_file = get_test_data_path(
+            "format", "unnecessary_header.po"
+        )
 
         po = pofile(str(po_file))
         unnecessary_header_po = pofile(str(unnecessary_header_po_file))
@@ -126,7 +128,9 @@ class TestSgpo(unittest.TestCase):
 
     def test_format_sgpo_with_abnormal_header_order(self) -> None:
         po_file = get_test_data_path("format", "formatted.po")
-        abnormal_order_header_po_file = get_test_data_path("format", "abnormal_order_header.po")
+        abnormal_order_header_po_file = get_test_data_path(
+            "format", "abnormal_order_header.po"
+        )
         po = pofile(str(po_file))
         abnormal_order_header_po = pofile(str(abnormal_order_header_po_file))
 
@@ -150,7 +154,9 @@ class TestSgpo(unittest.TestCase):
         """
         pot_file = get_test_data_path("import_unknown", "case_1_messages.pot")
         unknown_file = get_test_data_path("import_unknown", "case_1_unknown.24_1")
-        expected_result_file = get_test_data_path("import_unknown", "case_1_expected_result.pot")
+        expected_result_file = get_test_data_path(
+            "import_unknown", "case_1_expected_result.pot"
+        )
 
         pot = pofile(str(pot_file))
         unknown = pofile(str(unknown_file))
@@ -169,7 +175,9 @@ class TestSgpo(unittest.TestCase):
         """
         pot_file = get_test_data_path("import_unknown", "case_2_messages.pot")
         unknown_file = get_test_data_path("import_unknown", "case_2_unknown.24_1")
-        expected_result_file = get_test_data_path("import_unknown", "case_2_expected_result.pot")
+        expected_result_file = get_test_data_path(
+            "import_unknown", "case_2_expected_result.pot"
+        )
 
         pot = pofile(str(pot_file))
         unknown = pofile(str(unknown_file))
@@ -188,7 +196,9 @@ class TestSgpo(unittest.TestCase):
         """
         pot_file = get_test_data_path("import_unknown", "case_3_messages.pot")
         unknown_file = get_test_data_path("import_unknown", "case_3_unknown.24_1")
-        expected_result_file = get_test_data_path("import_unknown", "case_3_expected_result.pot")
+        expected_result_file = get_test_data_path(
+            "import_unknown", "case_3_expected_result.pot"
+        )
 
         pot = pofile(str(pot_file))
         unknown = pofile(str(unknown_file))
@@ -204,7 +214,9 @@ class TestSgpo(unittest.TestCase):
     def test_import_mismatch_sgpo(self) -> None:
         pot_file = get_test_data_path("import_mismatch", "case_1_messages.pot")
         mismatch_file = get_test_data_path("import_mismatch", "case_1_mismatch.24_1")
-        expected_result_file = get_test_data_path("import_mismatch", "case_1_expected_result.pot")
+        expected_result_file = get_test_data_path(
+            "import_mismatch", "case_1_expected_result.pot"
+        )
 
         pot = pofile(str(pot_file))
         mismatch = pofile(str(mismatch_file))
@@ -223,7 +235,9 @@ class TestSgpo(unittest.TestCase):
         """
         pot_file = get_test_data_path("import_pot", "case_1_messages.pot")
         po_file = get_test_data_path("import_pot", "case_1_language.po")
-        expected_result_file = get_test_data_path("import_pot", "case_1_expected_result.po")
+        expected_result_file = get_test_data_path(
+            "import_pot", "case_1_expected_result.po"
+        )
 
         pot = pofile(str(pot_file))
         po = pofile(str(po_file))
@@ -242,7 +256,9 @@ class TestSgpo(unittest.TestCase):
         """
         pot_file = get_test_data_path("import_pot", "case_2_messages.pot")
         po_file = get_test_data_path("import_pot", "case_2_language.po")
-        expected_result_file = get_test_data_path("import_pot", "case_2_expected_result.po")
+        expected_result_file = get_test_data_path(
+            "import_pot", "case_2_expected_result.po"
+        )
 
         pot = pofile(str(pot_file))
         po = pofile(str(po_file))
@@ -261,7 +277,9 @@ class TestSgpo(unittest.TestCase):
         """
         pot_file = get_test_data_path("import_pot", "case_3_messages.pot")
         po_file = get_test_data_path("import_pot", "case_3_language.po")
-        expected_result_file = get_test_data_path("import_pot", "case_3_expected_result.po")
+        expected_result_file = get_test_data_path(
+            "import_pot", "case_3_expected_result.po"
+        )
 
         pot = pofile(str(pot_file))
         po = pofile(str(po_file))
@@ -276,7 +294,9 @@ class TestSgpo(unittest.TestCase):
 
     def test_delete_extracted_comments(self) -> None:
         pot_file = get_test_data_path("delete_extracted_comments", "messages.pot")
-        expected_result_file = get_test_data_path("delete_extracted_comments", "expected_result.pot")
+        expected_result_file = get_test_data_path(
+            "delete_extracted_comments", "expected_result.pot"
+        )
         pot = pofile(str(pot_file))
         expected_result_pot = pofile(str(expected_result_file))
 

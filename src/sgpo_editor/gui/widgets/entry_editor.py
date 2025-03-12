@@ -1,34 +1,20 @@
 """エントリ編集用ウィジェット"""
 
 import logging
-from typing import Optional, cast, Dict, Any, List
 from enum import Enum, auto
+from typing import Dict, Optional
 
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPlainTextEdit,
-    QPushButton,
-    QFrame,
-    QComboBox,
-    QSizePolicy,
-    QCheckBox,
-    QSplitter,
-    QTabWidget,
-    QDialog,
-)
-from PySide6.QtCore import Signal, Qt, QSize, QTimer
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
+from PySide6.QtWidgets import (QCheckBox, QDialog, QHBoxLayout, QPlainTextEdit,
+                               QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
+from sgpo_editor.gui.widgets.debug_widgets import EntryDebugWidget
+from sgpo_editor.gui.widgets.review_widgets import (CheckResultWidget,
+                                                    QualityScoreWidget,
+                                                    ReviewCommentWidget,
+                                                    TranslatorCommentWidget)
 from sgpo_editor.models import EntryModel
 from sgpo_editor.models.database import Database
-from sgpo_editor.gui.widgets.review_widgets import (
-    TranslatorCommentWidget,
-    ReviewCommentWidget,
-    QualityScoreWidget,
-    CheckResultWidget,
-)
-from sgpo_editor.gui.widgets.debug_widgets import EntryDebugWidget
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +92,7 @@ class EntryEditor(QWidget):
         self._text_change_timer = QTimer(self)
         self._text_change_timer.setSingleShot(True)
         self._text_change_timer.timeout.connect(self._emit_text_changed)
-        
+
         # レビュー関連ダイアログの参照を保持
         self._review_dialogs: Dict[str, QDialog] = {}
 
@@ -161,7 +147,9 @@ class EntryEditor(QWidget):
         # Applyボタン
         self.apply_button = QPushButton("Apply", self)
         self.apply_button.clicked.connect(self._on_apply_clicked)
-        self.apply_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.apply_button.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
         control_layout.addWidget(self.apply_button)
 
         control_widget.setLayout(control_layout)
@@ -169,25 +157,27 @@ class EntryEditor(QWidget):
 
         self.setLayout(main_layout)
         self.setEnabled(False)  # 初期状態では無効化
-        
+
     def _show_review_dialog(self, dialog_type: str) -> None:
         """レビュー関連ダイアログを表示"""
         logger.debug(f"Show review dialog: {dialog_type}")
-        
+
         if not self._current_entry:
             logger.warning("Entry is not set. Cannot show review dialog.")
             return
-            
+
         if dialog_type not in self._review_dialogs:
             # ダイアログが未作成の場合は新規作成
             dialog = QDialog(self)
             dialog.setWindowTitle(f"対訳表示: {dialog_type}")
             # 常に最前面に表示されるようにウィンドウフラグを設定
-            dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
-            
+            dialog.setWindowFlags(
+                dialog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint
+            )
+
             # ダイアログにレイアウトを設定
             layout = QVBoxLayout(dialog)
-            
+
             # ダイアログの種類に応じたウィジェットを作成
             widget = None
             if dialog_type == "translator_comment":
@@ -202,16 +192,16 @@ class EntryEditor(QWidget):
                 widget = CheckResultWidget(dialog)
             elif dialog_type == "debug":
                 widget = EntryDebugWidget(dialog)
-                
+
             # ウィジェットがNoneでない場合はレイアウトに追加
             if widget:
                 layout.addWidget(widget)
                 widget.set_entry(self._current_entry)
-                
+
                 # データベース参照を設定（対応するメソッドがある場合）
                 if hasattr(widget, "set_database") and self._database:
                     widget.set_database(self._database)
-                
+
             # ダイアログを保存
             dialog.widget = widget  # ウィジェットへの参照を保持
             self._review_dialogs[dialog_type] = dialog
@@ -220,11 +210,11 @@ class EntryEditor(QWidget):
             # 現在のエントリを更新
             if hasattr(dialog.widget, "set_entry"):
                 dialog.widget.set_entry(self._current_entry)
-            
+
             # データベース参照を更新（対応するメソッドがある場合）
             if hasattr(dialog.widget, "set_database") and self._database:
                 dialog.widget.set_database(self._database)
-        
+
         # ダイアログを表示
         dialog.show()
         dialog.raise_()  # 前面に表示
@@ -234,7 +224,7 @@ class EntryEditor(QWidget):
         """開いているすべてのレビューダイアログを更新"""
         if not self._current_entry:
             return
-            
+
         for dialog_type, dialog in self._review_dialogs.items():
             if dialog.isVisible() and hasattr(dialog.widget, "set_entry"):
                 # ダイアログが表示中の場合のみ更新
@@ -275,10 +265,10 @@ class EntryEditor(QWidget):
 
         # エントリを更新
         entry = self.current_entry
-        
+
         # データベースの更新
         self._database.update_entry(entry.key, entry.to_dict())
-        
+
         self.text_changed.emit()
         self.apply_clicked.emit()
 
@@ -292,11 +282,11 @@ class EntryEditor(QWidget):
         """翻訳文が変更されたときの処理"""
         if not self._current_entry:
             return
-            
+
         # エントリのmsgstrを更新
         new_msgstr = self.msgstr_edit.toPlainText()
         self._current_entry.msgstr = new_msgstr
-        
+
         # 変更通知タイマーをリセット
         self._text_change_timer.start(200)
 
@@ -317,14 +307,14 @@ class EntryEditor(QWidget):
         """Fuzzyチェックボックスの状態が変更されたときの処理"""
         if not self.fuzzy_checkbox or not self._current_entry or not self._database:
             return
-            
+
         is_fuzzy = state == Qt.CheckState.Checked
         # エントリオブジェクトを更新
         self._current_entry.fuzzy = is_fuzzy
-        
+
         # データベースに即時反映
         self._database.update_entry_field(self._current_entry.key, "fuzzy", is_fuzzy)
-        
+
         self.text_changed.emit()
 
     def set_entry(self, entry: Optional[EntryModel]) -> None:
@@ -346,10 +336,10 @@ class EntryEditor(QWidget):
                 self.fuzzy_checkbox.blockSignals(False)
             if self.context_edit:
                 self.context_edit.setText("")
-            
+
             # 開いているダイアログがあれば更新
             self._update_open_review_dialogs()
-            
+
             self.setEnabled(False)
             return
 
@@ -371,27 +361,27 @@ class EntryEditor(QWidget):
             context_text = entry.msgctxt if entry.msgctxt is not None else ""
             logger.debug("set_entry: setting context_edit.text to '%s'", context_text)
             self.context_edit.setText(context_text)
-            
+
         # 開いているダイアログがあれば更新
         self._update_open_review_dialogs()
-        
+
         self.entry_changed.emit(self.current_entry_number or -1)
 
     @property
     def database(self) -> Optional[Database]:
         """データベース参照を取得"""
         return self._database
-        
+
     @database.setter
     def database(self, db: Database) -> None:
         """データベース参照を設定"""
         self._database = db
-        
+
         # 開いているダイアログがある場合は、それらにもデータベース参照を設定
         for dialog_type, dialog in self._review_dialogs.items():
             if hasattr(dialog.widget, "set_database"):
                 dialog.widget.set_database(db)
-        
+
     def get_layout_type(self) -> LayoutType:
         """現在のレイアウトタイプを取得"""
         return self._current_layout
@@ -405,10 +395,12 @@ class EntryEditor(QWidget):
         current_msgid = self.msgid_edit.toPlainText() if self.msgid_edit else ""
         current_msgstr = self.msgstr_edit.toPlainText() if self.msgstr_edit else ""
         current_context = self.context_edit.text() if self.context_edit else ""
-        current_fuzzy = self.fuzzy_checkbox.isChecked() if self.fuzzy_checkbox else False
+        current_fuzzy = (
+            self.fuzzy_checkbox.isChecked() if self.fuzzy_checkbox else False
+        )
 
         self._current_layout = layout_type
-        
+
         # 現在のレイアウトをクリア
         while self.editor_layout.count():
             item = self.editor_layout.takeAt(0)

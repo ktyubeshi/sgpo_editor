@@ -1,11 +1,16 @@
 """POビューワーの起動スクリプト"""
+
 import logging
-import sys
 import os
+import sys
 from pathlib import Path
 
 # srcディレクトリをPYTHONPATHに追加
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
+from PySide6.QtCore import QCoreApplication
+
+from sgpo_editor.gui.main_window import main
 
 # データディレクトリ作成
 (Path(__file__).parent / "data").mkdir(exist_ok=True)
@@ -20,16 +25,14 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
         logging.FileHandler(log_file, encoding="utf-8"),
-        logging.StreamHandler(sys.stdout)
-    ]
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 
 # Qt設定
-from PySide6.QtCore import QCoreApplication, QSettings
 QCoreApplication.setOrganizationName("SGPO")
 QCoreApplication.setApplicationName("POEditor")
 
-from sgpo_editor.gui.main_window import main
 
 if __name__ == "__main__":
     main()

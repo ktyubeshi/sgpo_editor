@@ -5,14 +5,12 @@ from __future__ import annotations
 import gc
 
 import pytest
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtCore, QtWidgets
 
-from tests.mock_helpers import (
-    mock_file_dialog_get_open_file_name,
-    mock_file_dialog_get_save_file_name,
-    mock_message_box_warning,
-    mock_message_box_question
-)
+from tests.mock_helpers import (mock_file_dialog_get_open_file_name,
+                                mock_file_dialog_get_save_file_name,
+                                mock_message_box_question,
+                                mock_message_box_warning)
 
 
 class TestBase:
@@ -59,22 +57,32 @@ class MockMainWindow:
 
     def __init__(self, *args, **kwargs):
         # モックの属性を初期化
-        self.file_handler = type('MockFileHandler', (), {'current_po': None})()
-        self.entry_editor = type('MockEntryEditor', (), {'update_entry': lambda *args, **kwargs: None})()
-        self.stats_widget = type('MockStatsWidget', (), {'update_stats': lambda *args, **kwargs: None})()
-        self.search_widget = type('MockSearchWidget', (), {
-            'get_search_criteria': lambda: type('SearchCriteria', (), {
-                'filter': '',
-                'search_text': '',
-                'match_mode': '部分一致'
-            })()
-        })()
-        self.table = type('MockTable', (), {'update_table': lambda *args, **kwargs: None})()
-        self.mock_po = type('MockPO', (), {'get_entries': lambda *args, **kwargs: []})()
+        self.file_handler = type("MockFileHandler", (), {"current_po": None})()
+        self.entry_editor = type(
+            "MockEntryEditor", (), {"update_entry": lambda *args, **kwargs: None}
+        )()
+        self.stats_widget = type(
+            "MockStatsWidget", (), {"update_stats": lambda *args, **kwargs: None}
+        )()
+        self.search_widget = type(
+            "MockSearchWidget",
+            (),
+            {
+                "get_search_criteria": lambda: type(
+                    "SearchCriteria",
+                    (),
+                    {"filter": "", "search_text": "", "match_mode": "部分一致"},
+                )()
+            },
+        )()
+        self.table = type(
+            "MockTable", (), {"update_table": lambda *args, **kwargs: None}
+        )()
+        self.mock_po = type("MockPO", (), {"get_entries": lambda *args, **kwargs: []})()
 
         # モックのシグナル
-        self.file_opened = type('Signal', (), {'emit': lambda: None})()
-        self.file_saved = type('Signal', (), {'emit': lambda: None})()
+        self.file_opened = type("Signal", (), {"emit": lambda: None})()
+        self.file_saved = type("Signal", (), {"emit": lambda: None})()
 
     def closeEvent(self, event):
         """閉じるイベントのモック"""

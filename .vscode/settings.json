@@ -1,5 +1,14 @@
 {
-    "cSpell.words": [
-        "tcomment"
-    ]
+    "liveServer.settings.root": "/docs/_build/html",
+    "python.analysis.typeCheckingMode": "strict",
+    "python.analysis.autoImportCompletions": true,
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/src"
+    ],
+    "python.analysis.diagnosticMode": "workspace",
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true
+    }
 }

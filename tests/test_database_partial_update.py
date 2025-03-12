@@ -1,8 +1,8 @@
 """データベースの部分更新テスト"""
+
 import unittest
-from datetime import datetime
 import uuid
-from typing import Dict, Any
+from datetime import datetime
 
 from sgpo_editor.models.database import Database
 
@@ -32,9 +32,7 @@ class TestDatabasePartialUpdate(unittest.TestCase):
     def test_update_fuzzy_flag(self):
         """Fuzzyフラグの部分更新テスト"""
         # Fuzzyフラグを更新
-        result = self.db.update_entry_field(
-            self.test_entry["key"], "fuzzy", False
-        )
+        result = self.db.update_entry_field(self.test_entry["key"], "fuzzy", False)
         self.assertTrue(result)
 
         # 更新後のエントリを取得して確認
@@ -95,7 +93,9 @@ class TestDatabasePartialUpdate(unittest.TestCase):
         # 更新後のエントリを取得して確認
         updated_entry = self.db.get_entry_by_key(self.test_entry["key"])
         self.assertIn("review_data", updated_entry)
-        self.assertEqual(updated_entry["review_data"]["category_scores"], category_scores)
+        self.assertEqual(
+            updated_entry["review_data"]["category_scores"], category_scores
+        )
 
     def test_add_review_comment(self):
         """レビューコメントの追加テスト"""
@@ -106,9 +106,7 @@ class TestDatabasePartialUpdate(unittest.TestCase):
             "comment": "テストコメント",
             "created_at": datetime.now().isoformat(),
         }
-        result = self.db.add_review_comment(
-            self.test_entry["key"], comment
-        )
+        result = self.db.add_review_comment(self.test_entry["key"], comment)
         self.assertTrue(result)
 
         # 更新後のエントリを取得して確認
@@ -117,12 +115,11 @@ class TestDatabasePartialUpdate(unittest.TestCase):
         self.assertIn("review_comments", updated_entry["review_data"])
         self.assertEqual(len(updated_entry["review_data"]["review_comments"]), 1)
         self.assertEqual(
-            updated_entry["review_data"]["review_comments"][0]["author"],
-            "テスト太郎"
+            updated_entry["review_data"]["review_comments"][0]["author"], "テスト太郎"
         )
         self.assertEqual(
             updated_entry["review_data"]["review_comments"][0]["comment"],
-            "テストコメント"
+            "テストコメント",
         )
 
     def test_remove_review_comment(self):
@@ -138,9 +135,7 @@ class TestDatabasePartialUpdate(unittest.TestCase):
         self.db.add_review_comment(self.test_entry["key"], comment)
 
         # コメントを削除
-        result = self.db.remove_review_comment(
-            self.test_entry["key"], comment_id
-        )
+        result = self.db.remove_review_comment(self.test_entry["key"], comment_id)
         self.assertTrue(result)
 
         # 更新後のエントリを取得して確認
@@ -158,9 +153,7 @@ class TestDatabasePartialUpdate(unittest.TestCase):
             "severity": "warning",
             "created_at": datetime.now().isoformat(),
         }
-        result = self.db.add_check_result(
-            self.test_entry["key"], check_result
-        )
+        result = self.db.add_check_result(self.test_entry["key"], check_result)
         self.assertTrue(result)
 
         # 更新後のエントリを取得して確認
@@ -169,12 +162,11 @@ class TestDatabasePartialUpdate(unittest.TestCase):
         self.assertIn("check_results", updated_entry["review_data"])
         self.assertEqual(len(updated_entry["review_data"]["check_results"]), 1)
         self.assertEqual(
-            updated_entry["review_data"]["check_results"][0]["code"],
-            "format-error"
+            updated_entry["review_data"]["check_results"][0]["code"], "format-error"
         )
         self.assertEqual(
             updated_entry["review_data"]["check_results"][0]["message"],
-            "フォーマットエラー"
+            "フォーマットエラー",
         )
 
     def test_remove_check_result(self):
@@ -189,9 +181,7 @@ class TestDatabasePartialUpdate(unittest.TestCase):
         self.db.add_check_result(self.test_entry["key"], check_result)
 
         # チェック結果を削除
-        result = self.db.remove_check_result(
-            self.test_entry["key"], "format-error"
-        )
+        result = self.db.remove_check_result(self.test_entry["key"], "format-error")
         self.assertTrue(result)
 
         # 更新後のエントリを取得して確認

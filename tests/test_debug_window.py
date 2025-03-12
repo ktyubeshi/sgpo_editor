@@ -1,15 +1,13 @@
 """デバッグウィンドウのテスト"""
+
 import unittest
-from unittest.mock import MagicMock, patch
-import json
 import uuid
 
 from PySide6.QtWidgets import QApplication, QDialog
-from PySide6.QtCore import Qt
 
-from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.gui.widgets.entry_editor import EntryEditor
 from sgpo_editor.gui.widgets.debug_widgets import EntryDebugWidget
+from sgpo_editor.gui.widgets.entry_editor import EntryEditor
+from sgpo_editor.models.entry import EntryModel
 
 
 class TestDebugWindow(unittest.TestCase):
@@ -27,7 +25,7 @@ class TestDebugWindow(unittest.TestCase):
         """各テスト前の準備"""
         # エントリエディタ作成
         self.entry_editor = EntryEditor()
-        
+
         # テスト用のエントリを作成
         self.test_entry = EntryModel(
             key=f"test-key-{uuid.uuid4()}",
@@ -37,13 +35,13 @@ class TestDebugWindow(unittest.TestCase):
             flags=["fuzzy"],
             references=["test.py:10", "sample.py:20"],
         )
-        
+
         # レビューデータを追加
         self.test_entry.add_review_comment("テスト太郎", "これはテストコメントです")
         self.test_entry.set_quality_score(85)
         self.test_entry.set_category_score("正確性", 90)
         self.test_entry.add_check_result("warning", "警告テスト", "warning")
-        
+
         # エントリをセット
         self.entry_editor.set_entry(self.test_entry)
 
@@ -58,35 +56,35 @@ class TestDebugWindow(unittest.TestCase):
         """デバッグウィンドウの作成テスト"""
         # デバッグウィンドウが存在しないことを確認
         self.assertNotIn("debug", self.entry_editor._review_dialogs)
-        
+
         # デバッグウィンドウを表示
         self.entry_editor._show_review_dialog("debug")
-        
+
         # ダイアログが作成されたことを確認
         self.assertIn("debug", self.entry_editor._review_dialogs)
         dialog = self.entry_editor._review_dialogs["debug"]
         self.assertIsInstance(dialog, QDialog)
-        
+
         # ウィジェットが設定されていることを確認
         self.assertTrue(hasattr(dialog, "widget"))
         self.assertIsInstance(dialog.widget, EntryDebugWidget)
-        
+
         # デバッグテキストにエントリ情報が含まれていることを確認
         debug_text = dialog.widget.debug_text.toPlainText()
-        
+
         # 基本情報の確認
         self.assertIn("key", debug_text)
         self.assertIn("msgid", debug_text)
         self.assertIn("msgstr", debug_text)
         self.assertIn("tcomment", debug_text)
-        
+
         # フラグ情報の確認
         self.assertIn("fuzzy", debug_text)
-        
+
         # 参照情報の確認
         self.assertIn("test.py:10", debug_text)
         self.assertIn("sample.py:20", debug_text)
-        
+
         # レビューデータの確認
         self.assertIn("テスト太郎", debug_text)
         self.assertIn("これはテストコメントです", debug_text)
@@ -99,10 +97,10 @@ class TestDebugWindow(unittest.TestCase):
         # デバッグウィンドウを表示
         self.entry_editor._show_review_dialog("debug")
         dialog = self.entry_editor._review_dialogs["debug"]
-        
+
         # 初期状態のデバッグテキストを記録
         initial_debug_text = dialog.widget.debug_text.toPlainText()
-        
+
         # 別のエントリを作成
         new_entry = EntryModel(
             key=f"new-key-{uuid.uuid4()}",
@@ -110,19 +108,21 @@ class TestDebugWindow(unittest.TestCase):
             msgstr="新しいメッセージ",
             tcomment="新しいコメント",
         )
-        
+
         # 新しいエントリをセット
         self.entry_editor.set_entry(new_entry)
-        
+
         # デバッグテキストが更新されたことを確認
         updated_debug_text = dialog.widget.debug_text.toPlainText()
         self.assertNotEqual(initial_debug_text, updated_debug_text)
-        
+
         # 新しいエントリの情報が表示されていることを確認
         self.assertIn("New message", updated_debug_text)
         self.assertIn("新しいメッセージ", updated_debug_text)
         self.assertIn("新しいコメント", updated_debug_text)
-        self.assertNotIn("テスト太郎", updated_debug_text)  # 古いエントリのデータがないことを確認
+        self.assertNotIn(
+            "テスト太郎", updated_debug_text
+        )  # 古いエントリのデータがないことを確認
 
 
 if __name__ == "__main__":

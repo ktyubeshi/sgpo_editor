@@ -1,4 +1,5 @@
 """ViewerPOFileのテスト"""
+
 import os
 
 import pytest
@@ -12,7 +13,8 @@ def test_po_file(tmp_path):
     po_file = ViewerPOFile()
     file_path = tmp_path / "test.po"
     with open(file_path, "w", encoding="utf-8") as f:
-        f.write('''msgid ""
+        f.write(
+            """msgid ""
 msgstr ""
 "Project-Id-Version: test\\n"
 "Report-Msgid-Bugs-To: \\n"
@@ -34,7 +36,8 @@ msgstr "テスト2"
 
 msgid "test3"
 msgstr ""
-''')
+"""
+        )
     po_file.load(file_path)
     return po_file
 
@@ -68,7 +71,7 @@ def test_update_entry(test_po_file):
     entries = test_po_file.get_filtered_entries()
     entry = entries[0]
     entry_key = entry["key"]
-    
+
     # エントリを更新
     updated_entry = entry.copy()
     updated_entry["msgstr"] = "更新テスト"
@@ -83,12 +86,12 @@ def test_update_entry(test_po_file):
 def test_search_entries(test_po_file):
     """エントリを検索できることを確認する"""
     # search_entriesメソッドが存在する場合は使用し、存在しない場合はフィルタリングで代用
-    if hasattr(test_po_file, 'search_entries'):
+    if hasattr(test_po_file, "search_entries"):
         results = test_po_file.search_entries("test1")
     else:
         test_po_file.search_text = "test1"
         results = test_po_file.get_filtered_entries(update_filter=True)
-    
+
     assert len(results) == 1
     assert results[0]["msgid"] == "test1"
 

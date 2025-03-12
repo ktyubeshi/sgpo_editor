@@ -3,21 +3,13 @@
 """レビュー機能関連ウィジェットのテスト"""
 
 import unittest
-from unittest.mock import Mock, patch
-from datetime import datetime
-import uuid
+from unittest.mock import Mock
 
-import pytest
-from PySide6.QtWidgets import QApplication, QLabel
-from PySide6.QtCore import Qt, QEvent, QSize
-
+from sgpo_editor.gui.widgets.review_widgets import (CheckResultWidget,
+                                                    QualityScoreWidget,
+                                                    ReviewCommentWidget,
+                                                    TranslatorCommentWidget)
 from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.gui.widgets.review_widgets import (
-    TranslatorCommentWidget, 
-    ReviewCommentWidget, 
-    QualityScoreWidget, 
-    CheckResultWidget
-)
 
 
 class TestTranslatorCommentWidget(unittest.TestCase):
@@ -30,7 +22,7 @@ class TestTranslatorCommentWidget(unittest.TestCase):
             key="test_key",
             msgid="Test Message ID",
             msgstr="テストメッセージ",
-            tcomment="This is a translator comment"
+            tcomment="This is a translator comment",
         )
 
     def test_widget_creation(self):
@@ -42,7 +34,9 @@ class TestTranslatorCommentWidget(unittest.TestCase):
         """エントリ設定が正しく動作するかテスト"""
         self.widget.set_entry(self.entry)
         # ウィジェット内のテキストエリアに翻訳者コメントが表示されるか確認
-        self.assertEqual(self.widget.comment_edit.toPlainText(), "This is a translator comment")
+        self.assertEqual(
+            self.widget.comment_edit.toPlainText(), "This is a translator comment"
+        )
 
     def test_set_entry_none(self):
         """Noneエントリ設定が正しく動作するかテスト"""
@@ -58,19 +52,19 @@ class TestReviewCommentWidget(unittest.TestCase):
         """テスト前の準備"""
         self.widget = ReviewCommentWidget()
         self.entry = EntryModel(
-            key="test_key",
-            msgid="Test Message ID",
-            msgstr="テストメッセージ"
+            key="test_key", msgid="Test Message ID", msgstr="テストメッセージ"
         )
         # レビューコメント追加
-        self.entry.add_review_comment(author="Reviewer1", comment="This is a review comment")
+        self.entry.add_review_comment(
+            author="Reviewer1", comment="This is a review comment"
+        )
         self.entry.add_review_comment(author="Reviewer2", comment="Another comment")
-        
+
         # モックデータベースを設定
         self.mock_db = Mock()
         self.mock_db.add_review_comment = Mock(return_value=True)
         self.mock_db.remove_review_comment = Mock(return_value=True)
-        
+
         # ウィジェットにデータベースを設定
         self.widget.set_database(self.mock_db)
 
@@ -89,21 +83,21 @@ class TestReviewCommentWidget(unittest.TestCase):
         """コメント追加が正しく動作するかテスト"""
         self.widget.set_entry(self.entry)
         initial_count = self.widget.comment_list.count()
-        
+
         # テキスト入力とボタンクリックをシミュレート
         self.widget.author_edit.setText("TestAuthor")
         self.widget.comment_edit.setPlainText("New test comment")
         self.widget.add_button.click()
-        
+
         # コメントが追加されているか確認
         self.assertEqual(self.widget.comment_list.count(), initial_count + 1)
         self.assertEqual(len(self.entry.review_comments), initial_count + 1)
-        
+
         # 最新のコメントを確認
         latest_comment = self.entry.review_comments[-1]
         self.assertEqual(latest_comment["comment"], "New test comment")
         self.assertEqual(latest_comment["author"], "TestAuthor")
-        
+
         # モックデータベースのadd_review_commentメソッドが呼ばれたか確認
         self.mock_db.add_review_comment.assert_called_once()
 
@@ -111,17 +105,17 @@ class TestReviewCommentWidget(unittest.TestCase):
         """コメント削除が正しく動作するかテスト"""
         self.widget.set_entry(self.entry)
         initial_count = self.widget.comment_list.count()
-        
+
         # 最初のアイテムを選択
         self.widget.comment_list.setCurrentRow(0)
-        
+
         # 削除ボタンクリックをシミュレート
         self.widget.remove_button.click()
-        
+
         # コメントが削除されているか確認
         self.assertEqual(self.widget.comment_list.count(), initial_count - 1)
         self.assertEqual(len(self.entry.review_comments), initial_count - 1)
-        
+
         # モックデータベースのremove_review_commentメソッドが呼ばれたか確認
         self.mock_db.remove_review_comment.assert_called_once()
 
@@ -133,21 +127,19 @@ class TestQualityScoreWidget(unittest.TestCase):
         """テスト前の準備"""
         self.widget = QualityScoreWidget()
         self.entry = EntryModel(
-            key="test_key",
-            msgid="Test Message ID",
-            msgstr="テストメッセージ"
+            key="test_key", msgid="Test Message ID", msgstr="テストメッセージ"
         )
         # 品質スコア設定
         self.entry.set_overall_quality_score(85)
         self.entry.set_category_score("accuracy", 90)
         self.entry.set_category_score("fluency", 80)
-        
+
         # モックデータベースを設定
         self.mock_db = Mock()
         self.mock_db.update_entry_field = Mock(return_value=True)
         self.mock_db.add_review_comment = Mock(return_value=True)
         self.mock_db.remove_review_comment = Mock(return_value=True)
-        
+
         # ウィジェットにデータベースを設定
         self.widget.set_database(self.mock_db)
 
@@ -170,7 +162,7 @@ class TestQualityScoreWidget(unittest.TestCase):
         # スピナーの値を変更
         self.widget.overall_score_spinner.setValue(75)
         self.widget.apply_button.click()
-        
+
         # エントリのスコアが更新されているか確認
         self.assertEqual(self.entry.overall_quality_score, 75)
         # モックデータベースのupdate_entry_fieldメソッドが呼ばれたか確認
@@ -182,19 +174,23 @@ class TestQualityScoreWidget(unittest.TestCase):
         """カテゴリスコア追加が正しく動作するかテスト"""
         self.widget.set_entry(self.entry)
         initial_row_count = self.widget.category_scores_table.rowCount()
-        
+
         # カテゴリとスコアを入力
         self.widget.category_edit.setText("style")
         self.widget.category_score_spinner.setValue(95)
         self.widget.add_category_button.click()
-        
+
         # テーブルに行が追加されているか確認
-        self.assertEqual(self.widget.category_scores_table.rowCount(), initial_row_count + 1)
+        self.assertEqual(
+            self.widget.category_scores_table.rowCount(), initial_row_count + 1
+        )
         # エントリにカテゴリスコアが追加されているか確認
         self.assertEqual(self.entry.category_quality_scores["style"], 95)
         # モックデータベースのupdate_entry_fieldメソッドが呼ばれたか確認
         self.mock_db.update_entry_field.assert_called_with(
-            self.entry.key, "category_quality_scores", self.entry.category_quality_scores
+            self.entry.key,
+            "category_quality_scores",
+            self.entry.category_quality_scores,
         )
 
 
@@ -205,9 +201,7 @@ class TestCheckResultWidget(unittest.TestCase):
         """テスト前の準備"""
         self.widget = CheckResultWidget()
         self.entry = EntryModel(
-            key="test_key",
-            msgid="Test Message ID",
-            msgstr="テストメッセージ"
+            key="test_key", msgid="Test Message ID", msgstr="テストメッセージ"
         )
         # チェック結果追加
         self.entry.add_check_result(1001, "用語の不一致", "warning")
@@ -228,13 +222,13 @@ class TestCheckResultWidget(unittest.TestCase):
         """チェック結果追加が正しく動作するかテスト"""
         self.widget.set_entry(self.entry)
         initial_row_count = self.widget.result_table.rowCount()
-        
+
         # チェック結果情報を入力
         self.widget.code_spinner.setValue(3003)
         self.widget.message_edit.setPlainText("新しいエラー")
         self.widget.severity_combo.setCurrentText("info")
         self.widget.add_button.click()
-        
+
         # テーブルに行が追加されているか確認
         self.assertEqual(self.widget.result_table.rowCount(), initial_row_count + 1)
         # エントリにチェック結果が追加されているか確認
@@ -248,11 +242,11 @@ class TestCheckResultWidget(unittest.TestCase):
         """チェック結果削除が正しく動作するかテスト"""
         self.widget.set_entry(self.entry)
         initial_row_count = self.widget.result_table.rowCount()
-        
+
         # 最初の行を選択
         self.widget.result_table.selectRow(0)
         self.widget.remove_button.click()
-        
+
         # 行が削除されているか確認
         self.assertEqual(self.widget.result_table.rowCount(), initial_row_count - 1)
         # エントリからチェック結果が削除されているか確認

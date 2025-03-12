@@ -23,6 +23,7 @@ class DiffStatus(str, Enum):
 
 class KeyTuple(BaseModel):
     """POファイルのエントリを一意に識別するためのキー"""
+
     model_config = ConfigDict(frozen=True)  # イミュータブルにする（NamedTupleと同様）
 
     msgctxt: str
@@ -31,6 +32,7 @@ class KeyTuple(BaseModel):
 
 class DiffEntry(BaseModel):
     """POファイルのエントリの差分情報"""
+
     key: KeyTuple
     status: DiffStatus
     old_value: Optional[str] = None
@@ -39,6 +41,7 @@ class DiffEntry(BaseModel):
 
 class DiffResult(BaseModel):
     """POファイル間の差分結果"""
+
     new_entries: list[DiffEntry] = []
     removed_entries: list[DiffEntry] = []
     modified_entries: list[DiffEntry] = []
@@ -57,6 +60,7 @@ def pofile_from_text(text: str) -> SGPOFile:
 
 class SGPOFile(polib.POFile):
     """SmartGit用のPOファイル操作クラス"""
+
     META_DATA_BASE_DICT: Dict[str, str] = {
         "Project-Id-Version": "SmartGit",
         "Report-Msgid-Bugs-To": "https://github.com/syntevo/smartgit-translations",
@@ -139,7 +143,9 @@ class SGPOFile(polib.POFile):
             - 作成されたインスタンスにはpolibのインスタンス変数とエントリが継承されます
         """
         instance = cls.__new__(cls)
-        po = polib.pofile(str(source), wrapwidth=9999, charset="utf-8", check_for_duplicates=True)
+        po = polib.pofile(
+            str(source), wrapwidth=9999, charset="utf-8", check_for_duplicates=True
+        )
 
         instance.__dict__ = po.__dict__
         for entry in po:
@@ -276,10 +282,16 @@ class SGPOFile(polib.POFile):
         # Modified entry
         for my_entry in self:
             if not my_entry.msgctxt.endswith(":"):
-                pot_entry = pot.find_by_key(my_entry.msgctxt, "")  # Noneの代わりに空文字を使用
+                pot_entry = pot.find_by_key(
+                    my_entry.msgctxt, ""
+                )  # Noneの代わりに空文字を使用
 
                 if pot_entry and (my_entry.msgid != pot_entry.msgid):
-                    print(f"msgctxt:\t{my_entry.msgctxt}\n  msgid:\t{my_entry.msgid}\n")
+                    print(
+                        f"msgctxt:\t{
+                            my_entry.msgctxt}\n  msgid:\t{
+                            my_entry.msgid}\n"
+                    )
                     my_entry.previous_msgid = my_entry.msgid
                     my_entry.msgid = pot_entry.msgid
                     my_entry.flags = ["fuzzy"]
@@ -506,7 +518,8 @@ class SGPOFile(polib.POFile):
             - その他のエントリは_multi_keys_filterを通してキーを生成
         """
         if po_entry.msgctxt.startswith("*"):
-            # Add a character with an ASCII code of 1 at the beginning to make the sort order come first.
+            # Add a character with an ASCII code of 1 at the beginning to make
+            # the sort order come first.
             return chr(1) + self._po_entry_to_legacy_key(po_entry)
         else:
             return self._multi_keys_filter(self._po_entry_to_legacy_key(po_entry))
@@ -567,7 +580,8 @@ class SGPOFile(polib.POFile):
         # Matches everything inside parentheses that are NOT escaped
         pattern = r"(?<!\\\\)\(([^)]+)\)(?!\\\\)"
 
-        # Use re.sub to add 'ZZZ' and remove parentheses from any matched pattern
+        # Use re.sub to add 'ZZZ' and remove parentheses from any matched
+        # pattern
         modified_text = re.sub(pattern, "ZZZ\\1", text)
 
         return modified_text
@@ -599,7 +613,11 @@ class SGPOFile(polib.POFile):
             raise FileNotFoundError(f"File not found: {filename}")
 
         pattern = r".*\d+_\d+$"
-        if not (filename.endswith(".po") or filename.endswith("pot") or re.match(pattern, filename)):
+        if not (
+            filename.endswith(".po")
+            or filename.endswith("pot")
+            or re.match(pattern, filename)
+        ):
             raise ValueError("File type not supported")
 
         return True
