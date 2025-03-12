@@ -487,6 +487,9 @@ class Database:
         Returns:
             List[Dict[str, Any]]: エントリのリスト
         """
+        # デバッグ用ログ出力
+        print(f"Database.get_entries呼び出し: filter_text={filter_text}, search_text={search_text}")
+        
         query = """
             SELECT e.*, GROUP_CONCAT(f.flag) as flags, d.position
             FROM entries e
@@ -533,34 +536,69 @@ class Database:
                     )
                 """)
 
-        # 翻訳状態によるフィルタリング
-        if translation_status == "translated":
-            conditions.append("""
-                e.msgstr != '' AND
-                e.id NOT IN (
-                    SELECT entry_id
-                    FROM entry_flags
-                    WHERE flag = 'fuzzy'
-                )
-            """)
-        elif translation_status == "untranslated":
-            conditions.append("""
-                (e.msgstr = '' OR
-                e.id IN (
-                    SELECT entry_id
-                    FROM entry_flags
-                    WHERE flag = 'fuzzy'
-                ))
-            """)
+        # 翻訳状態によるフィルタリング（filter_textと重複するため、filter_textがない場合のみ使用）
+        if not filter_text and translation_status:
+            if translation_status == "translated":
+                conditions.append("""
+                    e.msgstr != '' AND
+                    e.id NOT IN (
+                        SELECT entry_id
+                        FROM entry_flags
+                        WHERE flag = 'fuzzy'
+                    )
+                """)
+            elif translation_status == "untranslated":
+                conditions.append("""
+                    (e.msgstr = '' OR
+                    e.id IN (
+                        SELECT entry_id
+                        FROM entry_flags
+                        WHERE flag = 'fuzzy'
+                    ))
+                """)
 
-        # 既存の検索条件
+        # フィルタテキスト条件（翻訳状態のフィルタリング）
         if filter_text:
-            conditions.append("(e.msgid LIKE ? OR e.msgstr LIKE ?)")
-            params.extend([f"%{filter_text}%", f"%{filter_text}%"])
+            if filter_text.lower() == "translated":
+                conditions.append("""
+                    e.msgstr != '' AND
+                    e.id NOT IN (
+                        SELECT entry_id
+                        FROM entry_flags
+                        WHERE flag = 'fuzzy'
+                    )
+                """)
+            elif filter_text.lower() == "untranslated":
+                conditions.append("""
+                    (e.msgstr = '' OR
+                    e.id IN (
+                        SELECT entry_id
+                        FROM entry_flags
+                        WHERE flag = 'fuzzy'
+                    ))
+                """)
+            elif filter_text.lower() == "fuzzy":
+                conditions.append("""
+                    e.id IN (
+                        SELECT entry_id
+                        FROM entry_flags
+                        WHERE flag = 'fuzzy'
+                    )
+                """)
+            elif filter_text.lower() != "all":
+                # その他のフィルタテキストは通常の検索として扱う
+                conditions.append("(e.msgid LIKE ? OR e.msgstr LIKE ?)")
+                params.extend([f"%{filter_text}%", f"%{filter_text}%"])
 
-        if search_text:
-            conditions.append("(e.msgid LIKE ? OR e.msgstr LIKE ?)")
-            params.extend([f"%{search_text}%", f"%{search_text}%"])
+        # キーワード検索条件（msgidとmsgstrの両方で検索）
+        if search_text and search_text.strip():
+            search_text = search_text.strip()
+            print(f"キーワード検索条件を追加: '{search_text}'")
+            # 大文字小文字を区別しないように修正
+            # SQLiteのGLOBパターンを使用してパフォーマンスを改善
+            like_pattern = f"%{search_text}%"
+            conditions.append("(LOWER(e.msgid) LIKE LOWER(?) OR LOWER(e.msgstr) LIKE LOWER(?) OR EXISTS (SELECT 1 FROM entry_references r WHERE r.entry_id = e.id AND LOWER(r.reference) LIKE LOWER(?)))")
+            params.extend([like_pattern, like_pattern, like_pattern])
 
         # WHERE句の構築
         if conditions:
@@ -574,9 +612,45 @@ class Database:
             query += f" ORDER BY {sort_column} {sort_order}"
         else:
             query += " ORDER BY COALESCE(d.position, 0)"
+            
+        # デバッグ用ログ出力
+        print(f"SQLクエリ: {query}")
+        print(f"SQLパラメータ: {params}")
+        if search_text:
+            print(f"キーワード検索条件: '{search_text}'")
 
-        cursor = self._conn.execute(query, params)
-        entries = [dict(row) for row in cursor.fetchall()]
+        # クエリ実行
+        try:
+            # クエリとパラメータを詳細に表示
+            logging.debug(f"SQLクエリ: {query}")
+            logging.debug(f"SQLパラメータ: {params}")
+            
+            # クエリ実行
+            cursor = self._conn.execute(query, params)
+            entries = [self._row_to_dict(row) for row in cursor.fetchall()]
+            print(f"取得したエントリ数: {len(entries)}件")
+            
+            # キーワード検索の場合、最初の数件を表示
+            if search_text and search_text.strip():
+                print(f"検索結果のサンプル:")
+                for i, entry in enumerate(entries[:3]):
+                    msgid = entry.get('msgid', '')[:30]
+                    msgstr = entry.get('msgstr', '')[:30]
+                    print(f"  エントリ {i+1}: msgid={msgid}... msgstr={msgstr}...")
+                    
+                # キーワードに一致するか確認
+                if len(entries) > 0:
+                    print(f"キーワード '{search_text}' に一致するか確認:")
+                    first_entry = entries[0]
+                    msgid = first_entry.get('msgid', '')
+                    msgstr = first_entry.get('msgstr', '')
+                    print(f"  msgid '{msgid}' に '{search_text}' が含まれるか: {search_text.lower() in msgid.lower()}")
+                    print(f"  msgstr '{msgstr}' に '{search_text}' が含まれるか: {search_text.lower() in msgstr.lower()}")
+        except Exception as e:
+            print(f"SQLクエリ実行エラー: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            entries = []
 
         # レビュー関連データを取得
         for entry in entries:

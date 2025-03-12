@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
     def _update_table(self) -> None:
         """テーブルを更新する"""
         # 現在のPOファイルを取得
-        current_po = self.table_manager._get_current_po()
+        current_po = self._get_current_po()
         if not current_po:
             return
             
@@ -166,24 +166,93 @@ class MainWindow(QMainWindow):
         filter_text = criteria.filter
         filter_keyword = criteria.filter_keyword
         
-        # テーブルを更新（フィルタ条件を渡す）
-        entries = self.table_manager.update_table(
-            current_po, 
-            filter_text=filter_text, 
-            search_text=filter_keyword
-        )
-        
-        # フィルタ結果の件数をステータスバーに表示
-        if entries is not None:
+        try:
+            # POファイルからフィルタ条件に合ったエントリを取得
+            entries = current_po.get_filtered_entries(
+                filter_text=filter_text,
+                filter_keyword=filter_keyword
+            )
+            
+            # テーブルを更新（フィルタ条件を渡す）
+            self.table_manager.update_table(entries, criteria)
+            
+            # フィルタ結果の件数をステータスバーに表示
             self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
+        except Exception as e:
+            self.statusBar().showMessage(f"テーブル更新エラー: {str(e)}")
 
     def _on_filter_changed(self) -> None:
         """フィルターが変更されたときの処理"""
-        self._update_table()
+        current_po = self._get_current_po()
+        if not current_po:
+            return
+            
+        try:
+            # フィルタ条件を取得
+            criteria = self.search_widget.get_search_criteria()
+            
+            # POファイルからフィルタ条件に合ったエントリを取得
+            entries = current_po.get_filtered_entries(
+                filter_text=criteria.filter,
+                filter_keyword=criteria.filter_keyword
+            )
+            
+            # テーブルを更新
+            self.table_manager.update_table(entries, criteria)
+            
+            # フィルタ結果の件数をステータスバーに表示
+            self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
+        except Exception as e:
+            self.statusBar().showMessage(f"エラー: {str(e)}")
 
     def _on_search_changed(self) -> None:
-        """フィルターキーワードが変更されたときの処理（互換性のために残す）"""
-        self._update_table()
+        """フィルターキーワードが変更されたときの処理"""
+        import logging
+        current_po = self._get_current_po()
+        if not current_po:
+            logging.debug("現在のPOファイルが存在しません")
+            return
+            
+        try:
+            # フィルタ条件を取得
+            criteria = self.search_widget.get_search_criteria()
+            
+            # 空のキーワードを処理
+            if criteria.filter_keyword:
+                criteria.filter_keyword = criteria.filter_keyword.strip()
+            
+            # デバッグ用ログ出力
+            print(f"キーワードフィルタ変更: {criteria.filter_keyword}")
+            print(f"フィルタ条件: filter={criteria.filter}, keyword={criteria.filter_keyword}, match_mode={criteria.match_mode}")
+            logging.debug(f"MainWindow._on_search_changed: filter={criteria.filter}, keyword={criteria.filter_keyword}")
+            
+            # POファイルからフィルタ条件に合ったエントリを取得
+            print("フィルタ条件に合ったエントリを取得中...")
+            
+            # キーワードが空の場合はフィルタしない
+            if not criteria.filter_keyword:
+                logging.debug("キーワードが空のため、全エントリを取得します")
+            
+            entries = current_po.get_filtered_entries(
+                update_filter=True,  # 強制的にフィルタを更新
+                filter_text=criteria.filter,
+                filter_keyword=criteria.filter_keyword
+            )
+            print(f"取得完了: {len(entries)}件のエントリが見つかりました")
+            
+            # テーブルを更新
+            print("テーブル更新開始...")
+            updated_entries = self.table_manager.update_table(entries, criteria)
+            print(f"テーブル更新完了: {len(updated_entries) if updated_entries else 0}件表示")
+            
+            # フィルタ結果の件数をステータスバーに表示
+            self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
+        except Exception as e:
+            print(f"キーワードフィルタ処理中にエラーが発生しました: {str(e)}")
+            logging.error(f"キーワードフィルタエラー: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.statusBar().showMessage(f"エラー: {str(e)}")
 
     def _on_entry_updated(self, entry_number: int) -> None:
         """エントリが更新されたときの処理

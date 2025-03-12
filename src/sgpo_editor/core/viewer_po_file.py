@@ -280,15 +280,40 @@ class ViewerPOFile:
             actual_filter_text = filter_text if filter_text is not None else self.filter_text
             actual_search_text = filter_keyword if filter_keyword is not None else self.search_text
             
+            # 空の検索キーワードを処理
+            if actual_search_text:
+                actual_search_text = actual_search_text.strip()
+            
+            # デバッグ用ログ出力
+            print(f"フィルタ条件: filter_text={actual_filter_text}, filter_keyword={actual_search_text}, match_mode=部分一致")
+            
+            import logging
+            logging.debug(f"ViewerPOFile.get_filtered_entries: filter_text={actual_filter_text}, search_text={actual_search_text}")
+            
             # 辞書のリストを取得
             entries_dict = self.db.get_entries(
                 filter_text=actual_filter_text,
-                search_text=actual_search_text,
+                search_text=actual_search_text,  # filter_keywordをsearch_textとして渡す
                 sort_column=self.sort_column,
                 sort_order=self.sort_order,
                 flag_conditions=self.flag_conditions,
                 translation_status=self.translation_status,
             )
+            
+            # デバッグ用ログ出力 - 取得したエントリ数を表示
+            print(f"取得完了: {len(entries_dict)}件のエントリが見つかりました")
+            
+            # 検索キーワードが指定されている場合、サンプルを表示
+            if actual_search_text and len(entries_dict) > 0:
+                logging.debug(f"検索キーワード '{actual_search_text}' に一致するエントリの例:")
+                for i, entry in enumerate(entries_dict[:3]):
+                    msgid = entry.get('msgid', '')
+                    msgstr = entry.get('msgstr', '')
+                    logging.debug(f"  エントリ {i+1}: msgid={msgid[:30]}... msgstr={msgstr[:30]}...")
+                    
+                    # キーワードが含まれているか確認
+                    if actual_search_text.lower() in msgid.lower() or actual_search_text.lower() in msgstr.lower():
+                        logging.debug(f"  キーワード '{actual_search_text}' がエントリに含まれています")
             
             # エントリキャッシュを初期化（存在しない場合）
             if not hasattr(self, '_entry_obj_cache'):
@@ -318,6 +343,8 @@ class ViewerPOFile:
                 result.append(entry_obj)
             
             self.filtered_entries = result
+            # デバッグ用ログ出力 - 変換後のエントリ数を表示
+            print(f"変換後のエントリ数: {len(self.filtered_entries)}")
             
         return self.filtered_entries
 

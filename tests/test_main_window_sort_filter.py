@@ -53,11 +53,23 @@ class TestMainWindowSortFilter(unittest.TestCase):
 
     def test_sort_preserves_filter(self):
         """ソート実行時にフィルタ条件が保持されることを確認するテスト"""
+        # フィルタ条件を取得
+        criteria = SearchCriteria(
+            filter=self.filter_text,
+            filter_keyword=self.search_text,
+            match_mode="部分一致"
+        )
+        
+        # フィルタ条件に合ったエントリを取得
+        filtered_entries = self.mock_po.get_filtered_entries(
+            filter_text=self.filter_text,
+            filter_keyword=self.search_text
+        )
+        
         # 初期状態でフィルタを適用
         self.table_manager.update_table(
-            self.mock_po,
-            filter_text=self.filter_text,
-            search_text=self.search_text
+            filtered_entries,
+            criteria
         )
         
         # モックのリセット
@@ -77,10 +89,15 @@ class TestMainWindowSortFilter(unittest.TestCase):
         # MainWindowのモックメソッドを設定
         def mock_update_table():
             criteria = self.main_window.search_widget.get_search_criteria()
-            self.table_manager.update_table(
-                self.mock_po,
+            # フィルタ条件に合ったエントリを取得
+            filtered_entries = self.mock_po.get_filtered_entries(
                 filter_text=criteria.filter,
-                search_text=criteria.filter_keyword
+                filter_keyword=criteria.filter_keyword
+            )
+            # テーブルを更新
+            self.table_manager.update_table(
+                filtered_entries,
+                criteria
             )
         
         self.main_window._update_table = mock_update_table
