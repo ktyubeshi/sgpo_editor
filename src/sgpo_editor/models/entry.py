@@ -1,6 +1,7 @@
 """POエントリのモデル"""
 
 import logging
+import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -16,6 +17,10 @@ from pydantic import (
 )
 
 from sgpo_editor.models.evaluation_state import EvaluationState
+from sgpo_editor.utils.metadata_utils import (
+    extract_metadata_from_comment, 
+    create_comment_with_metadata
+)
 
 logger = logging.getLogger(__name__)
 
@@ -312,6 +317,12 @@ class EntryModel(BaseModel):
             model_data["flags"] = flags
         else:
             model_data["flags"] = []
+        
+        # commentからメタデータを抽出
+        if model_data["comment"]:
+            metadata = extract_metadata_from_comment(model_data["comment"])
+            if metadata:
+                model_data["metadata"] = metadata
 
         return model_data
 
@@ -328,7 +339,7 @@ class EntryModel(BaseModel):
 
     def to_dict(self) -> Dict[str, Any]:
         """辞書化"""
-        return {
+        result = {
             "key": self.key,
             "msgid": self.msgid,
             "msgstr": self.msgstr,
@@ -352,6 +363,8 @@ class EntryModel(BaseModel):
             "overall_quality_score": self.overall_quality_score,
             "category_quality_scores": self.category_quality_scores,
         }
+        
+        return result
 
     def update_po_entry(self) -> None:
         """POEntryを更新"""
@@ -434,6 +447,15 @@ class EntryModel(BaseModel):
         for occ in occurrences:
             if isinstance(occ, tuple) and len(occ) == 2:
                 model.references.append(f"{occ[0]}:{occ[1]}")
+                
+        # コメントからメタデータを抽出
+        comment = safe_getattr(po_entry, "comment", None)
+        if comment:
+            metadata = extract_metadata_from_comment(comment)
+            if metadata:
+                # 抽出したメタデータをモデルに設定
+                for key, value in metadata.items():
+                    model.add_metadata(key, value)
 
         return model
 
@@ -559,6 +581,63 @@ class EntryModel(BaseModel):
     def get_all_metadata(self) -> Dict[str, Any]:
         """全てのメタデータを取得"""
         return self.metadata.copy()
+
+    def to_po_entry(self) -> POEntry:
+        """EntryModelをPOEntryオブジェクトに変換する
+
+        Returns:
+            POEntry: 変換されたPOEntryオブジェクト
+        """
+        if self._po_entry:
+            # POEntry参照があればそれを更新して返す
+            po_entry = self._po_entry
+
+            # 基本フィールドを更新
+            po_entry.msgid = self.msgid
+            po_entry.msgstr = self.msgstr
+            po_entry.obsolete = self.obsolete
+            po_entry.flags = self.flags
+            
+            # メタデータをコメントに保存
+            if self.metadata:
+                # 既存のコメントとメタデータを結合
+                combined_comment = create_comment_with_metadata(po_entry.comment, self.metadata)
+                po_entry.comment = combined_comment
+
+            return po_entry
+
+        # 新しいPOEntryを作成
+        kwargs = {
+            "msgid": self.msgid,
+            "msgstr": self.msgstr,
+            "obsolete": self.obsolete,
+            "flags": self.flags,
+        }
+
+        # オプションフィールドを追加
+        if self.msgctxt:
+            kwargs["msgctxt"] = self.msgctxt
+        if self.previous_msgid:
+            kwargs["previous_msgid"] = self.previous_msgid
+        if self.previous_msgid_plural:
+            kwargs["previous_msgid_plural"] = self.previous_msgid_plural
+        if self.previous_msgctxt:
+            kwargs["previous_msgctxt"] = self.previous_msgctxt
+            
+        # メタデータがある場合はコメントに保存
+        if self.metadata:
+            combined_comment = create_comment_with_metadata(self.comment, self.metadata)
+            kwargs["comment"] = combined_comment
+        elif self.comment:
+            kwargs["comment"] = self.comment
+            
+        if self.tcomment:
+            kwargs["tcomment"] = self.tcomment
+        if self.occurrences:
+            kwargs["occurrences"] = self.occurrences
+
+        # 新しいPOEntryを返す
+        return POEntry(**kwargs)
 
     @evaluation_state.setter
     def evaluation_state(self, value) -> None:
