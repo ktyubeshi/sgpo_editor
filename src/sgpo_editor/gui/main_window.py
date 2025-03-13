@@ -4,8 +4,13 @@ import logging
 import sys
 from typing import Any, Optional
 
-from PySide6.QtCore import QEvent
-from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidget, QWidget
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidget, QWidget, QDockWidget, QMessageBox, QDialog
+
+from sgpo_editor.gui.metadata_dialog import MetadataEditDialog
+from sgpo_editor.gui.metadata_panel import MetadataPanel
+from sgpo_editor.models.entry import EntryModel
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.event_handler import EventHandler
@@ -59,6 +64,9 @@ class MainWindow(QMainWindow):
             self._update_table,
             self.statusBar().showMessage,
         )
+        
+        # メタデータパネルの初期化
+        self.metadata_panel = MetadataPanel(self)
 
         # UIの初期化
         self._setup_ui()
@@ -66,6 +74,9 @@ class MainWindow(QMainWindow):
         # イベント接続
         self.event_handler.setup_connections()
         self.event_handler.entry_updated.connect(self._on_entry_updated)
+        
+        # メタデータパネルのイベント接続
+        self.metadata_panel.edit_requested.connect(self.edit_metadata)
 
     def _setup_ui(self) -> None:
         """UIの初期化"""
@@ -88,11 +99,19 @@ class MainWindow(QMainWindow):
             "open_recent_file": self._open_recent_file,
             "open_po_format_editor": self._open_po_format_editor,
             "show_preview": self._show_preview_dialog,
+            "toggle_column_visibility": self._toggle_column_visibility,
+            "table_manager": self.table_manager,
         })
+        
+        # メタデータメニューの追加
+        self.setup_metadata_menu()
 
         # ステータスバー
         self.ui_manager.setup_statusbar()
 
+        # メタデータパネルのドックウィジェット設定
+        self.setup_metadata_panel()
+        
         # ウィンドウ状態の復元
         self.ui_manager.restore_dock_states()
         self.ui_manager.restore_window_state()
@@ -337,6 +356,9 @@ class MainWindow(QMainWindow):
         if current_po:
             stats = current_po.get_stats()
             self._update_stats(stats)
+            
+        # メタデータパネルの更新
+        self.update_metadata_panel()
 
     def _change_entry_layout(self, layout_type: LayoutType) -> None:
         """エントリ編集のレイアウトを変更する
@@ -373,6 +395,96 @@ class MainWindow(QMainWindow):
             self._po_format_editor.entry_updated.connect(self._on_entry_updated)
 
         self._po_format_editor.show()
+        
+    def _toggle_column_visibility(self, column_index: int) -> None:
+        """列の表示/非表示を切り替える
+        
+        Args:
+            column_index: 列インデックス
+        """
+        # デバッグ情報を表示
+        print(f"_toggle_column_visibility called with column_index={column_index}")
+        self.statusBar().showMessage(f"列{column_index}の表示/非表示を切り替えました")
+        
+        # 列の表示/非表示を切り替える
+        self.table_manager.toggle_column_visibility(column_index)
+        
+        # UIのチェック状態を更新
+        visible = self.table_manager.is_column_visible(column_index)
+        print(f"Column {column_index} visibility is now: {visible}")
+        self.ui_manager.update_column_visibility_action(column_index, visible)
+
+
+    def setup_metadata_menu(self) -> None:
+        """メタデータ関連のメニューを設定"""
+        metadata_menu = self.menuBar().addMenu("メタデータ")
+        
+        edit_action = QAction("メタデータ編集", self)
+        edit_action.triggered.connect(self.edit_metadata)
+        metadata_menu.addAction(edit_action)
+        
+        view_action = QAction("メタデータパネル表示", self)
+        view_action.setCheckable(True)
+        view_action.triggered.connect(self.toggle_metadata_panel)
+        metadata_menu.addAction(view_action)
+
+    def setup_metadata_panel(self) -> None:
+        """メタデータパネルの設定"""
+        # メタデータパネルを右側のドックウィジェットとして追加
+        self.metadata_dock = QDockWidget("メタデータ", self)
+        self.metadata_dock.setWidget(self.metadata_panel)
+        self.metadata_dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.metadata_dock)
+        
+        # 初期状態では非表示
+        self.metadata_dock.setVisible(False)
+
+    def toggle_metadata_panel(self, checked: bool) -> None:
+        """メタデータパネルの表示/非表示を切り替え
+        
+        Args:
+            checked: チェック状態
+        """
+        self.metadata_dock.setVisible(checked)
+        
+        # 表示されたときに現在の選択エントリを表示
+        if checked:
+            self.update_metadata_panel()
+
+    def edit_metadata(self, entry: Optional[EntryModel] = None) -> None:
+        """メタデータ編集ダイアログを表示
+        
+        Args:
+            entry: 編集対象のエントリ（指定がない場合は選択中のエントリ）
+        """
+        if entry is None:
+            # 現在選択されているエントリを取得
+            current_entry = self.event_handler.get_current_entry()
+            if not current_entry:
+                self.statusBar().showMessage("メタデータを編集するエントリが選択されていません")
+                return
+            
+            entry = current_entry
+        
+        dialog = MetadataEditDialog(entry, self)
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # メタデータパネルを更新
+            self.update_metadata_panel()
+            
+            # メタデータが変更されたフラグを設定
+            self.file_handler.set_modified(True)
+            
+            # ステータスバーに表示
+            self.statusBar().showMessage("メタデータを更新しました")
+
+    def update_metadata_panel(self) -> None:
+        """メタデータパネルを更新"""
+        # 現在選択されているエントリを取得
+        current_entry = self.event_handler.get_current_entry()
+        
+        # メタデータパネルにエントリを設定
+        self.metadata_panel.set_entry(current_entry)
 
 
 def main():

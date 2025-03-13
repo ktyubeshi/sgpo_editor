@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
+from PySide6.QtWidgets import QCheckBox
 from PySide6.QtWidgets import (
     QDockWidget,
     QMainWindow,
@@ -59,6 +60,10 @@ class UIManager:
         # 最近使用したファイルのアクション
         self.recent_file_actions: List[QAction] = []
         self.recent_files_menu: Optional[QMenu] = None
+        
+        # 列表示設定のアクション
+        self.column_visibility_actions: List[QAction] = []
+        self.column_visibility_menu: Optional[QMenu] = None
 
         # ツールバーアクション
         self.toolbar_actions: Dict[str, QAction] = {}
@@ -185,6 +190,18 @@ class UIManager:
         layout_group.addAction(self.layout1_action)
         layout_group.addAction(self.layout2_action)
         layout_group.setExclusive(True)
+        
+        # 列表示設定サブメニュー
+        self.column_visibility_menu = display_menu.addMenu("表示列の設定")
+        self.column_visibility_menu.setObjectName("column_visibility_menu")
+        
+        # 列表示設定のコールバックが提供されている場合、メニューを設定
+        if "toggle_column_visibility" in callbacks and "table_manager" in callbacks:
+            # メニュー設定を明示的に実行
+            print("Setting up column visibility menu with callbacks")
+            toggle_cb = callbacks["toggle_column_visibility"]
+            table_mgr = callbacks["table_manager"]
+            self._setup_column_visibility_menu(toggle_cb, table_mgr)
 
         # ツールメニュー
         tools_menu = self.main_window.menuBar().addMenu("ツール")
@@ -204,6 +221,60 @@ class UIManager:
         preview_action.triggered.connect(callbacks["show_preview"])
         tools_menu.addAction(preview_action)
 
+    def _setup_column_visibility_menu(self, toggle_callback: Callable[[int], None], table_manager: Any) -> None:
+        """列表示設定メニューを設定
+        
+        Args:
+            toggle_callback: 列の表示/非表示を切り替えるコールバック関数
+            table_manager: テーブルマネージャーインスタンス
+        """
+        print("Setting up column visibility menu")
+        if not self.column_visibility_menu:
+            print("Column visibility menu not found")
+            return
+            
+        # 既存のアクションをクリア
+        self.column_visibility_menu.clear()
+        self.column_visibility_actions.clear()
+        
+        # 各列の表示/非表示切り替えアクションを作成
+        for i in range(table_manager.get_column_count()):
+            column_name = table_manager.get_column_name(i)
+            action = QAction(column_name, self.main_window)
+            action.setObjectName(f"column_visibility_action_{i}")
+            action.setCheckable(True)
+            is_visible = table_manager.is_column_visible(i)
+            action.setChecked(is_visible)
+            print(f"Column {i} ({column_name}) is visible: {is_visible}")
+
+            # インデックスを別の変数に保存してクロージャを回避
+            index = i  # 現在のループ値をコピー
+            
+            # シンプルなQAction.triggered接続方法に変更
+            action.triggered.connect(
+                lambda checked=False, idx=index: (
+                    print(f"Menu clicked for column {idx}"),
+                    toggle_callback(idx)
+                )
+            )
+            
+            self.column_visibility_menu.addAction(action)
+            self.column_visibility_actions.append(action)
+    
+    def update_column_visibility_action(self, column_index: int, visible: bool) -> None:
+        """列表示設定アクションの状態を更新
+        
+        Args:
+            column_index: 列インデックス
+            visible: 表示状態
+        """
+        print(f"Updating column visibility action for column {column_index} to {visible}")
+        if 0 <= column_index < len(self.column_visibility_actions):
+            self.column_visibility_actions[column_index].setChecked(visible)
+            print(f"Action updated for column {column_index}")
+        else:
+            print(f"Column index {column_index} out of range (0-{len(self.column_visibility_actions)-1})")
+    
     def update_recent_files_menu(self, callback: Callable[[str], None]) -> None:
         """最近使用したファイルメニューを更新する
 

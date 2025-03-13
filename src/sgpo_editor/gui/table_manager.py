@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, Union
+import os
+from typing import Any, Callable, Dict, List, Optional, Set, Union
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSettings, Qt
 from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
@@ -43,6 +45,18 @@ class TableManager:
         self._get_current_po = get_current_po
         # Entry cache
         self._entry_cache: Dict[str, POEntry] = {}
+        # 列幅の初期値を設定
+        self._default_column_widths = [80, 120, 200, 200, 100]
+        # 列の表示/非表示設定
+        self._hidden_columns: Set[int] = set()
+        # 列名の定義
+        self._column_names = [
+            "Entry Number",
+            "msgctxt",
+            "msgid",
+            "msgstr",
+            "Status",
+        ]
 
         # Initial table setup
         self._setup_table()
@@ -50,31 +64,22 @@ class TableManager:
     def _setup_table(self) -> None:
         """Initial table setup"""
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels([
-            "Entry Number",
-            "msgctxt",
-            "msgid",
-            "msgstr",
-            "Status",
-        ])
-        self.table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Fixed
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Fixed
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.Stretch
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            3, QHeaderView.ResizeMode.Stretch
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            4, QHeaderView.ResizeMode.Fixed
-        )
-        self.table.setColumnWidth(0, 80)
-        self.table.setColumnWidth(1, 120)
-        self.table.setColumnWidth(4, 100)
+        self.table.setHorizontalHeaderLabels(self._column_names)
+        
+        # すべての列をInteractiveモードに設定（ユーザーが列幅を調整可能）
+        for i in range(5):
+            self.table.horizontalHeader().setSectionResizeMode(
+                i, QHeaderView.ResizeMode.Interactive
+            )
+        
+        # 保存された列幅を読み込む、なければデフォルト値を使用
+        self._load_column_widths()
+        
+        # 保存された列の表示/非表示設定を読み込む
+        self._load_column_visibility()
+        
+        # 列幅の変更イベントを接続
+        self.table.horizontalHeader().sectionResized.connect(self._on_section_resized)
         self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
         self.table.verticalHeader().hide()
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -84,6 +89,9 @@ class TableManager:
         self.table.setVerticalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
         self.table.setHorizontalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
         self.table.setWordWrap(False)
+        
+        # 列幅の自動調整を無効化（ユーザーが設定した列幅を維持するため）
+        self.table.horizontalHeader().setStretchLastSection(False)
 
         # Enable sorting
         # Note: Do not use setSortingEnabled(True) (conflicts with custom sort
@@ -187,6 +195,156 @@ class TableManager:
 
         return sorted_entries
 
+    def _on_section_resized(self, logical_index: int, old_size: int, new_size: int) -> None:
+        """列幅が変更されたときに呼び出される
+        
+        Args:
+            logical_index: 変更された列のインデックス
+            old_size: 変更前のサイズ
+            new_size: 変更後のサイズ
+        """
+        # 列幅を保存
+        self._save_column_widths()
+    
+    def _save_column_widths(self) -> None:
+        """現在の列幅を設定ファイルに保存"""
+        settings = QSettings("SGPOEditor", "TableSettings")
+        column_widths = {}
+        
+        # 各列の幅を取得
+        for i in range(self.table.columnCount()):
+            column_widths[str(i)] = self.table.columnWidth(i)
+        
+        # JSON形式で保存
+        settings.setValue("column_widths", json.dumps(column_widths))
+    
+    def _load_column_widths(self) -> None:
+        """保存された列幅を読み込み、テーブルに適用"""
+        settings = QSettings("SGPOEditor", "TableSettings")
+        column_widths_json = settings.value("column_widths", "")
+        
+        if column_widths_json:
+            try:
+                column_widths = json.loads(column_widths_json)
+                # 保存された列幅を適用
+                for col_idx_str, width in column_widths.items():
+                    col_idx = int(col_idx_str)
+                    if 0 <= col_idx < self.table.columnCount():
+                        self.table.setColumnWidth(col_idx, int(width))
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning(f"列幅の設定読み込みに失敗しました: {e}")
+                self._apply_default_column_widths()
+        else:
+            # 保存された設定がない場合はデフォルト値を適用
+            self._apply_default_column_widths()
+    
+    def _apply_default_column_widths(self) -> None:
+        """デフォルトの列幅を適用"""
+        for i, width in enumerate(self._default_column_widths):
+            if i < self.table.columnCount():
+                self.table.setColumnWidth(i, width)
+    
+    def toggle_column_visibility(self, column_index: int) -> None:
+        """列の表示/非表示を切り替える
+        
+        Args:
+            column_index: 列インデックス
+        """
+        if 0 <= column_index < self.table.columnCount():
+            # 現在の状態を確認
+            current_visible = not self.table.isColumnHidden(column_index)
+            
+            if column_index in self._hidden_columns:
+                # 非表示の列を表示にする
+                self.table.setColumnHidden(column_index, False)
+                self._hidden_columns.remove(column_index)
+                logger.debug(f"列 {column_index} を表示に設定しました")
+            else:
+                # 表示中の列を非表示にする
+                self.table.setColumnHidden(column_index, True)
+                self._hidden_columns.add(column_index)
+                logger.debug(f"列 {column_index} を非表示に設定しました")
+            
+            # 設定を保存
+            self._save_column_visibility()
+    
+    def is_column_visible(self, column_index: int) -> bool:
+        """列が表示されているか確認する
+        
+        Args:
+            column_index: 列インデックス
+            
+        Returns:
+            列が表示されている場合はTrue、非表示の場合はFalse
+        """
+        # 内部の_hidden_columnsセットと実際のテーブルの状態を両方確認
+        in_hidden_set = column_index in self._hidden_columns
+        is_hidden_in_table = self.table.isColumnHidden(column_index)
+        
+        # もし不整合があれば、テーブルの状態を優先して_hidden_columnsを更新
+        if in_hidden_set != is_hidden_in_table:
+            if is_hidden_in_table:
+                self._hidden_columns.add(column_index)
+            else:
+                if column_index in self._hidden_columns:
+                    self._hidden_columns.remove(column_index)
+        
+        return not is_hidden_in_table
+    
+    def get_column_name(self, column_index: int) -> str:
+        """列名を取得する
+        
+        Args:
+            column_index: 列インデックス
+            
+        Returns:
+            列名
+        """
+        if 0 <= column_index < len(self._column_names):
+            return self._column_names[column_index]
+        return ""
+    
+    def get_column_count(self) -> int:
+        """列数を取得する
+        
+        Returns:
+            列数
+        """
+        return len(self._column_names)
+    
+    def _save_column_visibility(self) -> None:
+        """列の表示/非表示設定を保存する"""
+        settings = QSettings("SGPOEditor", "TableSettings")
+        # 非表示の列インデックスをリストとして保存
+        hidden_columns = list(self._hidden_columns)
+        settings.setValue("hidden_columns", json.dumps(hidden_columns))
+        # 設定を確実に保存するためにsync()を呼び出す
+        settings.sync()
+    
+    def _load_column_visibility(self) -> None:
+        """列の表示/非表示設定を読み込む"""
+        settings = QSettings("SGPOEditor", "TableSettings")
+        hidden_columns_json = settings.value("hidden_columns", "")
+        
+        # 初期化：すべての列を表示状態にする
+        self._hidden_columns = set()
+        for i in range(self.table.columnCount()):
+            self.table.setColumnHidden(i, False)
+        
+        if hidden_columns_json:
+            try:
+                hidden_columns = json.loads(hidden_columns_json)
+                self._hidden_columns = set(int(col) for col in hidden_columns)
+                
+                # 列の表示/非表示を設定
+                for col in self._hidden_columns:
+                    if 0 <= col < self.table.columnCount():
+                        self.table.setColumnHidden(col, True)
+                        logger.debug(f"列 {col} を非表示に設定しました")
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning(f"列の表示/非表示設定の読み込みに失敗しました: {e}")
+                self._hidden_columns = set()
+    
     def _sort_entries(
         self, entries: List[POEntry], column: int, order: Qt.SortOrder
     ) -> List[POEntry]:
