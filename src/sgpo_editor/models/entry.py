@@ -163,13 +163,20 @@ class EntryModel(BaseModel):
         }
 
     def get_status(self) -> str:
-        """エントリの状態を取得"""
-        if self.is_fuzzy:
-            return "要確認"
-        elif self.is_translated:
-            return "完了"
-        else:
+        """エントリの状態を取得
+        
+        Returns:
+            str: 状態文字列（廃止済み/ファジー/翻訳済み/未翻訳）
+        """
+        # 状態の優先順位: 廃止済み > ファジー > 未翻訳 > 翻訳済み
+        if self.obsolete:
+            return "廃止済み"
+        elif self.is_fuzzy:
+            return "ファジー"
+        elif self.is_untranslated:
             return "未翻訳"
+        else:
+            return "翻訳済み"
 
     def update_po_entry(self) -> None:
         """POEntryを更新"""

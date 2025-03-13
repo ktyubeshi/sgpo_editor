@@ -255,7 +255,33 @@ class TableManager:
                 self.table.setItem(i, 3, QTableWidgetItem(msgstr))
 
                 # Status
-                status = entry.get_status() if hasattr(entry, "get_status") else ""
+                try:
+                    # エントリの型情報をログ出力
+                    if i < 3:  # 最初の数行だけログ出力
+                        logger.debug(f"Entry type: {type(entry)}, has get_status: {hasattr(entry, 'get_status')}")
+                        
+                    # 状態取得方法を決定
+                    if hasattr(entry, "get_status") and callable(getattr(entry, "get_status")):
+                        # get_statusメソッドがあれば使用
+                        status = entry.get_status()
+                        logger.debug(f"Get status by method: {status}") if i < 3 else None
+                    elif hasattr(entry, "obsolete") and entry.obsolete:
+                        status = "廃止済み"
+                    elif hasattr(entry, "fuzzy") and entry.fuzzy:
+                        status = "ファジー"
+                    elif hasattr(entry, "msgstr") and not entry.msgstr:
+                        status = "未翻訳"
+                    elif hasattr(entry, "msgstr") and entry.msgstr:
+                        status = "翻訳済み"
+                    else:
+                        # 型情報を詳細ログ出力
+                        logger.debug(f"Unknown entry state: {entry}")
+                        status = ""
+                except Exception as e:
+                    logger.error(f"エントリの状態取得中にエラー: {e}")
+                    status = ""
+                    
+                # 状態列を表示
                 status_item = QTableWidgetItem(status)
                 self.table.setItem(i, 4, status_item)
 
