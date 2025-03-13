@@ -5,11 +5,11 @@
 
 import logging
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
-from PySide6.QtWidgets import (QDockWidget, QMainWindow, QMenu, QToolBar,
+from PySide6.QtWidgets import (QDockWidget, QMainWindow, QMenu, QTableWidget, QToolBar,
                                QVBoxLayout, QWidget)
 
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
@@ -56,7 +56,7 @@ class UIManager:
         # ツールバーアクション
         self.toolbar_actions: Dict[str, QAction] = {}
 
-    def setup_central_widget(self, table_widget) -> None:
+    def setup_central_widget(self, table_widget: QTableWidget) -> None:
         """中央ウィジェットの設定
 
         Args:
@@ -95,7 +95,7 @@ class UIManager:
             Qt.DockWidgetArea.RightDockWidgetArea, stats_dock
         )
 
-    def setup_menubar(self, callbacks) -> None:
+    def setup_menubar(self, callbacks: Dict[str, Callable[..., Any]]) -> None:
         """メニューバーの設定
 
         Args:
@@ -248,7 +248,7 @@ class UIManager:
         settings.setValue("recent_files", [])
         self.update_recent_files_menu(lambda _: None)
 
-    def setup_toolbar(self, show_review_dialog_callback) -> None:
+    def setup_toolbar(self, show_review_dialog_callback: Callable[[str], None]) -> None:
         """ツールバーの設定
 
         Args:

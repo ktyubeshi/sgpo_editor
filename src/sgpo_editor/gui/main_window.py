@@ -75,7 +75,7 @@ class MainWindow(QMainWindow):
         self.ui_manager.setup_dock_widgets()
 
         # ツールバー
-        self.ui_manager.setup_toolbar(self.entry_editor._show_review_dialog)
+        self.ui_manager.setup_toolbar(self.entry_editor._show_review_dialog) 
 
         # メニューバー
         self.ui_manager.setup_menubar(
@@ -142,38 +142,65 @@ class MainWindow(QMainWindow):
         """名前を付けて保存する"""
         self.file_handler.save_file_as()
 
-    def _update_stats(self, stats: Dict[str, Any]) -> None:
+    def _update_stats(self, stats: Any) -> None:
         """統計情報を更新する
 
         Args:
             stats: 統計情報
         """
-        self.stats_widget.update_stats(stats)
+        from sgpo_editor.models import StatsModel
+        
+        # namedtupleを辞書に変換
+        if hasattr(stats, "_asdict"):
+            # namedtupleの場合は_asdictメソッドで辞書に変換
+            stats_dict = stats._asdict()
+            logger.debug(f"統計情報を辞書に変換します: {stats_dict}")
+        elif isinstance(stats, dict):
+            # すでに辞書型の場合はそのまま使用
+            stats_dict = stats
+        else:
+            # その他の型の場合はエラーログを出力して空の辞書を使用
+            logger.error(f"統計情報の型が不正です: {type(stats)}, {stats}")
+            stats_dict = {}
+            
+        # StatsModelを作成してウィジェットを更新
+        stats_model = StatsModel(**stats_dict)
+        self.stats_widget.update_stats(stats_model)
 
     def _update_table(self) -> None:
         """テーブルを更新する"""
         # 現在のPOファイルを取得
         current_po = self._get_current_po()
         if not current_po:
+            logger.debug("POファイルが読み込まれていないため、テーブル更新をスキップします")
             return
 
-        # フィルタ条件を取得
-        criteria = self.search_widget.get_search_criteria()
-        filter_text = criteria.filter
-        filter_keyword = criteria.filter_keyword
-
         try:
+            # フィルタ条件を取得
+            criteria = self.search_widget.get_search_criteria()
+            filter_text = criteria.filter
+            filter_keyword = criteria.filter_keyword
+            
+            logger.debug(f"テーブル更新: filter_text={filter_text}, filter_keyword={filter_keyword}")
+            
             # POファイルからフィルタ条件に合ったエントリを取得
             entries = current_po.get_filtered_entries(
-                filter_text=filter_text, filter_keyword=filter_keyword
+                update_filter=True,  # ファイル読み込み直後は強制的に更新
+                filter_text=filter_text, 
+                filter_keyword=filter_keyword
             )
+            
+            logger.debug(f"取得したエントリ数: {len(entries)}件")
 
             # テーブルを更新（フィルタ条件を渡す）
-            self.table_manager.update_table(entries, criteria)
+            sorted_entries = self.table_manager.update_table(entries, criteria)
+            
+            logger.debug(f"テーブル更新完了: {len(sorted_entries) if sorted_entries else 0}件表示")
 
             # フィルタ結果の件数をステータスバーに表示
             self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
         except Exception as e:
+            logger.error(f"テーブル更新エラー: {str(e)}", exc_info=True)
             self.statusBar().showMessage(f"テーブル更新エラー: {str(e)}")
 
     def _on_filter_changed(self) -> None:
@@ -216,19 +243,17 @@ class MainWindow(QMainWindow):
             if criteria.filter_keyword is None:
                 # Noneの場合はそのまま処理
                 logging.debug("キーワードがNoneのため、全エントリを取得します")
-            elif isinstance(criteria.filter_keyword, str):
-                # 文字列の場合は空白除去してチェック
-                criteria.filter_keyword = criteria.filter_keyword.strip()
-                if not criteria.filter_keyword:  # 空白文字のみの場合はNoneに設定
-                    criteria.filter_keyword = None
-                    logging.debug("キーワードが空文字のため、全エントリを取得します")
-                    # 検索テキストを明示的に空に設定
-                    self.search_widget.search_edit.setText("")
+            elif criteria.filter_keyword.strip() == "":
+                # 空白文字のみの場合はNoneに設定
+                criteria.filter_keyword = None
+                logging.debug("キーワードが空文字のため、全エントリを取得します")
+                # 検索テキストを明示的に空に設定
+                self.search_widget.search_edit.setText("")
 
-                    # ★重要: キーワードがクリアされたとき、ViewerPOFileの内部状態をリセット
-                    current_po.search_text = None
-                    # キャッシュされたフィルタリング結果をクリア
-                    current_po.filtered_entries = []
+                # ★重要: キーワードがクリアされたとき、ViewerPOFileの内部状態をリセット
+                current_po.search_text = None
+                # キャッシュされたフィルタリング結果をクリア
+                current_po.filtered_entries = []
 
             # デバッグ用ログ出力
             print(f"キーワードフィルタ変更: {criteria.filter_keyword}")
@@ -251,10 +276,7 @@ class MainWindow(QMainWindow):
                 )
                 current_po.search_text = None
                 current_po.filtered_entries = []
-            elif (
-                isinstance(criteria.filter_keyword, str)
-                and not criteria.filter_keyword.strip()
-            ):
+            elif criteria.filter_keyword == "":
                 logging.debug(
                     "キーワードが空文字のため、ViewerPOFileの内部状態をリセットします"
                 )

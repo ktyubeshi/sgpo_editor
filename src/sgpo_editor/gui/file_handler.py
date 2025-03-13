@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QSettings
-from PySide6.QtWidgets import QFileDialog, QMessageBox, QWidget
+from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 
@@ -145,8 +145,11 @@ class FileHandler:
             stats = po_file.get_stats()
             self._update_stats(stats)
 
-            # テーブルの更新
+            # テーブルの更新 - ファイル読み込み直後は重要
+            logger.info(f"ファイル読み込み後のテーブル更新を開始します")
             self._update_table()
+            # テーブルの更新が反映されるように処理を確実に実行させる
+            QApplication.processEvents()
 
             # ウィンドウタイトルの更新
             if hasattr(self.parent, "setWindowTitle"):

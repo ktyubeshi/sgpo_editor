@@ -6,7 +6,7 @@
 
 import logging
 import re
-from typing import Optional
+from typing import Optional, Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -315,7 +315,7 @@ class PreviewDialog(QDialog):
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)
 
-    def set_event_handler(self, event_handler) -> None:
+    def set_event_handler(self, event_handler: Any) -> None:
         """イベントハンドラーを設定し、エントリ選択変更イベントを接続する
 
         Args:

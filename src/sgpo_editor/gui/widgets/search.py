@@ -12,7 +12,7 @@ class SearchCriteria(BaseModel):
     model_config = ConfigDict()
 
     filter: str = "すべて"
-    filter_keyword: str = ""
+    filter_keyword: Optional[str] = ""
     match_mode: str = "部分一致"
 
 

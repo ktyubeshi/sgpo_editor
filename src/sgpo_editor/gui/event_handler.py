@@ -269,18 +269,18 @@ class EventHandler(QObject):
         Args:
             entry_number: エントリ番号
         """
-        current_po = self._get_current_po()
-        if not current_po:
-            return
+        # テーブルの現在の行データを使用して、DBに再クエリせずに目的のエントリを見つける
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, 0)
+            if item is None:
+                continue
 
-        entries = current_po.get_filtered_entries()
-        if not entries:
-            return
-
-        for i, entry in enumerate(entries):
-            if entry.position == entry_number:
-                self.table.selectRow(i)
-                break
+            key = item.data(Qt.ItemDataRole.UserRole)
+            if key in self._entry_cache:
+                entry = self._entry_cache[key]
+                if hasattr(entry, 'position') and entry.position == entry_number:
+                    self.table.selectRow(row)
+                    break
 
     def clear_cache(self) -> None:
         """キャッシュをクリアする"""

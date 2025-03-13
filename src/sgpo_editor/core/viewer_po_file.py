@@ -290,128 +290,108 @@ class ViewerPOFile:
         filter_keyword: Optional[str] = None,
     ) -> List[Entry]:
         """フィルタ条件に合ったエントリーを取得する"""
-        # キーワードがリセットされた場合は強制的に更新
+        import logging
+
+        # フィルタ条件が変更されたかどうかを確認
+        filter_changed = False
+        
+        # パラメータが指定された場合はそれを使用し、そうでない場合はインスタンス変数を使用
+        actual_filter_text = filter_text if filter_text is not None else self.filter_text
+        actual_search_text = filter_keyword if filter_keyword is not None else self.search_text
+        
+        # フィルタ条件の変化を確認
+        if actual_filter_text != self.filter_text or actual_search_text != self.search_text:
+            filter_changed = True
+            logging.debug(f"フィルタ条件が変更されました: {self.filter_text}->{actual_filter_text}, {self.search_text}->{actual_search_text}")
+
+        # キーワードがリセット(None)された場合の処理
         keyword_reset = False
-        if filter_keyword is None:
-            update_filter = True
+        if filter_keyword is None and self.search_text is not None:
             keyword_reset = True
-            # キャッシュをクリアする
-            if hasattr(self, "_entry_obj_cache"):
-                print("キーワードがNoneのため、エントリキャッシュをクリアします")
-                self._entry_obj_cache = {}
-        elif isinstance(filter_keyword, str) and not filter_keyword.strip():
-            # 空文字列または空白のみの場合もリセットとして扱う
-            update_filter = True
+            logging.debug("キーワードがNoneに変更されました")
+        elif isinstance(filter_keyword, str) and not filter_keyword.strip() and self.search_text:
+            # 空文字列または空白のみの場合もリセットとして処理
             keyword_reset = True
-            if hasattr(self, "_entry_obj_cache"):
-                print("キーワードが空文字のため、エントリキャッシュをクリアします")
-                self._entry_obj_cache = {}
+            logging.debug("キーワードが空文字に変更されました")
 
-        if update_filter or not self.filtered_entries:
-            # パラメータが指定された場合はそれを使用し、そうでない場合はインスタンス変数を使用
-            actual_filter_text = (
-                filter_text if filter_text is not None else self.filter_text
-            )
-            actual_search_text = (
-                filter_keyword if filter_keyword is not None else self.search_text
-            )
+        # 以下の場合のみDB再クエリを実行する:
+        # 1. 明示的にupdate_filter=Trueが指定された場合
+        # 2. フィルタ条件が変更された場合
+        # 3. まだフィルタされたエントリが存在しない場合
+        # 4. キーワードがリセットされた場合
+        needs_query = update_filter or filter_changed or not self.filtered_entries or keyword_reset
 
-            # 空の検索キーワードを処理
-            if actual_search_text is None:
-                # Noneの場合はそのままNoneとして処理
-                print("検索キーワードがNoneのため、全エントリを返します")
-                pass
-            elif isinstance(actual_search_text, str):
-                # 文字列の場合は空白除去してチェック
-                actual_search_text = actual_search_text.strip()
-                if not actual_search_text:  # 空白文字のみの場合はNoneに設定
-                    actual_search_text = None
-                    print("検索キーワードが空文字のため、全エントリを返します")
+        # 既存のエントリを返す場合（再クエリ不要）
+        if not needs_query:
+            logging.debug(f"既存のフィルタ済みエントリを返します (フィルタ条件: {actual_filter_text}, キーワード: {actual_search_text})")
+            return self.filtered_entries
 
-            # フィルタ条件を更新
-            if filter_keyword is not None:  # 明示的に指定された場合のみ更新
-                self.search_text = actual_search_text
-                # キーワードがリセットされた場合は、filtered_entriesも初期化
-                if keyword_reset:
-                    self.filtered_entries = []
+        # 以下、DB再クエリが必要な場合の処理
+        logging.debug(f"DB再クエリを実行します: update_filter={update_filter}, filter_changed={filter_changed}, has_filtered={bool(self.filtered_entries)}, keyword_reset={keyword_reset}")
 
-            # デバッグ用ログ出力
-            print(
-                f"フィルタ条件: filter_text={actual_filter_text}, filter_keyword={actual_search_text}, match_mode=部分一致"
-            )
+        # 空の検索キーワードを処理
+        if actual_search_text is None:
+            # Noneの場合はそのままNoneとして処理
+            logging.debug("検索キーワードがNoneのため、全エントリを対象とします")
+        elif isinstance(actual_search_text, str):
+            # 文字列の場合は空白除去してチェック
+            actual_search_text = actual_search_text.strip()
+            if not actual_search_text:  # 空白文字のみの場合はNoneに設定
+                actual_search_text = None
+                logging.debug("検索キーワードが空文字のため、全エントリを対象とします")
 
-            import logging
+        # フィルタ条件を更新（条件が変わった場合のみ）
+        if filter_changed or keyword_reset:
+            self.filter_text = actual_filter_text
+            self.search_text = actual_search_text
 
-            logging.debug(
-                f"ViewerPOFile.get_filtered_entries: filter_text={actual_filter_text}, search_text={actual_search_text}"
-            )
+        # デバッグ用ログ出力
+        logging.debug(f"フィルタ条件: filter_text={actual_filter_text}, filter_keyword={actual_search_text}, match_mode=部分一致")
 
-            # 辞書のリストを取得
-            entries_dict = self.db.get_entries(
-                filter_text=actual_filter_text,
-                search_text=actual_search_text,  # filter_keywordをsearch_textとして渡す
-                sort_column=self.sort_column,
-                sort_order=self.sort_order,
-                flag_conditions=self.flag_conditions,
-                translation_status=self.translation_status,
-            )
+        # 辞書のリストを取得
+        entries_dict = self.db.get_entries(
+            filter_text=actual_filter_text,
+            search_text=actual_search_text,  # filter_keywordをsearch_textとして渡す
+            sort_column=self.sort_column,
+            sort_order=self.sort_order,
+            flag_conditions=self.flag_conditions,
+            translation_status=self.translation_status,
+        )
 
-            # デバッグ用ログ出力 - 取得したエントリ数を表示
-            print(f"取得完了: {len(entries_dict)}件のエントリが見つかりました")
+        # デバッグ用ログ出力 - 取得したエントリ数を表示
+        logging.debug(f"取得完了: {len(entries_dict)}件のエントリが見つかりました")
 
-            # 検索キーワードが指定されている場合、サンプルを表示
-            if actual_search_text and len(entries_dict) > 0:
-                logging.debug(
-                    f"検索キーワード '{actual_search_text}' に一致するエントリの例:"
-                )
-                for i, entry in enumerate(entries_dict[:3]):
-                    msgid = entry.get("msgid", "")
-                    msgstr = entry.get("msgstr", "")
-                    logging.debug(
-                        f"  エントリ {i + 1}: msgid={msgid[:30]}... msgstr={msgstr[:30]}..."
-                    )
+        # エントリキャッシュを初期化（存在しない場合）
+        if not hasattr(self, "_entry_obj_cache"):
+            self._entry_obj_cache = {}
 
-                    # キーワードが含まれているか確認
-                    if (
-                        actual_search_text.lower() in msgid.lower()
-                        or actual_search_text.lower() in msgstr.lower()
-                    ):
-                        logging.debug(
-                            f"  キーワード '{actual_search_text}' がエントリに含まれています"
-                        )
-
-            # エントリキャッシュを初期化（存在しない場合）
-            if not hasattr(self, "_entry_obj_cache"):
-                self._entry_obj_cache = {}
-
-            # 辞書のリストをEntryオブジェクトのリストに変換（キャッシュを活用）
-            result = []
-            for entry_dict in entries_dict:
-                key = entry_dict.get("key", "")
-                # キーが存在し、キャッシュにある場合はキャッシュから取得
-                if key and key in self._entry_obj_cache:
-                    # 既存のEntryオブジェクトを更新（必要な場合）
-                    entry_obj = self._entry_obj_cache[key]
-                    # 重要なフィールドが変更されている場合のみ更新
-                    if (
-                        entry_obj.msgid != entry_dict.get("msgid", "")
-                        or entry_obj.msgstr != entry_dict.get("msgstr", "")
-                        or entry_obj.fuzzy != entry_dict.get("fuzzy", False)
-                    ):
-                        # 新しいオブジェクトを作成してキャッシュを更新
-                        entry_obj = Entry.from_dict(entry_dict)
-                        self._entry_obj_cache[key] = entry_obj
-                else:
-                    # 新しいEntryオブジェクトを作成してキャッシュに追加
+        # 辞書のリストをEntryオブジェクトのリストに変換（キャッシュを活用）
+        result = []
+        for entry_dict in entries_dict:
+            key = entry_dict.get("key", "")
+            # キーが存在し、キャッシュにある場合はキャッシュから取得
+            if key and key in self._entry_obj_cache:
+                # 既存のEntryオブジェクトを更新（必要な場合）
+                entry_obj = self._entry_obj_cache[key]
+                # 重要なフィールドが変更されている場合のみ更新
+                if (
+                    entry_obj.msgid != entry_dict.get("msgid", "")
+                    or entry_obj.msgstr != entry_dict.get("msgstr", "")
+                    or entry_obj.fuzzy != entry_dict.get("fuzzy", False)
+                ):
+                    # 新しいオブジェクトを作成してキャッシュを更新
                     entry_obj = Entry.from_dict(entry_dict)
-                    if key:
-                        self._entry_obj_cache[key] = entry_obj
+                    self._entry_obj_cache[key] = entry_obj
+            else:
+                # 新しいEntryオブジェクトを作成してキャッシュに追加
+                entry_obj = Entry.from_dict(entry_dict)
+                if key:
+                    self._entry_obj_cache[key] = entry_obj
 
-                result.append(entry_obj)
+            result.append(entry_obj)
 
-            self.filtered_entries = result
-            # デバッグ用ログ出力 - 変換後のエントリ数を表示
-            print(f"変換後のエントリ数: {len(self.filtered_entries)}")
+        self.filtered_entries = result
+        logging.debug(f"フィルタ済みエントリを更新しました: {len(self.filtered_entries)}件")
 
         return self.filtered_entries
 

@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.gui.widgets.search import SearchCriteria
 
 """Table Management Module
 
 This module provides functionality for displaying and managing table entries from PO files.
 """
 
-# 循環インポートを避けるために型アノテーションを文字列に変更
+# 循環インポートを避けるために型アノテーションを文字列で指定
+POEntry = Any  # 実際の型は循環インポートを避けるため文字列で指定
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,7 @@ class TableManager:
     def __init__(
         self,
         table: QTableWidget,
-        get_current_po: Callable[[], Optional["ViewerPOFile"]] = None,
+        get_current_po: Optional[Callable[[], Optional[ViewerPOFile]]] = None,
     ) -> None:
         """Initialize
 
@@ -32,16 +34,15 @@ class TableManager:
             table: Target table widget to manage
             get_current_po: Callback to get the current PO file
         """
-        super().__init__()
         self.table = table
         self._display_entries: List[str] = []
-        self._current_sort_column: Optional[int] = None
-        self._current_sort_order: Optional[Qt.SortOrder] = None
-        self._current_filter_text: Optional[str] = None
-        self._current_search_text: Optional[str] = None
+        self._current_sort_column: int = 0
+        self._current_sort_order: Qt.SortOrder = Qt.SortOrder.AscendingOrder
+        self._current_filter_text: str = ""
+        self._current_search_text: str = ""
         self._get_current_po = get_current_po
         # Entry cache
-        self._entry_cache: Dict[str, Any] = {}
+        self._entry_cache: Dict[str, POEntry] = {}
 
         # Initial table setup
         self._setup_table()
@@ -116,11 +117,10 @@ class TableManager:
         po_file = self._get_current_po() if self._get_current_po else None
         if po_file:
             # フィルタ条件を取得
-            from sgpo_editor.gui.widgets.search import SearchCriteria
-
+            # SearchCriteriaではfilter_keywordにNoneは許容されないため、空文字列を使用
             criteria = SearchCriteria(
                 filter=self._current_filter_text,
-                filter_keyword=self._current_search_text,
+                filter_keyword=self._current_search_text,  # 初期化時に空文字列として設定済み
                 match_mode="部分一致",
             )
 
@@ -135,11 +135,11 @@ class TableManager:
 
     def update_table(
         self,
-        entries: Optional[List[Any]],
-        criteria=None,
-        sort_column: int = None,
-        sort_order: Qt.SortOrder = None,
-    ) -> List[Any]:
+        entries: Optional[List[POEntry]],
+        criteria: Optional[SearchCriteria] = None,
+        sort_column: Optional[int] = None,
+        sort_order: Optional[Qt.SortOrder] = None,
+    ) -> List[POEntry]:
         """Update table
 
         Args:
@@ -149,27 +149,13 @@ class TableManager:
             sort_order: Sort order (maintains current setting if omitted)
 
         Returns:
-            List of entries displayed (None if no entries)
+            List of entries displayed
         """
-        import logging
-
-        logging.getLogger(__name__)
-
-        # デバッグログ
-        print(f"テーブル更新開始: entries={len(entries) if entries else 0}件")
-        if criteria:
-            print(
-                f"フィルタ条件: filter={
-                    criteria.filter}, keyword={
-                    criteria.filter_keyword}"
-            )
-
         if not entries:
-            print("エントリが空のため、テーブルをクリアします")
             self.table.setRowCount(0)
             self._display_entries = []
-            self._entry_cache.clear()  # Clear cache
-            return None
+            self._entry_cache.clear()
+            return []
 
         if sort_column is not None:
             self._current_sort_column = sort_column
@@ -183,33 +169,63 @@ class TableManager:
 
         # エントリのキーを保存
         self._display_entries = [entry.key for entry in entries]
-        print(f"表示エントリキー数: {len(self._display_entries)}件")
 
         # Update cache
         self._entry_cache = {entry.key: entry for entry in entries}
-        print(f"キャッシュ更新: {len(self._entry_cache)}件")
 
         # Sort
-        if (
-            self._current_sort_column is not None
-            and self._current_sort_order is not None
-        ):
-            print(
-                f"ソート実行: column={
-                    self._current_sort_column}, order={
-                    self._current_sort_order}"
-            )
-            entries = self._sort_entries(
-                entries, self._current_sort_column, self._current_sort_order
-            )
+        sorted_entries = self._sort_entries(entries, self._current_sort_column, self._current_sort_order)
 
+        # テーブルを更新
+        self._update_table_contents(sorted_entries)
+
+        return sorted_entries
+
+    def _sort_entries(
+        self, entries: List[POEntry], column: int, order: Qt.SortOrder
+    ) -> List[POEntry]:
+        """Sort entries
+
+        Args:
+            entries: List of entries to sort
+            column: Sort column
+            order: Sort order
+
+        Returns:
+            Sorted entry list
+        """
+        def get_key_func(col: int) -> Callable[[POEntry], Union[str, int]]:
+            if col == 0:  # Entry number
+                return lambda entry: entry.position
+            elif col == 1:  # msgctxt
+                return lambda entry: entry.msgctxt or ""
+            elif col == 2:  # msgid
+                return lambda entry: entry.msgid or ""
+            elif col == 3:  # msgstr
+                return lambda entry: entry.msgstr or ""
+            elif col == 4:  # Status
+                def status_key(entry: POEntry) -> int:
+                    if entry.obsolete:
+                        return 3
+                    elif entry.fuzzy:
+                        return 1
+                    elif not entry.msgstr:
+                        return 0
+                    return 2
+                return status_key
+            return lambda entry: ""
+
+        key_func = get_key_func(column)
+        reverse = order == Qt.SortOrder.DescendingOrder
+        return sorted(entries, key=key_func, reverse=reverse)
+
+    def _update_table_contents(self, entries: List[POEntry]) -> None:
+        """Update table contents"""
         # Temporarily disable table updates for better drawing performance
-        print("テーブル更新を一時停止")
         self.table.setUpdatesEnabled(False)
 
         try:
             # Update table
-            print(f"テーブル行数設定: {len(entries)}行")
             self.table.setRowCount(len(entries))
 
             # サンプルエントリの表示（最大3件）
@@ -243,30 +259,17 @@ class TableManager:
                 status_item = QTableWidgetItem(status)
                 self.table.setItem(i, 4, status_item)
 
-            print(f"テーブル更新完了: {len(entries)}行設定済み")
-
         except Exception as e:
-            print(f"テーブル更新中にエラーが発生: {str(e)}")
-            import traceback
-
-            traceback.print_exc()
+            logger.error(f"テーブル更新中にエラーが発生: {str(e)}")
             raise
         finally:
             # Resume table updates
-            print("テーブル更新を再開")
             self.table.setUpdatesEnabled(True)
 
         # Update sort indicator
-        if (
-            self._current_sort_column is not None
-            and self._current_sort_order is not None
-        ):
-            self.table.horizontalHeader().setSortIndicator(
-                self._current_sort_column, self._current_sort_order
-            )
-
-        print(f"テーブル更新処理完了: {len(entries)}件表示")
-        return entries
+        self.table.horizontalHeader().setSortIndicator(
+            self._current_sort_column, self._current_sort_order
+        )
 
     def _get_filter_conditions(self) -> tuple[Optional[str], Optional[str]]:
         """現在のフィルタ条件を取得
@@ -275,59 +278,6 @@ class TableManager:
             フィルタテキストとキーワードのタプル
         """
         return (self._current_filter_text, self._current_search_text)
-
-    def _sort_entries(
-        self, entries: List[Any], column: int, order: Qt.SortOrder
-    ) -> List[Any]:
-        """Sort entries
-
-        Args:
-            entries: List of entries to sort
-            column: Sort column
-            order: Sort order
-
-        Returns:
-            Sorted entry list
-        """
-        if column == 0:  # Entry number
-
-            def key_func(entry):
-                return entry.position
-
-        elif column == 1:  # msgctxt
-
-            def key_func(entry):
-                return entry.msgctxt or ""
-
-        elif column == 2:  # msgid
-
-            def key_func(entry):
-                return entry.msgid or ""
-
-        elif column == 3:  # msgstr
-
-            def key_func(entry):
-                return entry.msgstr or ""
-
-        elif column == 4:  # Status
-            # Status priority: Untranslated > Fuzzy > Translated > Obsolete
-            def status_key(entry):
-                if entry.obsolete:
-                    return 3
-                elif entry.fuzzy:
-                    return 1
-                elif not entry.msgstr:
-                    return 0
-                else:
-                    return 2
-
-            key_func = status_key
-        else:
-            return entries
-
-        reverse = order == Qt.SortOrder.DescendingOrder
-        sorted_entries = sorted(entries, key=key_func, reverse=reverse)
-        return sorted_entries
 
     def get_display_entries(self) -> List[str]:
         """Get list of entry keys currently displayed

@@ -114,7 +114,7 @@ class TestFilterReset:
         filtered_count = len(filtered_entries)
         print(f"[TEST] 'test'フィルタ適用後のエントリ数: {filtered_count}件")
 
-        # 状態を調査（問題発生時はここで値がキャッシュされている可能性）
+        # 状態を調査（フィルタ後の状態確認）
         print(
             f"[TEST] フィルタ後のViewerPOFile状態: search_text={
                 po_file.search_text}, filter_text={
@@ -127,6 +127,9 @@ class TestFilterReset:
                     po_file,
                     '_entry_obj_cache') else 'なし'}"
         )
+
+        # フィルタが適用され、検索テキストが更新されていることを確認
+        assert po_file.search_text == "test", f"検索テキストが'test'に設定されていません: {po_file.search_text}"
 
         # 4. フィルタをリセット（空文字列に設定）
         print("[TEST] フィルタをリセット...")
@@ -150,6 +153,9 @@ class TestFilterReset:
                     '_entry_obj_cache') else 'なし'}"
         )
 
+        # リセット後、search_textがNoneに設定されていることを確認
+        assert po_file.search_text is None, f"リセット後にsearch_textがNoneになっていません: {po_file.search_text}"
+
         # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず
         assert (
             reset_count == initial_count
@@ -165,20 +171,19 @@ class TestFilterReset:
             db_count == initial_count
         ), f"データベースから取得したエントリ数が初期状態と異なります: {db_count} != {initial_count}"
 
-        # 7. 内部状態をNoneに設定して再度テスト
-        print("[TEST] 直接Noneを設定してテスト...")
-        po_file.search_text = None
-        po_file.filtered_entries = []
-        if hasattr(po_file, "_entry_obj_cache"):
-            po_file._entry_obj_cache = {}
-        none_entries = po_file.get_filtered_entries(update_filter=True)
+        # 7. フィルタ条件の変更を強制する場合のテスト
+        print("[TEST] フィルタ条件の変更を強制してテスト...")
+        # まず特定のキーワードでフィルタ
+        po_file.get_filtered_entries(update_filter=True, filter_keyword="key")
+        # 次に空文字でリセット（フィルタ条件変更）
+        none_entries = po_file.get_filtered_entries(update_filter=True, filter_keyword="")
         none_count = len(none_entries)
-        print(f"[TEST] search_text=None設定後のエントリ数: {none_count}件")
+        print(f"[TEST] filter_keyword=""設定後のエントリ数: {none_count}件")
 
-        # Noneでの取得結果が初期状態と一致するか検証
+        # 空文字でのリセット後のエントリ数が初期状態と一致するか検証
         assert (
             none_count == initial_count
-        ), f"None設定後のエントリ数が初期状態と異なります: {none_count} != {initial_count}"
+        ), f"空文字でのリセット後のエントリ数が初期状態と異なります: {none_count} != {initial_count}"
 
     def test_filter_reset_multiple_operations(self, setup_test_data):
         """複数回のフィルタリング操作後のリセットテスト"""
