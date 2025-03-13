@@ -1,3 +1,11 @@
+---
+title: Nuitkaを使用したPython実行ファイルのビルドガイド
+date: 2025-03-13
+status: reviewed
+author: 
+description: Nuitkaを使用したPython/PySide6アプリケーションの実行ファイル化手順と最適化方法
+---
+
 # Nuitkaを使用したPython実行ファイルのビルドガイド
 
 ## 概要
@@ -18,8 +26,6 @@
    - Nuitkaによる実行ファイルのビルド
 
 3. **必要なパッケージ**
-
-   依存パッケージの追加は、`uv pip install`の互換性もありますが、ここではより推奨される`uv add`を利用します。
 
    ```bash
    # 基本パッケージの追加（uvは内部で仮想環境を管理）
