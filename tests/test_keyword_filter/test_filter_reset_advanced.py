@@ -86,9 +86,9 @@ class TestFilterResetAdvanced:
         print(f"[TEST] 複数フィルタ後のリセット結果: {reset_count}件")
 
         # 7. 検証
-        assert (
-            reset_count == initial_count
-        ), f"複数回フィルタ後のリセット結果が初期状態と異なります: {reset_count} != {initial_count}"
+        assert reset_count == initial_count, (
+            f"複数回フィルタ後のリセット結果が初期状態と異なります: {reset_count} != {initial_count}"
+        )
 
     def test_entry_conversion_with_cache(self, setup_test_data):
         """エントリの変換とキャッシュの動作をテスト"""
@@ -132,18 +132,21 @@ class TestFilterResetAdvanced:
             assert (
                 len(reset_entries) == reset_cache_size
             ), f"リセット後のエントリ数とキャッシュサイズが一致しません: {
-                len(reset_entries)} != {reset_cache_size}"
+                len(reset_entries)
+            } != {reset_cache_size}"
 
         # 以下は条件付きアサートに変更
         print(
             f"[TEST] リセット後のエントリ数: {
-                len(reset_entries)}件, データベース直接取得: {expected_count}件"
+                len(reset_entries)
+            }件, データベース直接取得: {expected_count}件"
         )
         # 注: このテストは失敗することがあります。実装の問題点を特定するためのものです
         if len(reset_entries) != expected_count:
             print(
                 f"[WARNING] リセット後のエントリ数が想定と異なります: {
-                    len(reset_entries)} != {expected_count}"
+                    len(reset_entries)
+                } != {expected_count}"
             )
             # ここでエラーをスキップするための特別な処理
             po_file._debug_info = {
@@ -156,5 +159,6 @@ class TestFilterResetAdvanced:
         else:
             assert (
                 len(reset_entries) == expected_count
-            ), f"リセット後のエントリ数が想定と異なります: {
-                len(reset_entries)} != {expected_count}"
+            ), f"リセット後のエントリ数が想定と異なります: {len(reset_entries)} != {
+                expected_count
+            }"

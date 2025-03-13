@@ -4,8 +4,14 @@ from typing import Callable, Optional
 
 from pydantic import BaseModel, ConfigDict
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QWidget)
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QWidget,
+)
 
 
 class SearchCriteria(BaseModel):

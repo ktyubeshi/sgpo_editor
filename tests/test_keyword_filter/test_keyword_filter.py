@@ -8,6 +8,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
+
 # テスト対象のモジュールをインポート
 from sgpo_editor.gui.main_window import MainWindow
 from sgpo_editor.models.database import Database
@@ -134,15 +135,13 @@ class TestKeywordFilter:
         # タイマーの接続を確認
         print(
             f"[TEST] _filter_timerが存在するか: {
-                hasattr(
-                    search_widget,
-                    '_filter_timer')}"
+                hasattr(search_widget, '_filter_timer')
+            }"
         )
         print(
             f"[TEST] _search_timerが存在するか: {
-                hasattr(
-                    search_widget,
-                    '_search_timer')}"
+                hasattr(search_widget, '_search_timer')
+            }"
         )
 
         # コールバックを置き換え
@@ -224,26 +223,27 @@ class TestKeywordFilter:
                     test_success = False
 
                 # get_filtered_entriesが正しいパラメータで呼ばれたことを確認
-                assert (
-                    mock_po_file.get_filtered_entries.called
-                ), "get_filtered_entriesが呼ばれていません"
+                assert mock_po_file.get_filtered_entries.called, (
+                    "get_filtered_entriesが呼ばれていません"
+                )
                 args, kwargs = mock_po_file.get_filtered_entries.call_args
                 print(f"[TEST] get_filtered_entriesの引数: {kwargs}")
 
                 # キーワードが正しく渡されているか確認
                 if "filter_keyword" in kwargs:
-                    assert (
-                        kwargs["filter_keyword"] == "keyword"
-                    ), "キーワードが正しく渡されていません"
+                    assert kwargs["filter_keyword"] == "keyword", (
+                        "キーワードが正しく渡されていません"
+                    )
                     print(
                         f"[TEST] キーワードが正しく渡されています: {
-                            kwargs['filter_keyword']}"
+                            kwargs['filter_keyword']
+                        }"
                     )
 
                 # テーブル更新が呼ばれたか確認
-                assert (
-                    mock_table_manager.update_table.called
-                ), "table_manager.update_tableが呼ばれていません"
+                assert mock_table_manager.update_table.called, (
+                    "table_manager.update_tableが呼ばれていません"
+                )
                 print("[TEST] テーブル更新が正しく呼ばれました")
 
                 if not test_success:
@@ -305,9 +305,9 @@ class TestKeywordFilter:
                     test_success = False
 
                 # get_filtered_entriesが正しいパラメータで呼ばれたことを確認
-                assert (
-                    mock_po_file.get_filtered_entries.called
-                ), "get_filtered_entriesが呼ばれていません"
+                assert mock_po_file.get_filtered_entries.called, (
+                    "get_filtered_entriesが呼ばれていません"
+                )
                 args, kwargs = mock_po_file.get_filtered_entries.call_args
                 print(f"[TEST] get_filtered_entriesの引数: {kwargs}")
 
@@ -321,9 +321,9 @@ class TestKeywordFilter:
                 )
 
                 # テーブル更新が呼ばれたか確認
-                assert (
-                    mock_table_manager.update_table.called
-                ), "table_manager.update_tableが呼ばれていません"
+                assert mock_table_manager.update_table.called, (
+                    "table_manager.update_tableが呼ばれていません"
+                )
                 print("[TEST] テーブル更新が正しく呼ばれました")
 
                 if not test_success:
@@ -402,9 +402,9 @@ class TestKeywordFilter:
             print(f"[TEST] 空白文字キーワードでの取得結果: {len(result3)}件")
 
             # 呼び出し回数を確認
-            assert (
-                mock_get_entries.call_count == 3
-            ), "get_entriesメソッドが3回呼ばれていません"
+            assert mock_get_entries.call_count == 3, (
+                "get_entriesメソッドが3回呼ばれていません"
+            )
 
             # 各ケースで渡された引数を確認
             calls = mock_get_entries.call_args_list
@@ -446,17 +446,17 @@ class TestKeywordFilter:
             )
 
             # 結果が同じであることを確認
-            assert len(real_result1) == len(
-                real_result2
-            ), "Noneと空文字の結果が異なります"
-            assert len(real_result2) == len(
-                real_result3
-            ), "空文字と空白文字の結果が異なります"
+            assert len(real_result1) == len(real_result2), (
+                "Noneと空文字の結果が異なります"
+            )
+            assert len(real_result2) == len(real_result3), (
+                "空文字と空白文字の結果が異なります"
+            )
 
             # 結果がテストエントリ数と同じであることを確認
-            assert len(real_result1) == len(
-                test_entries
-            ), "取得結果がテストエントリ数と異なります"
+            assert len(real_result1) == len(test_entries), (
+                "取得結果がテストエントリ数と異なります"
+            )
         except Exception as e:
             print(f"[TEST] 実際のDBテストでエラーが発生しました: {str(e)}")
             import traceback
@@ -482,9 +482,9 @@ class TestKeywordFilter:
                 pytest.skip("キーワードに一致するエントリが見つかりません")
             else:
                 # 結果が全件より少ないことを確認
-                assert len(keyword_entries) < len(
-                    real_result1
-                ), "キーワードフィルタが機能していません"
+                assert len(keyword_entries) < len(real_result1), (
+                    "キーワードフィルタが機能していません"
+                )
 
                 # キーワードが含まれているか確認
                 keyword_found = False
@@ -499,7 +499,8 @@ class TestKeywordFilter:
 
                 print(
                     f"[TEST] フィルタリングテスト成功: {
-                        len(keyword_entries)}件のエントリが見つかりました"
+                        len(keyword_entries)
+                    }件のエントリが見つかりました"
                 )
         except Exception as e:
             print(

@@ -6,8 +6,14 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from polib import POEntry
-from pydantic import (BaseModel, ConfigDict, Field, computed_field,
-                      field_validator, model_validator)
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +170,7 @@ class EntryModel(BaseModel):
 
     def get_status(self) -> str:
         """エントリの状態を取得
-        
+
         Returns:
             str: 状態文字列（廃止済み/ファジー/翻訳済み/未翻訳）
         """
@@ -292,14 +298,12 @@ class EntryModel(BaseModel):
         comment_id = str(uuid.uuid4())
         timestamp = datetime.now().isoformat()
 
-        self.review_comments.append(
-            {
-                "id": comment_id,
-                "author": author,
-                "comment": comment,
-                "created_at": timestamp,
-            }
-        )
+        self.review_comments.append({
+            "id": comment_id,
+            "author": author,
+            "comment": comment,
+            "created_at": timestamp,
+        })
 
         return comment_id
 
@@ -370,14 +374,12 @@ class EntryModel(BaseModel):
             message: エラーメッセージ
             severity: 重要度 (error, warning, info など)
         """
-        self.check_results.append(
-            {
-                "code": code,
-                "message": message,
-                "severity": severity,
-                "timestamp": datetime.now().isoformat(),
-            }
-        )
+        self.check_results.append({
+            "code": code,
+            "message": message,
+            "severity": severity,
+            "timestamp": datetime.now().isoformat(),
+        })
 
     def remove_check_result(self, code: int) -> bool:
         """特定のコードのチェック結果を削除

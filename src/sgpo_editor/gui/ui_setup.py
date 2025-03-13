@@ -5,12 +5,19 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
-from PySide6.QtWidgets import (QDockWidget, QMainWindow, QMenu, QTableWidget, QToolBar,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QDockWidget,
+    QMainWindow,
+    QMenu,
+    QTableWidget,
+    QToolBar,
+    QVBoxLayout,
+    QWidget,
+)
 
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.gui.widgets.search import SearchWidget

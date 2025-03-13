@@ -8,9 +8,12 @@ from unittest.mock import MagicMock
 import pytest
 
 # テスト用のモックモジュールをインポート
-from tests.mock_helpers import (MockMainWindow, mock_entire_app,
-                                mock_file_dialog_get_open_file_name,
-                                mock_file_dialog_get_save_file_name)
+from tests.mock_helpers import (
+    MockMainWindow,
+    mock_entire_app,
+    mock_file_dialog_get_open_file_name,
+    mock_file_dialog_get_save_file_name,
+)
 
 
 # pytestのフィクスチャを定義

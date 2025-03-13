@@ -70,9 +70,9 @@ class TestFilterDebug:
         print(f"[DEBUG] データベースから直接取得したエントリ数: {db_count}件")
 
         # 初期状態の検証
-        assert (
-            initial_count == db_count
-        ), f"初期状態のエントリ数がデータベースと一致しません: {initial_count} != {db_count}"
+        assert initial_count == db_count, (
+            f"初期状態のエントリ数がデータベースと一致しません: {initial_count} != {db_count}"
+        )
 
         # 3. フィルタを適用（'test'で検索）
         print("\n[DEBUG] ===== フィルタ適用 =====")
@@ -123,9 +123,9 @@ class TestFilterDebug:
             print(f"[DEBUG] リセット後のキャッシュサイズ: {reset_cache_size}件")
 
         # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず
-        assert (
-            reset_count == initial_count
-        ), f"リセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        assert reset_count == initial_count, (
+            f"リセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        )
 
         # 6. データベースから直接取得して比較（再確認）
         db_entries_after = po_file.db.get_entries()
@@ -135,9 +135,9 @@ class TestFilterDebug:
         )
 
         # データベース取得結果と初期状態が一致するか検証
-        assert (
-            db_count_after == initial_count
-        ), f"リセット後のデータベースエントリ数が初期状態と異なります: {db_count_after} != {initial_count}"
+        assert db_count_after == initial_count, (
+            f"リセット後のデータベースエントリ数が初期状態と異なります: {db_count_after} != {initial_count}"
+        )
 
         print(
             "[DEBUG] フィルタリセットテスト成功: 初期状態とリセット後のエントリ数が一致しました"
@@ -195,18 +195,18 @@ class TestFilterDebug:
         )
 
         # 検証
-        assert (
-            count_no_condition == count_none
-        ), "条件なしとsearch_text=Noneの結果が一致しません"
-        assert (
-            count_no_condition == count_empty
-        ), "条件なしとsearch_text=''の結果が一致しません"
-        assert (
-            count_no_condition == count_all
-        ), "条件なしとfilter_text='すべて'の結果が一致しません"
-        assert (
-            count_no_condition == count_reset
-        ), "条件なしとリセット後の結果が一致しません"
+        assert count_no_condition == count_none, (
+            "条件なしとsearch_text=Noneの結果が一致しません"
+        )
+        assert count_no_condition == count_empty, (
+            "条件なしとsearch_text=''の結果が一致しません"
+        )
+        assert count_no_condition == count_all, (
+            "条件なしとfilter_text='すべて'の結果が一致しません"
+        )
+        assert count_no_condition == count_reset, (
+            "条件なしとリセット後の結果が一致しません"
+        )
 
         print(
             "[DEBUG] データベースクエリ条件テスト成功: 条件なしとリセット後の結果が一致しました"
@@ -258,9 +258,9 @@ class TestFilterDebug:
         print(f"[DEBUG] 完全リセット後のエントリ数: {reset_count}件")
 
         # 8. 検証
-        assert (
-            reset_count == initial_count
-        ), f"完全リセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        assert reset_count == initial_count, (
+            f"完全リセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        )
 
         print(
             "[DEBUG] フラグ条件を含むフィルタリセットテスト成功: 初期状態とリセット後のエントリ数が一致しました"

@@ -278,7 +278,7 @@ class EventHandler(QObject):
             key = item.data(Qt.ItemDataRole.UserRole)
             if key in self._entry_cache:
                 entry = self._entry_cache[key]
-                if hasattr(entry, 'position') and entry.position == entry_number:
+                if hasattr(entry, "position") and entry.position == entry_number:
                     self.table.selectRow(row)
                     break
 

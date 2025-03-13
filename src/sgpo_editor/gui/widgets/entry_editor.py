@@ -5,14 +5,24 @@ from enum import Enum, auto
 from typing import Dict, Optional
 
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
-from PySide6.QtWidgets import (QCheckBox, QDialog, QHBoxLayout, QPlainTextEdit,
-                               QPushButton, QSizePolicy, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QHBoxLayout,
+    QPlainTextEdit,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from sgpo_editor.gui.widgets.debug_widgets import EntryDebugWidget
-from sgpo_editor.gui.widgets.review_widgets import (CheckResultWidget,
-                                                    QualityScoreWidget,
-                                                    ReviewCommentWidget,
-                                                    TranslatorCommentWidget)
+from sgpo_editor.gui.widgets.review_widgets import (
+    CheckResultWidget,
+    QualityScoreWidget,
+    ReviewCommentWidget,
+    TranslatorCommentWidget,
+)
 from sgpo_editor.models import EntryModel
 from sgpo_editor.models.database import Database
 

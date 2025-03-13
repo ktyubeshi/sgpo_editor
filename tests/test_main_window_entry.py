@@ -115,9 +115,11 @@ class TestMainWindowEntry(unittest.TestCase):
         # エントリにmsgstrが設定されたことを確認
         self.assertEqual(mock_entry.msgstr, "updated_msgstr")
         # StatsWidgetの更新が呼び出されたことを確認
-        self.main_window.stats_widget.update_stats.assert_called_once_with(
-            {"translated": 1, "untranslated": 0, "total": 1}
-        )
+        self.main_window.stats_widget.update_stats.assert_called_once_with({
+            "translated": 1,
+            "untranslated": 0,
+            "total": 1,
+        })
         # apply_buttonが無効化されたことを確認
         self.main_window.entry_editor.apply_button.setEnabled.assert_called_with(False)
 

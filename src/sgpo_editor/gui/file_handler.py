@@ -146,7 +146,7 @@ class FileHandler:
             self._update_stats(stats)
 
             # テーブルの更新 - ファイル読み込み直後は重要
-            logger.info(f"ファイル読み込み後のテーブル更新を開始します")
+            logger.info("ファイル読み込み後のテーブル更新を開始します")
             self._update_table()
             # テーブルの更新が反映されるように処理を確実に実行させる
             QApplication.processEvents()

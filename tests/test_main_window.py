@@ -11,11 +11,14 @@ from PySide6.QtCore import Qt
 from sgpo_editor.gui.widgets.entry_editor import LayoutType
 from sgpo_editor.gui.widgets.search import SearchCriteria
 from sgpo_editor.models import EntryModel
+
 # mock_helpersからモック機能をインポート
-from tests.mock_helpers import (MockMainWindow,
-                                mock_file_dialog_get_save_file_name,
-                                mock_message_box_information,
-                                mock_message_box_question)
+from tests.mock_helpers import (
+    MockMainWindow,
+    mock_file_dialog_get_save_file_name,
+    mock_message_box_information,
+    mock_message_box_question,
+)
 
 
 @pytest.fixture
@@ -190,9 +193,9 @@ class TestMainWindow:
         )
 
         # エントリのmsgctxtが正しく設定されていることを確認
-        assert (
-            mock_entry.msgctxt == "test_context"
-        ), "EntryModelのmsgctxtが正しく設定されていません"
+        assert mock_entry.msgctxt == "test_context", (
+            "EntryModelのmsgctxtが正しく設定されていません"
+        )
 
         # エントリを設定
         mock_main_window.entry_editor.set_entry(mock_entry)
@@ -211,9 +214,9 @@ class TestMainWindow:
 
         # 初期状態でコンテキストが正しく設定されていることを確認
         initial_context = mock_main_window.entry_editor.context_edit.text()
-        assert (
-            initial_context == "test_context"
-        ), "初期状態でコンテキストが正しく設定されていません"
+        assert initial_context == "test_context", (
+            "初期状態でコンテキストが正しく設定されていません"
+        )
 
         # レイアウトアクションをモック
         mock_layout2_action = MagicMock()
@@ -226,21 +229,21 @@ class TestMainWindow:
         mock_layout2_action.trigger()
 
         # レイアウト2に切り替わったことを確認
-        assert (
-            mock_main_window.entry_editor.get_layout_type() == LayoutType.LAYOUT2
-        ), "レイアウト2への切り替えが失敗しました"
+        assert mock_main_window.entry_editor.get_layout_type() == LayoutType.LAYOUT2, (
+            "レイアウト2への切り替えが失敗しました"
+        )
 
         # レイアウト2でのコンテキストを確認
         # モックの設定を更新して異なるレイアウトでもコンテキストが保持されていることをシミュレート
         layout2_context = mock_main_window.entry_editor.context_edit.text()
-        assert (
-            layout2_context == "test_context"
-        ), f"レイアウト2でコンテキストが失われました: expected='test_context', actual='{layout2_context}'"
+        assert layout2_context == "test_context", (
+            f"レイアウト2でコンテキストが失われました: expected='test_context', actual='{layout2_context}'"
+        )
 
         # エントリの内容が保持されていることを確認
-        assert (
-            mock_main_window.entry_editor.msgid_edit.toPlainText() == "test_msgid"
-        ), "レイアウト2でmsgidが失われました"
+        assert mock_main_window.entry_editor.msgid_edit.toPlainText() == "test_msgid", (
+            "レイアウト2でmsgidが失われました"
+        )
         assert (
             mock_main_window.entry_editor.msgstr_edit.toPlainText() == "test_msgstr"
         ), "レイアウト2でmsgstrが失われました"
@@ -255,20 +258,20 @@ class TestMainWindow:
         mock_layout1_action.trigger()
 
         # レイアウト1に切り替わったことを確認
-        assert (
-            mock_main_window.entry_editor.get_layout_type() == LayoutType.LAYOUT1
-        ), "レイアウト1への切り替えが失敗しました"
+        assert mock_main_window.entry_editor.get_layout_type() == LayoutType.LAYOUT1, (
+            "レイアウト1への切り替えが失敗しました"
+        )
 
         # レイアウト1でのコンテキストを確認
         layout1_context = mock_main_window.entry_editor.context_edit.text()
-        assert (
-            layout1_context == "test_context"
-        ), f"レイアウト1でコンテキストが失われました: expected='test_context', actual='{layout1_context}'"
+        assert layout1_context == "test_context", (
+            f"レイアウト1でコンテキストが失われました: expected='test_context', actual='{layout1_context}'"
+        )
 
         # エントリの内容が保持されていることを確認
-        assert (
-            mock_main_window.entry_editor.msgid_edit.toPlainText() == "test_msgid"
-        ), "レイアウト1でmsgidが失われました"
+        assert mock_main_window.entry_editor.msgid_edit.toPlainText() == "test_msgid", (
+            "レイアウト1でmsgidが失われました"
+        )
         assert (
             mock_main_window.entry_editor.msgstr_edit.toPlainText() == "test_msgstr"
         ), "レイアウト1でmsgstrが失われました"
@@ -349,17 +352,17 @@ class TestMainWindow:
         )
 
         # 列数が5であることを確認
-        assert (
-            mock_main_window.table.columnCount() == 5
-        ), "エントリリストは5列でなければなりません"
+        assert mock_main_window.table.columnCount() == 5, (
+            "エントリリストは5列でなければなりません"
+        )
 
         # ヘッダーのテキストを検証
         for i, expected in enumerate(expected_headers):
             header_item = mock_main_window.table.horizontalHeaderItem(i)
             assert header_item is not None, f"列 {i + 1} のヘッダーが存在しません"
-            assert (
-                header_item.text() == expected
-            ), f"列 {i + 1} のヘッダーが '{expected}' ではなく '{header_item.text()}' です"
+            assert header_item.text() == expected, (
+                f"列 {i + 1} のヘッダーが '{expected}' ではなく '{header_item.text()}' です"
+            )
 
     def test_table_sorting(self, mock_main_window) -> None:
         """テーブルのソート機能テスト"""
@@ -478,9 +481,9 @@ class TestMainWindow:
             mock_main_window.table.rowCount = MagicMock(return_value=expected_count)
 
             # 行数を検証
-            assert (
-                mock_main_window.table.rowCount() == expected_count
-            ), f"フィルタ '{state}' での件数が期待通りでない"
+            assert mock_main_window.table.rowCount() == expected_count, (
+                f"フィルタ '{state}' での件数が期待通りでない"
+            )
 
             # 表示内容を検証するための設定
             items = []
@@ -498,9 +501,9 @@ class TestMainWindow:
             for i, entry in enumerate(filtered_entries):
                 msgid_item = mock_main_window.table.item(i, 2)  # msgid列
                 assert msgid_item is not None, f"{i}行目のmsgidが表示されていません"
-                assert (
-                    msgid_item.text() == entry.msgid
-                ), f"{i}行目のmsgidが期待値と異なります"
+                assert msgid_item.text() == entry.msgid, (
+                    f"{i}行目のmsgidが期待値と異なります"
+                )
 
     def test_keyword_based_filtering(self, mock_main_window) -> None:
         """キーワードベースのフィルタ機能のテスト"""
@@ -562,9 +565,9 @@ class TestMainWindow:
             mock_main_window.table.rowCount = MagicMock(return_value=expected_count)
 
             # 行数を検証
-            assert (
-                mock_main_window.table.rowCount() == expected_count
-            ), f"{match_mode}での検索 '{search_text}' の結果が期待通りでない"
+            assert mock_main_window.table.rowCount() == expected_count, (
+                f"{match_mode}での検索 '{search_text}' の結果が期待通りでない"
+            )
 
             # 表示内容を検証するための設定
             items = []
@@ -582,9 +585,9 @@ class TestMainWindow:
             for i, entry in enumerate(expected_entries):
                 msgid_item = mock_main_window.table.item(i, 2)  # msgid列
                 assert msgid_item is not None, f"{i}行目のmsgidが表示されていません"
-                assert (
-                    msgid_item.text() == entry.msgid
-                ), f"{i}行目のmsgidが期待値と異なります"
+                assert msgid_item.text() == entry.msgid, (
+                    f"{i}行目のmsgidが期待値と異なります"
+                )
 
     def test_gui_state_filter_interaction(self, mock_main_window) -> None:
         """GUIを介した状態ベースフィルタのテスト"""
@@ -629,9 +632,9 @@ class TestMainWindow:
         mock_main_window.table.rowCount = MagicMock(return_value=1)
 
         # 行数を検証
-        assert (
-            mock_main_window.table.rowCount() == 1
-        ), "GUI上の状態フィルタが正しく機能していません"
+        assert mock_main_window.table.rowCount() == 1, (
+            "GUI上の状態フィルタが正しく機能していません"
+        )
 
     def test_gui_keyword_filter_interaction(self, mock_main_window) -> None:
         """GUIを介したキーワードフィルタ（部分一致）のテスト"""
@@ -679,9 +682,9 @@ class TestMainWindow:
         mock_main_window.table.rowCount = MagicMock(return_value=expected_count)
 
         # 行数を検証
-        assert (
-            mock_main_window.table.rowCount() == expected_count
-        ), "GUI上の部分一致キーワードフィルタが正しく機能していません"
+        assert mock_main_window.table.rowCount() == expected_count, (
+            "GUI上の部分一致キーワードフィルタが正しく機能していません"
+        )
 
     def test_view_menu_layout(self, mock_main_window) -> None:
         """表示メニューのレイアウト切り替え機能のテスト"""
@@ -746,17 +749,17 @@ class TestMainWindow:
         layout1_action = layout_actions[0]
         layout2_action = layout_actions[1]
 
-        assert (
-            layout1_action.text() == "レイアウト1"
-        ), "レイアウト1のテキストが正しくありません"
-        assert (
-            layout2_action.text() == "レイアウト2"
-        ), "レイアウト2のテキストが正しくありません"
-        assert (
-            layout1_action.isCheckable()
-        ), "レイアウト1アクションがチェック可能ではありません"
-        assert (
-            layout2_action.isCheckable()
-        ), "レイアウト2アクションがチェック可能ではありません"
+        assert layout1_action.text() == "レイアウト1", (
+            "レイアウト1のテキストが正しくありません"
+        )
+        assert layout2_action.text() == "レイアウト2", (
+            "レイアウト2のテキストが正しくありません"
+        )
+        assert layout1_action.isCheckable(), (
+            "レイアウト1アクションがチェック可能ではありません"
+        )
+        assert layout2_action.isCheckable(), (
+            "レイアウト2アクションがチェック可能ではありません"
+        )
         assert layout1_action.isChecked(), "レイアウト1はチェックされていません"
         assert not layout2_action.isChecked(), "レイアウト2がチェックされています"

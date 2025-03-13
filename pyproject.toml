@@ -15,6 +15,7 @@ dependencies = [
     "pytest-timeout>=2.3.1",
     "pycodestyle>=2.12.1",
     "autopep8>=2.3.1",
+    "ruff>=0.9.10",
 ]
 
 [project.optional-dependencies]

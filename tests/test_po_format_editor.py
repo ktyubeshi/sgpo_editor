@@ -236,12 +236,10 @@ class MockPOFormatEditor:
                     msgid = current_entry.get("msgid", "").strip('"')
                     key = f"{msgctxt}\x04{msgid}" if msgctxt else msgid
 
-                    entries.append(
-                        {
-                            "key": key,
-                            "msgstr": current_entry.get("msgstr", "").strip('"'),
-                        }
-                    )
+                    entries.append({
+                        "key": key,
+                        "msgstr": current_entry.get("msgstr", "").strip('"'),
+                    })
                 current_entry = {}
                 continue
 
@@ -262,9 +260,10 @@ class MockPOFormatEditor:
             msgid = current_entry.get("msgid", "").strip('"')
             key = f"{msgctxt}\x04{msgid}" if msgctxt else msgid
 
-            entries.append(
-                {"key": key, "msgstr": current_entry.get("msgstr", "").strip('"')}
-            )
+            entries.append({
+                "key": key,
+                "msgstr": current_entry.get("msgstr", "").strip('"'),
+            })
 
         return entries
 

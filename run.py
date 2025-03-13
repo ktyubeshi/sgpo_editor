@@ -22,7 +22,7 @@ log_file = log_dir / "po_viewer.log"
 
 logging.basicConfig(
     level=logging.DEBUG,  # CRITICALからDEBUGに変更してデバッグ情報を表示
-    #level=logging.CRITICAL,
+    # level=logging.CRITICAL,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
         logging.FileHandler(log_file, encoding="utf-8"),

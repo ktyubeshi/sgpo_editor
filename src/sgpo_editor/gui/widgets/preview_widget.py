@@ -10,8 +10,16 @@ from typing import Optional, Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QComboBox, QDialog, QHBoxLayout, QLabel,
-                               QPushButton, QTextBrowser, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
+)
 
 from sgpo_editor.models import EntryModel
 
@@ -107,10 +115,7 @@ class PreviewWidget(QWidget):
 
         # HTMLタグを一時的に置き換え
         text_without_tags = re.sub(tag_pattern, save_tag, text)
-        logger.debug(
-            f"Text with HTML tags replaced: {
-                repr(text_without_tags)}"
-        )
+        logger.debug(f"Text with HTML tags replaced: {repr(text_without_tags)}")
 
         # 基本的なエスケープシーケンスを処理
         basic_escapes = {
@@ -140,11 +145,7 @@ class PreviewWidget(QWidget):
         # 次に基本的なエスケープシーケンスを処理
         for escape_seq, replacement in basic_escapes.items():
             if escape_seq in processed:
-                logger.debug(
-                    f"Replacing {
-                        repr(escape_seq)} with {
-                        repr(replacement)}"
-                )
+                logger.debug(f"Replacing {repr(escape_seq)} with {repr(replacement)}")
                 processed = processed.replace(escape_seq, replacement)
 
         # 正規表現のエスケープシーケンスを処理
@@ -171,9 +172,9 @@ class PreviewWidget(QWidget):
         for escape_seq, replacement in regex_escapes.items():
             if escape_seq in processed:
                 logger.debug(
-                    f"Replacing regex escape {
-                        repr(escape_seq)} with {
-                        repr(replacement)}"
+                    f"Replacing regex escape {repr(escape_seq)} with {
+                        repr(replacement)
+                    }"
                 )
                 processed = processed.replace(escape_seq, replacement)
 
@@ -181,9 +182,7 @@ class PreviewWidget(QWidget):
         for entity, replacement in html_entities.items():
             if entity in processed:
                 logger.debug(
-                    f"Replacing HTML entity {
-                        repr(entity)} with {
-                        repr(replacement)}"
+                    f"Replacing HTML entity {repr(entity)} with {repr(replacement)}"
                 )
                 processed = processed.replace(entity, replacement)
 

@@ -57,8 +57,8 @@ class TestFilterResetBasic:
         # 1. 初期状態の確認
         print(
             f"\n[TEST] ViewerPOFile初期状態: search_text={
-                po_file.search_text}, filter_text={
-                po_file.filter_text}"
+                po_file.search_text
+            }, filter_text={po_file.filter_text}"
         )
 
         # 2. 初期状態で全エントリを取得
@@ -81,9 +81,9 @@ class TestFilterResetBasic:
         print(f"[TEST] フィルタリセット後のエントリ数: {reset_count}件")
 
         # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず
-        assert (
-            reset_count == initial_count
-        ), f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        assert reset_count == initial_count, (
+            f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        )
 
         # ログ出力
         print(
@@ -114,15 +114,14 @@ class TestFilterResetBasic:
         print(f"[TEST] 空白文字フィルタ後のエントリ数: {whitespace_count}件")
 
         # 4. 検証: 空白文字フィルタ後のエントリ数が初期状態と同じになるはず
-        assert (
-            whitespace_count == initial_count
-        ), f"空白文字フィルタ後のエントリ数が初期状態と異なります: {whitespace_count} != {initial_count}"
+        assert whitespace_count == initial_count, (
+            f"空白文字フィルタ後のエントリ数が初期状態と異なります: {whitespace_count} != {initial_count}"
+        )
 
         # 5. 検証: フィルタリセット後のsearch_textがNoneになるはず
-        assert (
-            po_file.search_text is None
-        ), f"search_textがNoneになっていません: {
-            po_file.search_text}"
+        assert po_file.search_text is None, f"search_textがNoneになっていません: {
+            po_file.search_text
+        }"
 
         print(
             "[TEST] 空白文字フィルタテスト成功: 初期状態とリセット後のエントリ数が一致しました"
@@ -168,15 +167,14 @@ class TestFilterResetBasic:
         print(f"[TEST] Noneフィルタ後の状態: search_text={po_file.search_text}")
 
         # 4. 検証: Noneフィルタ後のエントリ数が初期状態と同じになるはず
-        assert (
-            none_count == initial_count
-        ), f"Noneフィルタ後のエントリ数が初期状態と異なります: {none_count} != {initial_count}"
+        assert none_count == initial_count, (
+            f"Noneフィルタ後のエントリ数が初期状態と異なります: {none_count} != {initial_count}"
+        )
 
         # 5. 検証: フィルタリセット後のsearch_textがNoneになるはず
-        assert (
-            po_file.search_text is None
-        ), f"search_textがNoneになっていません: {
-            po_file.search_text}"
+        assert po_file.search_text is None, f"search_textがNoneになっていません: {
+            po_file.search_text
+        }"
 
         print(
             "[TEST] Noneフィルタテスト成功: 初期状態とリセット後のエントリ数が一致しました"
@@ -189,15 +187,15 @@ class TestFilterResetBasic:
         # 1. 初期状態の確認
         print(
             f"\n[TEST] ViewerPOFile初期状態: search_text={
-                po_file.search_text}, filter_text={
-                po_file.filter_text}"
+                po_file.search_text
+            }, filter_text={po_file.filter_text}"
         )
         print(
             f"[TEST] 内部キャッシュ: _entry_obj_cache件数={
-                len(
-                    po_file._entry_obj_cache) if hasattr(
-                    po_file,
-                    '_entry_obj_cache') else 'なし'}"
+                len(po_file._entry_obj_cache)
+                if hasattr(po_file, '_entry_obj_cache')
+                else 'なし'
+            }"
         )
 
         # 2. 初期状態で全エントリを取得
@@ -209,15 +207,15 @@ class TestFilterResetBasic:
         po_file.get_filtered_entries(update_filter=True, filter_keyword="test")
         print(
             f"[TEST] フィルタ適用後のViewerPOFile状態: search_text={
-                po_file.search_text}, filter_text={
-                po_file.filter_text}"
+                po_file.search_text
+            }, filter_text={po_file.filter_text}"
         )
         print(
             f"[TEST] フィルタ適用後の内部キャッシュ: _entry_obj_cache件数={
-                len(
-                    po_file._entry_obj_cache) if hasattr(
-                    po_file,
-                    '_entry_obj_cache') else 'なし'}"
+                len(po_file._entry_obj_cache)
+                if hasattr(po_file, '_entry_obj_cache')
+                else 'なし'
+            }"
         )
 
         # 4. フィルタをリセット（空文字列）
@@ -228,21 +226,21 @@ class TestFilterResetBasic:
         print(f"[TEST] リセット後のエントリ数: {reset_count}件")
         print(
             f"[TEST] リセット後のViewerPOFile状態: search_text={
-                po_file.search_text}, filter_text={
-                po_file.filter_text}"
+                po_file.search_text
+            }, filter_text={po_file.filter_text}"
         )
         print(
             f"[TEST] リセット後の内部キャッシュ: _entry_obj_cache件数={
-                len(
-                    po_file._entry_obj_cache) if hasattr(
-                    po_file,
-                    '_entry_obj_cache') else 'なし'}"
+                len(po_file._entry_obj_cache)
+                if hasattr(po_file, '_entry_obj_cache')
+                else 'なし'
+            }"
         )
 
         # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず
-        assert (
-            reset_count == initial_count
-        ), f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        assert reset_count == initial_count, (
+            f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        )
 
         # 6. データベースから直接取得して比較
         db_entries = po_file.db.get_entries(search_text=None)
@@ -250,9 +248,9 @@ class TestFilterResetBasic:
         print(f"[TEST] データベースから直接取得したエントリ数: {db_count}件")
 
         # データベース取得結果と初期状態が一致するか検証
-        assert (
-            db_count == initial_count
-        ), f"データベースから取得したエントリ数が初期状態と異なります: {db_count} != {initial_count}"
+        assert db_count == initial_count, (
+            f"データベースから取得したエントリ数が初期状態と異なります: {db_count} != {initial_count}"
+        )
 
         # 7. 内部状態をNoneに設定して再度テスト
         print("[TEST] 直接Noneを設定してテスト...")
@@ -265,6 +263,6 @@ class TestFilterResetBasic:
         print(f"[TEST] search_text=None設定後のエントリ数: {none_count}件")
 
         # Noneでの取得結果が初期状態と一致するか検証
-        assert (
-            none_count == initial_count
-        ), f"None設定後のエントリ数が初期状態と異なります: {none_count} != {initial_count}"
+        assert none_count == initial_count, (
+            f"None設定後のエントリ数が初期状態と異なります: {none_count} != {initial_count}"
+        )

@@ -1,14 +1,23 @@
 #!/usr/bin/env python
 """POフォーマットエディタウィジェット"""
+
 import logging
 import re
 from typing import List, Optional, Tuple
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat
-from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout, QLabel,
-                               QMessageBox, QPushButton, QSplitter, QTextEdit,
-                               QVBoxLayout)
+from PySide6.QtWidgets import (
+    QDialog,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from sgpo_editor.models.entry import EntryModel
 

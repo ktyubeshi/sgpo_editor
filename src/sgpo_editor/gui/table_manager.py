@@ -50,9 +50,13 @@ class TableManager:
     def _setup_table(self) -> None:
         """Initial table setup"""
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(
-            ["Entry Number", "msgctxt", "msgid", "msgstr", "Status"]
-        )
+        self.table.setHorizontalHeaderLabels([
+            "Entry Number",
+            "msgctxt",
+            "msgid",
+            "msgstr",
+            "Status",
+        ])
         self.table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Fixed
         )
@@ -174,7 +178,9 @@ class TableManager:
         self._entry_cache = {entry.key: entry for entry in entries}
 
         # Sort
-        sorted_entries = self._sort_entries(entries, self._current_sort_column, self._current_sort_order)
+        sorted_entries = self._sort_entries(
+            entries, self._current_sort_column, self._current_sort_order
+        )
 
         # テーブルを更新
         self._update_table_contents(sorted_entries)
@@ -194,6 +200,7 @@ class TableManager:
         Returns:
             Sorted entry list
         """
+
         def get_key_func(col: int) -> Callable[[POEntry], Union[str, int]]:
             if col == 0:  # Entry number
                 return lambda entry: entry.position
@@ -204,6 +211,7 @@ class TableManager:
             elif col == 3:  # msgstr
                 return lambda entry: entry.msgstr or ""
             elif col == 4:  # Status
+
                 def status_key(entry: POEntry) -> int:
                     if entry.obsolete:
                         return 3
@@ -212,6 +220,7 @@ class TableManager:
                     elif not entry.msgstr:
                         return 0
                     return 2
+
                 return status_key
             return lambda entry: ""
 
@@ -258,13 +267,19 @@ class TableManager:
                 try:
                     # エントリの型情報をログ出力
                     if i < 3:  # 最初の数行だけログ出力
-                        logger.debug(f"Entry type: {type(entry)}, has get_status: {hasattr(entry, 'get_status')}")
-                        
+                        logger.debug(
+                            f"Entry type: {type(entry)}, has get_status: {hasattr(entry, 'get_status')}"
+                        )
+
                     # 状態取得方法を決定
-                    if hasattr(entry, "get_status") and callable(getattr(entry, "get_status")):
+                    if hasattr(entry, "get_status") and callable(
+                        getattr(entry, "get_status")
+                    ):
                         # get_statusメソッドがあれば使用
                         status = entry.get_status()
-                        logger.debug(f"Get status by method: {status}") if i < 3 else None
+                        logger.debug(
+                            f"Get status by method: {status}"
+                        ) if i < 3 else None
                     elif hasattr(entry, "obsolete") and entry.obsolete:
                         status = "廃止済み"
                     elif hasattr(entry, "fuzzy") and entry.fuzzy:
@@ -280,7 +295,7 @@ class TableManager:
                 except Exception as e:
                     logger.error(f"エントリの状態取得中にエラー: {e}")
                     status = ""
-                    
+
                 # 状態列を表示
                 status_item = QTableWidgetItem(status)
                 self.table.setItem(i, 4, status_item)

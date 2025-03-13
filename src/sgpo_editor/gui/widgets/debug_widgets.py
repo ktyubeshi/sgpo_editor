@@ -7,8 +7,14 @@ import json
 from typing import Any, Dict, Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QTextEdit,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from sgpo_editor.models.entry import EntryModel
 

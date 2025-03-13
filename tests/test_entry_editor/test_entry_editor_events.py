@@ -4,9 +4,8 @@ from unittest.mock import Mock, patch
 from typing import Any
 
 import pytest
-from PySide6.QtCore import Qt
+
 # pylint: disable=import-error
-from pytestqt.qtbot import QtBot  # type: ignore
 
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor
 from sgpo_editor.models import EntryModel
@@ -50,7 +49,9 @@ def mock_entry() -> Mock:
     return entry
 
 
-def test_entry_editor_text_change_events(entry_editor: EntryEditor, mock_entry: Mock) -> None:
+def test_entry_editor_text_change_events(
+    entry_editor: EntryEditor, mock_entry: Mock
+) -> None:
     """テキスト変更イベントの処理を確認"""
     entry_editor.set_entry(mock_entry)
 
@@ -73,7 +74,9 @@ def test_entry_editor_text_change_events(entry_editor: EntryEditor, mock_entry: 
         assert mock_signal.emit.call_count == 2
 
 
-def test_entry_editor_apply_button_events(entry_editor: EntryEditor, mock_entry: Mock) -> None:
+def test_entry_editor_apply_button_events(
+    entry_editor: EntryEditor, mock_entry: Mock
+) -> None:
     """Applyボタンイベントの処理を確認"""
     entry_editor.set_entry(mock_entry)
 
@@ -85,7 +88,9 @@ def test_entry_editor_apply_button_events(entry_editor: EntryEditor, mock_entry:
         mock_signal.emit.assert_called_once()
 
 
-def test_entry_editor_fuzzy_change_events(entry_editor: EntryEditor, mock_entry: Mock) -> None:
+def test_entry_editor_fuzzy_change_events(
+    entry_editor: EntryEditor, mock_entry: Mock
+) -> None:
     """Fuzzy状態変更イベントの処理を確認"""
     entry_editor.set_entry(mock_entry)
 
@@ -100,7 +105,9 @@ def test_entry_editor_fuzzy_change_events(entry_editor: EntryEditor, mock_entry:
         mock_signal.emit.assert_called_once()
 
 
-def test_entry_editor_entry_change_events(entry_editor: EntryEditor, mock_entry: Mock) -> None:
+def test_entry_editor_entry_change_events(
+    entry_editor: EntryEditor, mock_entry: Mock
+) -> None:
     """エントリ変更イベントの処理を確認"""
     entry_editor.set_entry(mock_entry)
 
@@ -124,7 +131,9 @@ def test_entry_editor_entry_change_events(entry_editor: EntryEditor, mock_entry:
 #     pass
 
 
-def test_entry_editor_keyboard_events(entry_editor: EntryEditor, mock_entry: Mock, qtbot: Any) -> None:
+def test_entry_editor_keyboard_events(
+    entry_editor: EntryEditor, mock_entry: Mock, qtbot: Any
+) -> None:
     """キーボードイベントの処理を確認"""
     entry_editor.set_entry(mock_entry)
 

@@ -2,7 +2,7 @@
 
 import logging
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidget, QWidget
@@ -12,6 +12,7 @@ from sgpo_editor.gui.event_handler import EventHandler
 from sgpo_editor.gui.file_handler import FileHandler
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.ui_setup import UIManager
+
 # ViewerPOFileのインポートを遅延させる
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.gui.widgets.po_format_editor import POFormatEditor
@@ -75,21 +76,19 @@ class MainWindow(QMainWindow):
         self.ui_manager.setup_dock_widgets()
 
         # ツールバー
-        self.ui_manager.setup_toolbar(self.entry_editor._show_review_dialog) 
+        self.ui_manager.setup_toolbar(self.entry_editor._show_review_dialog)
 
         # メニューバー
-        self.ui_manager.setup_menubar(
-            {
-                "open_file": self._open_file,
-                "save_file": self._save_file,
-                "save_file_as": self._save_file_as,
-                "close": self.close,
-                "change_layout": self._change_entry_layout,
-                "open_recent_file": self._open_recent_file,
-                "open_po_format_editor": self._open_po_format_editor,
-                "show_preview": self._show_preview_dialog,
-            }
-        )
+        self.ui_manager.setup_menubar({
+            "open_file": self._open_file,
+            "save_file": self._save_file,
+            "save_file_as": self._save_file_as,
+            "close": self.close,
+            "change_layout": self._change_entry_layout,
+            "open_recent_file": self._open_recent_file,
+            "open_po_format_editor": self._open_po_format_editor,
+            "show_preview": self._show_preview_dialog,
+        })
 
         # ステータスバー
         self.ui_manager.setup_statusbar()
@@ -149,7 +148,7 @@ class MainWindow(QMainWindow):
             stats: 統計情報
         """
         from sgpo_editor.models import StatsModel
-        
+
         # namedtupleを辞書に変換
         if hasattr(stats, "_asdict"):
             # namedtupleの場合は_asdictメソッドで辞書に変換
@@ -162,7 +161,7 @@ class MainWindow(QMainWindow):
             # その他の型の場合はエラーログを出力して空の辞書を使用
             logger.error(f"統計情報の型が不正です: {type(stats)}, {stats}")
             stats_dict = {}
-            
+
         # StatsModelを作成してウィジェットを更新
         stats_model = StatsModel(**stats_dict)
         self.stats_widget.update_stats(stats_model)
@@ -172,7 +171,9 @@ class MainWindow(QMainWindow):
         # 現在のPOファイルを取得
         current_po = self._get_current_po()
         if not current_po:
-            logger.debug("POファイルが読み込まれていないため、テーブル更新をスキップします")
+            logger.debug(
+                "POファイルが読み込まれていないため、テーブル更新をスキップします"
+            )
             return
 
         try:
@@ -180,22 +181,26 @@ class MainWindow(QMainWindow):
             criteria = self.search_widget.get_search_criteria()
             filter_text = criteria.filter
             filter_keyword = criteria.filter_keyword
-            
-            logger.debug(f"テーブル更新: filter_text={filter_text}, filter_keyword={filter_keyword}")
-            
+
+            logger.debug(
+                f"テーブル更新: filter_text={filter_text}, filter_keyword={filter_keyword}"
+            )
+
             # POファイルからフィルタ条件に合ったエントリを取得
             entries = current_po.get_filtered_entries(
                 update_filter=True,  # ファイル読み込み直後は強制的に更新
-                filter_text=filter_text, 
-                filter_keyword=filter_keyword
+                filter_text=filter_text,
+                filter_keyword=filter_keyword,
             )
-            
+
             logger.debug(f"取得したエントリ数: {len(entries)}件")
 
             # テーブルを更新（フィルタ条件を渡す）
             sorted_entries = self.table_manager.update_table(entries, criteria)
-            
-            logger.debug(f"テーブル更新完了: {len(sorted_entries) if sorted_entries else 0}件表示")
+
+            logger.debug(
+                f"テーブル更新完了: {len(sorted_entries) if sorted_entries else 0}件表示"
+            )
 
             # フィルタ結果の件数をステータスバーに表示
             self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
@@ -258,15 +263,14 @@ class MainWindow(QMainWindow):
             # デバッグ用ログ出力
             print(f"キーワードフィルタ変更: {criteria.filter_keyword}")
             print(
-                f"フィルタ条件: filter={
-                    criteria.filter}, keyword={
-                    criteria.filter_keyword}, match_mode={
-                    criteria.match_mode}"
+                f"フィルタ条件: filter={criteria.filter}, keyword={
+                    criteria.filter_keyword
+                }, match_mode={criteria.match_mode}"
             )
             logging.debug(
-                f"MainWindow._on_search_changed: filter={
-                    criteria.filter}, keyword={
-                    criteria.filter_keyword}"
+                f"MainWindow._on_search_changed: filter={criteria.filter}, keyword={
+                    criteria.filter_keyword
+                }"
             )
 
             # エントリを取得する前に、キーワードがNoneまたは空文字の場合はViewerPOFileの内部状態を明示的にリセット
@@ -287,8 +291,8 @@ class MainWindow(QMainWindow):
             print("フィルタ条件に合ったエントリを取得中...")
             print(
                 f"現在のViewerPOFile状態: search_text={
-                    current_po.search_text}, filter_text={
-                    current_po.filter_text}"
+                    current_po.search_text
+                }, filter_text={current_po.filter_text}"
             )
 
             entries = current_po.get_filtered_entries(
@@ -299,8 +303,8 @@ class MainWindow(QMainWindow):
             print(f"取得完了: {len(entries)}件のエントリが見つかりました")
             print(
                 f"更新後のViewerPOFile状態: search_text={
-                    current_po.search_text}, filter_text={
-                    current_po.filter_text}"
+                    current_po.search_text
+                }, filter_text={current_po.filter_text}"
             )
 
             # テーブルを更新
@@ -308,7 +312,8 @@ class MainWindow(QMainWindow):
             updated_entries = self.table_manager.update_table(entries, criteria)
             print(
                 f"テーブル更新完了: {
-                    len(updated_entries) if updated_entries else 0}件表示"
+                    len(updated_entries) if updated_entries else 0
+                }件表示"
             )
 
             # フィルタ結果の件数をステータスバーに表示

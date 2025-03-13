@@ -1,5 +1,12 @@
-from .core import (DiffEntry, DiffResult, DiffStatus, KeyTuple, SGPOFile,
-                   pofile, pofile_from_text)
+from .core import (
+    DiffEntry,
+    DiffResult,
+    DiffStatus,
+    KeyTuple,
+    SGPOFile,
+    pofile,
+    pofile_from_text,
+)
 
 SgPo = SGPOFile  # Alias for backward compatibility
 

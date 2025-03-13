@@ -287,11 +287,7 @@ class SGPOFile(polib.POFile):
                 )  # Noneの代わりに空文字を使用
 
                 if pot_entry and (my_entry.msgid != pot_entry.msgid):
-                    print(
-                        f"msgctxt:\t{
-                            my_entry.msgctxt}\n  msgid:\t{
-                            my_entry.msgid}\n"
-                    )
+                    print(f"msgctxt:\t{my_entry.msgctxt}\n  msgid:\t{my_entry.msgid}\n")
                     my_entry.previous_msgid = my_entry.msgid
                     my_entry.msgid = pot_entry.msgid
                     my_entry.flags = ["fuzzy"]

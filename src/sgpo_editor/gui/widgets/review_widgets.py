@@ -6,11 +6,24 @@ from datetime import datetime
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QComboBox, QGroupBox, QHBoxLayout, QHeaderView,
-                               QLabel, QLineEdit, QListWidget, QListWidgetItem,
-                               QMessageBox, QPlainTextEdit, QPushButton,
-                               QSpinBox, QTableWidget, QTableWidgetItem,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QComboBox,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from sgpo_editor.models.database import Database
 from sgpo_editor.models.entry import EntryModel

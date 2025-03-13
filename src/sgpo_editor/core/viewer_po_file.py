@@ -213,19 +213,17 @@ class ViewerPOFile:
         if key in self._entry_cache:
             entry = self._entry_cache[key]
             # 基本情報のみを返す
-            basic_info = Entry.from_dict(
-                {
-                    "id": entry.id,
-                    "key": entry.key,
-                    "msgid": entry.msgid,
-                    "msgstr": entry.msgstr,
-                    "fuzzy": entry.fuzzy,
-                    "obsolete": entry.obsolete,
-                    "position": entry.position,
-                    "flags": entry.flags,
-                    "is_basic_info": True,
-                }
-            )
+            basic_info = Entry.from_dict({
+                "id": entry.id,
+                "key": entry.key,
+                "msgid": entry.msgid,
+                "msgstr": entry.msgstr,
+                "fuzzy": entry.fuzzy,
+                "obsolete": entry.obsolete,
+                "position": entry.position,
+                "flags": entry.flags,
+                "is_basic_info": True,
+            })
             self._basic_info_cache[key] = basic_info
             return basic_info
 
@@ -294,22 +292,35 @@ class ViewerPOFile:
 
         # フィルタ条件が変更されたかどうかを確認
         filter_changed = False
-        
+
         # パラメータが指定された場合はそれを使用し、そうでない場合はインスタンス変数を使用
-        actual_filter_text = filter_text if filter_text is not None else self.filter_text
-        actual_search_text = filter_keyword if filter_keyword is not None else self.search_text
-        
+        actual_filter_text = (
+            filter_text if filter_text is not None else self.filter_text
+        )
+        actual_search_text = (
+            filter_keyword if filter_keyword is not None else self.search_text
+        )
+
         # フィルタ条件の変化を確認
-        if actual_filter_text != self.filter_text or actual_search_text != self.search_text:
+        if (
+            actual_filter_text != self.filter_text
+            or actual_search_text != self.search_text
+        ):
             filter_changed = True
-            logging.debug(f"フィルタ条件が変更されました: {self.filter_text}->{actual_filter_text}, {self.search_text}->{actual_search_text}")
+            logging.debug(
+                f"フィルタ条件が変更されました: {self.filter_text}->{actual_filter_text}, {self.search_text}->{actual_search_text}"
+            )
 
         # キーワードがリセット(None)された場合の処理
         keyword_reset = False
         if filter_keyword is None and self.search_text is not None:
             keyword_reset = True
             logging.debug("キーワードがNoneに変更されました")
-        elif isinstance(filter_keyword, str) and not filter_keyword.strip() and self.search_text:
+        elif (
+            isinstance(filter_keyword, str)
+            and not filter_keyword.strip()
+            and self.search_text
+        ):
             # 空文字列または空白のみの場合もリセットとして処理
             keyword_reset = True
             logging.debug("キーワードが空文字に変更されました")
@@ -319,15 +330,24 @@ class ViewerPOFile:
         # 2. フィルタ条件が変更された場合
         # 3. まだフィルタされたエントリが存在しない場合
         # 4. キーワードがリセットされた場合
-        needs_query = update_filter or filter_changed or not self.filtered_entries or keyword_reset
+        needs_query = (
+            update_filter
+            or filter_changed
+            or not self.filtered_entries
+            or keyword_reset
+        )
 
         # 既存のエントリを返す場合（再クエリ不要）
         if not needs_query:
-            logging.debug(f"既存のフィルタ済みエントリを返します (フィルタ条件: {actual_filter_text}, キーワード: {actual_search_text})")
+            logging.debug(
+                f"既存のフィルタ済みエントリを返します (フィルタ条件: {actual_filter_text}, キーワード: {actual_search_text})"
+            )
             return self.filtered_entries
 
         # 以下、DB再クエリが必要な場合の処理
-        logging.debug(f"DB再クエリを実行します: update_filter={update_filter}, filter_changed={filter_changed}, has_filtered={bool(self.filtered_entries)}, keyword_reset={keyword_reset}")
+        logging.debug(
+            f"DB再クエリを実行します: update_filter={update_filter}, filter_changed={filter_changed}, has_filtered={bool(self.filtered_entries)}, keyword_reset={keyword_reset}"
+        )
 
         # 空の検索キーワードを処理
         if actual_search_text is None:
@@ -346,7 +366,9 @@ class ViewerPOFile:
             self.search_text = actual_search_text
 
         # デバッグ用ログ出力
-        logging.debug(f"フィルタ条件: filter_text={actual_filter_text}, filter_keyword={actual_search_text}, match_mode=部分一致")
+        logging.debug(
+            f"フィルタ条件: filter_text={actual_filter_text}, filter_keyword={actual_search_text}, match_mode=部分一致"
+        )
 
         # 辞書のリストを取得
         entries_dict = self.db.get_entries(
@@ -391,7 +413,9 @@ class ViewerPOFile:
             result.append(entry_obj)
 
         self.filtered_entries = result
-        logging.debug(f"フィルタ済みエントリを更新しました: {len(self.filtered_entries)}件")
+        logging.debug(
+            f"フィルタ済みエントリを更新しました: {len(self.filtered_entries)}件"
+        )
 
         return self.filtered_entries
 

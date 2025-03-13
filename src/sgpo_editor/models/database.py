@@ -218,9 +218,7 @@ class Database:
                 """
                 SELECT id, key FROM entries
                 WHERE key IN ({})
-            """.format(
-                    ",".join(["?"] * len(entries))
-                ),
+            """.format(",".join(["?"] * len(entries))),
                 [entry["key"] for entry in entries],
             )
 
@@ -235,9 +233,9 @@ class Database:
             for entry in entries:
                 entry_id = entry.get("id")
                 if entry_id:
-                    references.extend(
-                        [(entry_id, ref) for ref in entry.get("references", []) or []]
-                    )
+                    references.extend([
+                        (entry_id, ref) for ref in entry.get("references", []) or []
+                    ])
 
             if references:
                 cur.executemany(
@@ -250,9 +248,9 @@ class Database:
             for entry in entries:
                 entry_id = entry.get("id")
                 if entry_id:
-                    flags.extend(
-                        [(entry_id, flag) for flag in entry.get("flags", []) or []]
-                    )
+                    flags.extend([
+                        (entry_id, flag) for flag in entry.get("flags", []) or []
+                    ])
 
             if flags:
                 cur.executemany(
@@ -733,11 +731,7 @@ class Database:
                 for i, entry in enumerate(entries[:3]):
                     msgid = entry.get("msgid", "")[:30]
                     msgstr = entry.get("msgstr", "")[:30]
-                    print(
-                        f"  エントリ {
-                            i +
-                            1}: msgid={msgid}... msgstr={msgstr}..."
-                    )
+                    print(f"  エントリ {i + 1}: msgid={msgid}... msgstr={msgstr}...")
 
                 # キーワードに一致するか確認
                 if len(entries) > 0:
@@ -747,11 +741,13 @@ class Database:
                     msgstr = first_entry.get("msgstr", "")
                     print(
                         f"  msgid '{msgid}' に '{search_text}' が含まれるか: {
-                            search_text.lower() in msgid.lower()}"
+                            search_text.lower() in msgid.lower()
+                        }"
                     )
                     print(
                         f"  msgstr '{msgstr}' に '{search_text}' が含まれるか: {
-                            search_text.lower() in msgstr.lower()}"
+                            search_text.lower() in msgstr.lower()
+                        }"
                     )
         except Exception as e:
             print(f"SQLクエリ実行エラー: {str(e)}")
@@ -818,14 +814,12 @@ class Database:
             )
 
             for row in cur.fetchall():
-                review_data["review_comments"].append(
-                    {
-                        "id": row[0],
-                        "author": row[1],
-                        "comment": row[2],
-                        "created_at": row[3],
-                    }
-                )
+                review_data["review_comments"].append({
+                    "id": row[0],
+                    "author": row[1],
+                    "comment": row[2],
+                    "created_at": row[3],
+                })
 
             # 品質スコアを取得
             cur.execute(
@@ -866,14 +860,12 @@ class Database:
             )
 
             for row in cur.fetchall():
-                review_data["check_results"].append(
-                    {
-                        "code": row[0],
-                        "message": row[1],
-                        "severity": row[2],
-                        "created_at": row[3],
-                    }
-                )
+                review_data["check_results"].append({
+                    "code": row[0],
+                    "message": row[1],
+                    "severity": row[2],
+                    "created_at": row[3],
+                })
 
         return review_data
 

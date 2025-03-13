@@ -5,10 +5,12 @@
 import unittest
 from unittest.mock import Mock
 
-from sgpo_editor.gui.widgets.review_widgets import (CheckResultWidget,
-                                                    QualityScoreWidget,
-                                                    ReviewCommentWidget,
-                                                    TranslatorCommentWidget)
+from sgpo_editor.gui.widgets.review_widgets import (
+    CheckResultWidget,
+    QualityScoreWidget,
+    ReviewCommentWidget,
+    TranslatorCommentWidget,
+)
 from sgpo_editor.models.entry import EntryModel
 
 

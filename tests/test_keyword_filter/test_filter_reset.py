@@ -57,8 +57,8 @@ class TestFilterReset:
         # 1. 初期状態の確認
         print(
             f"\n[TEST] ViewerPOFile初期状態: search_text={
-                po_file.search_text}, filter_text={
-                po_file.filter_text}"
+                po_file.search_text
+            }, filter_text={po_file.filter_text}"
         )
 
         # 2. 初期状態で全エントリを取得
@@ -81,9 +81,9 @@ class TestFilterReset:
         print(f"[TEST] フィルタリセット後のエントリ数: {reset_count}件")
 
         # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず
-        assert (
-            reset_count == initial_count
-        ), f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        assert reset_count == initial_count, (
+            f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        )
 
         # ログ出力
         print(
@@ -97,8 +97,8 @@ class TestFilterReset:
         # 1. 状態を調査
         print(
             f"\n[TEST] ViewerPOFile初期状態: search_text={
-                po_file.search_text}, filter_text={
-                po_file.filter_text}"
+                po_file.search_text
+            }, filter_text={po_file.filter_text}"
         )
 
         # 2. 初期状態で全エントリを取得
@@ -117,19 +117,21 @@ class TestFilterReset:
         # 状態を調査（フィルタ後の状態確認）
         print(
             f"[TEST] フィルタ後のViewerPOFile状態: search_text={
-                po_file.search_text}, filter_text={
-                po_file.filter_text}"
+                po_file.search_text
+            }, filter_text={po_file.filter_text}"
         )
         print(
             f"[TEST] ViewerPOFile内部キャッシュ: _entry_obj_cache件数={
-                len(
-                    po_file._entry_obj_cache) if hasattr(
-                    po_file,
-                    '_entry_obj_cache') else 'なし'}"
+                len(po_file._entry_obj_cache)
+                if hasattr(po_file, '_entry_obj_cache')
+                else 'なし'
+            }"
         )
 
         # フィルタが適用され、検索テキストが更新されていることを確認
-        assert po_file.search_text == "test", f"検索テキストが'test'に設定されていません: {po_file.search_text}"
+        assert po_file.search_text == "test", (
+            f"検索テキストが'test'に設定されていません: {po_file.search_text}"
+        )
 
         # 4. フィルタをリセット（空文字列に設定）
         print("[TEST] フィルタをリセット...")
@@ -142,24 +144,26 @@ class TestFilterReset:
         # 状態を再度調査（ここが重要な調査ポイント）
         print(
             f"[TEST] リセット後のViewerPOFile状態: search_text={
-                po_file.search_text}, filter_text={
-                po_file.filter_text}"
+                po_file.search_text
+            }, filter_text={po_file.filter_text}"
         )
         print(
             f"[TEST] リセット後の内部キャッシュ: _entry_obj_cache件数={
-                len(
-                    po_file._entry_obj_cache) if hasattr(
-                    po_file,
-                    '_entry_obj_cache') else 'なし'}"
+                len(po_file._entry_obj_cache)
+                if hasattr(po_file, '_entry_obj_cache')
+                else 'なし'
+            }"
         )
 
         # リセット後、search_textがNoneに設定されていることを確認
-        assert po_file.search_text is None, f"リセット後にsearch_textがNoneになっていません: {po_file.search_text}"
+        assert po_file.search_text is None, (
+            f"リセット後にsearch_textがNoneになっていません: {po_file.search_text}"
+        )
 
         # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず
-        assert (
-            reset_count == initial_count
-        ), f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        assert reset_count == initial_count, (
+            f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+        )
 
         # 6. データベースから直接取得して比較
         db_entries = po_file.db.get_entries(search_text=None)
@@ -167,23 +171,25 @@ class TestFilterReset:
         print(f"[TEST] データベースから直接取得したエントリ数: {db_count}件")
 
         # データベース取得結果と初期状態が一致するか検証
-        assert (
-            db_count == initial_count
-        ), f"データベースから取得したエントリ数が初期状態と異なります: {db_count} != {initial_count}"
+        assert db_count == initial_count, (
+            f"データベースから取得したエントリ数が初期状態と異なります: {db_count} != {initial_count}"
+        )
 
         # 7. フィルタ条件の変更を強制する場合のテスト
         print("[TEST] フィルタ条件の変更を強制してテスト...")
         # まず特定のキーワードでフィルタ
         po_file.get_filtered_entries(update_filter=True, filter_keyword="key")
         # 次に空文字でリセット（フィルタ条件変更）
-        none_entries = po_file.get_filtered_entries(update_filter=True, filter_keyword="")
+        none_entries = po_file.get_filtered_entries(
+            update_filter=True, filter_keyword=""
+        )
         none_count = len(none_entries)
-        print(f"[TEST] filter_keyword=""設定後のエントリ数: {none_count}件")
+        print("[TEST] filter_keyword=設定後のエントリ数: {none_count}件")
 
         # 空文字でのリセット後のエントリ数が初期状態と一致するか検証
-        assert (
-            none_count == initial_count
-        ), f"空文字でのリセット後のエントリ数が初期状態と異なります: {none_count} != {initial_count}"
+        assert none_count == initial_count, (
+            f"空文字でのリセット後のエントリ数が初期状態と異なります: {none_count} != {initial_count}"
+        )
 
     def test_filter_reset_multiple_operations(self, setup_test_data):
         """複数回のフィルタリング操作後のリセットテスト"""
@@ -221,9 +227,9 @@ class TestFilterReset:
         print(f"[TEST] 複数フィルタ後のリセット結果: {reset_count}件")
 
         # 7. 検証
-        assert (
-            reset_count == initial_count
-        ), f"複数回フィルタ後のリセット結果が初期状態と異なります: {reset_count} != {initial_count}"
+        assert reset_count == initial_count, (
+            f"複数回フィルタ後のリセット結果が初期状態と異なります: {reset_count} != {initial_count}"
+        )
 
     def test_database_get_entries_with_empty_keyword(self, setup_test_data):
         """データベースのget_entriesメソッドの空キーワード処理をテスト"""
@@ -245,17 +251,17 @@ class TestFilterReset:
         empty_entries = db.get_entries(search_text="")
         empty_count = len(empty_entries)
         print(f"[TEST] search_text=''の場合のエントリ数: {empty_count}件")
-        assert (
-            empty_count == all_count
-        ), "空文字列での検索結果が全エントリと一致しません"
+        assert empty_count == all_count, (
+            "空文字列での検索結果が全エントリと一致しません"
+        )
 
         # 4. 検索テキストが空白のみの場合
         space_entries = db.get_entries(search_text="  ")
         space_count = len(space_entries)
         print(f"[TEST] search_text='  'の場合のエントリ数: {space_count}件")
-        assert (
-            space_count == all_count
-        ), "空白のみでの検索結果が全エントリと一致しません"
+        assert space_count == all_count, (
+            "空白のみでの検索結果が全エントリと一致しません"
+        )
 
     def test_entry_conversion_with_cache(self, setup_test_data):
         """エントリの変換とキャッシュの動作をテスト"""
@@ -301,6 +307,6 @@ class TestFilterReset:
         print(f"[TEST] リセット後のエントリ数: {reset_count}件")
 
         # 6. 検証: リセット後のエントリ数が初期状態と同じになるはず
-        assert (
-            reset_count == initial_count
-        ), f"リセット後のエントリ数が想定と異なります: {reset_count} != {initial_count}"
+        assert reset_count == initial_count, (
+            f"リセット後のエントリ数が想定と異なります: {reset_count} != {initial_count}"
+        )

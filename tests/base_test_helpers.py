@@ -7,10 +7,12 @@ import gc
 import pytest
 from PySide6 import QtCore, QtWidgets
 
-from tests.mock_helpers import (mock_file_dialog_get_open_file_name,
-                                mock_file_dialog_get_save_file_name,
-                                mock_message_box_question,
-                                mock_message_box_warning)
+from tests.mock_helpers import (
+    mock_file_dialog_get_open_file_name,
+    mock_file_dialog_get_save_file_name,
+    mock_message_box_question,
+    mock_message_box_warning,
+)
 
 
 class TestBase:

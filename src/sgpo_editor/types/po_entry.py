@@ -1,7 +1,18 @@
 """POEntryの型定義"""
 
-from typing import (Any, Iterator, List, Optional, Protocol, Sequence, Tuple,
-                    TypedDict, TypeVar, Union, runtime_checkable)
+from typing import (
+    Any,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypedDict,
+    TypeVar,
+    Union,
+    runtime_checkable,
+)
 
 T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)
