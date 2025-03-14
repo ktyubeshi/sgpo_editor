@@ -372,14 +372,47 @@ class MainWindow(QMainWindow):
         
         # 現在のPOファイルを取得
         current_po = self._get_current_po()
-        if current_po:
-            # 統計情報の更新
-            stats = current_po.get_stats()
-            self._update_stats(stats)
+        if not current_po:
+            logger.debug("現在のPOファイルが存在しないため、エントリ更新処理をスキップします")
+            return
             
-            # エントリ更新後にテーブルを確実に更新
-            logger.debug("エントリ更新後にテーブルを更新します")
-            self._update_table()
+        # 更新されたエントリのキーを取得します
+        updated_entry = None
+        try:
+            # エントリ番号からエントリを取得
+            updated_entry = current_po.get_entry_by_position(entry_number)
+        except Exception as e:
+            logger.error(f"エントリ取得エラー: {e}")
+            
+        # 更新前のテーブル選択状態を保存
+        current_row = None
+        if self.table.selectionModel().hasSelection():
+            selection_rows = self.table.selectionModel().selectedRows()
+            if selection_rows:
+                current_row = selection_rows[0].row()
+        
+        # キーがあれば保存
+        current_key = None
+        if current_row is not None:
+            item = self.table.item(current_row, 0)
+            if item:
+                current_key = item.data(Qt.ItemDataRole.UserRole)
+                logger.debug(f"更新前の選択行: {current_row}, キー: {current_key}")
+        
+        # 統計情報の更新
+        stats = current_po.get_stats()
+        self._update_stats(stats)
+        
+        # エントリ更新後にテーブルを確実に更新
+        logger.debug("エントリ更新後にテーブルを更新します")
+        self._update_table()
+        
+        # 更新されたエントリがあれば、そのエントリを選択状態にします
+        if updated_entry and hasattr(updated_entry, "key"):
+            self._select_entry_by_key(updated_entry.key)
+        # そうでない場合は、以前の選択状態を复元します
+        elif current_key:
+            self._select_entry_by_key(current_key)
             
         # メタデータパネルの更新
         self.update_metadata_panel()
@@ -486,6 +519,42 @@ class MainWindow(QMainWindow):
         if checked:
             self.update_metadata_panel()
 
+    def _select_entry_by_key(self, key: str) -> bool:
+        """指定されたキーを持つエントリをテーブルで選択する
+        
+        Args:
+            key: 検索するエントリのキー
+            
+        Returns:
+            選択成功時はTrue、失敗時はFalse
+        """
+        if not key:
+            logger.debug(f"キーが空のため選択できません: {key}")
+            return False
+            
+        logger.debug(f"キーによるエントリ選択: {key}")
+        try:
+            # テーブル内の全ての行を確認
+            for row in range(self.table.rowCount()):
+                item = self.table.item(row, 0)  # 最初の列に対するアイテムを取得
+                if item is None:
+                    continue
+                    
+                item_key = item.data(Qt.ItemDataRole.UserRole)
+                if item_key == key:
+                    logger.debug(f"エントリを選択: 行={row}, キー={key}")
+                    # 行選択
+                    self.table.selectRow(row)
+                    # ビューをスクロールして選択した行を表示
+                    self.table.scrollTo(self.table.model().index(row, 0))
+                    return True
+                    
+            logger.debug(f"キー {key} を持つエントリがテーブルに見つかりませんでした")
+            return False
+        except Exception as e:
+            logger.error(f"エントリ選択エラー: {e}")
+            return False
+    
     def edit_metadata(self, entry: Optional[EntryModel] = None) -> None:
         """メタデータ編集ダイアログを表示
         

@@ -293,6 +293,14 @@ class ViewerPOFile:
         # フィルタ条件が変更されたかどうかを確認
         filter_changed = False
 
+        # 強制更新フラグの確認
+        force_update = hasattr(self, '_force_filter_update') and self._force_filter_update
+        if force_update:
+            filter_changed = True
+            logging.debug("強制更新フラグがセットされているため、フィルタを再計算します")
+            # フラグをリセット
+            self._force_filter_update = False
+
         # パラメータが指定された場合はそれを使用し、そうでない場合はインスタンス変数を使用
         actual_filter_text = (
             filter_text if filter_text is not None else self.filter_text
@@ -495,16 +503,41 @@ class ViewerPOFile:
                     }
                     self._basic_info_cache[key] = Entry.from_dict(basic_info_dict)
                 
-                # filtered_entriesリストの更新処理を最適化
-                # 更新の必要がある場合のみ処理を行う
-                if hasattr(self, 'filtered_entries') and self.filtered_entries:
-                    # キーとインデックスのマッピングを作成して高速化
-                    filtered_keys = {e.key: i for i, e in enumerate(self.filtered_entries) if hasattr(e, 'key')}
+                # 重要: filtered_entriesの完全な再計算が必要な場合を検出
+                need_refilter = False
+                old_entry = None
+                
+                # 現在のフィルタリング条件に影響する可能性のある変更を検出
+                if self.filter_text:
+                    # 古いエントリの状態を取得
+                    if key in self._entry_cache:
+                        old_entry = self._entry_cache[key]
                     
-                    if key in filtered_keys:
-                        index = filtered_keys[key]
-                        logger.debug(f"filtered_entriesリストのエントリを最適化更新: インデックス={index}, キー={key}")
-                        self.filtered_entries[index] = entry_obj
+                    # fuzzyフラグやobsoleteフラグなど、フィルタリングに影響するフィールドの変化をチェック
+                    if old_entry and (
+                        'fuzzy' in self.filter_text and old_entry.fuzzy != entry_obj.fuzzy or 
+                        'obsolete' in self.filter_text and old_entry.obsolete != entry_obj.obsolete or
+                        'translated' in self.filter_text and (old_entry.msgstr == '' and entry_obj.msgstr != '' or 
+                                                             old_entry.msgstr != '' and entry_obj.msgstr == '')
+                    ):
+                        logger.debug(f"フィルタリング条件に影響する変更を検出: {key}")
+                        need_refilter = True
+                
+                # filtered_entriesリストの更新処理
+                if hasattr(self, 'filtered_entries') and self.filtered_entries:
+                    if need_refilter:
+                        # 完全な再フィルタリングが必要
+                        logger.debug(f"フィルタリング条件に影響する変更のため、filtered_entriesをリセットします")
+                        # 後で更新されるようにフラグをセット
+                        self._force_filter_update = True  # 次回のget_filtered_entries呼び出しで強制更新
+                    else:
+                        # 通常のエントリ更新の場合はインデックスを使用して高速化
+                        filtered_keys = {e.key: i for i, e in enumerate(self.filtered_entries) if hasattr(e, 'key')}
+                        
+                        if key in filtered_keys:
+                            index = filtered_keys[key]
+                            logger.debug(f"filtered_entriesリストのエントリを更新: インデックス={index}, キー={key}")
+                            self.filtered_entries[index] = entry_obj
 
             # 変更フラグを設定
             self.modified = True
