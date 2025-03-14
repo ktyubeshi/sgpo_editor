@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidget, QWidget, 
 from sgpo_editor.gui.metadata_dialog import MetadataEditDialog
 from sgpo_editor.gui.metadata_panel import MetadataPanel
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.i18n import setup_translator
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.event_handler import EventHandler
@@ -603,7 +604,10 @@ def main():
     """アプリケーションのエントリーポイント"""
     app = QApplication(sys.argv)
     app.setApplicationName("PO Editor")
-
+    
+    # 国際化設定
+    setup_translator()
+    
     main_window = MainWindow()
     main_window.show()
 

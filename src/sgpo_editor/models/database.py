@@ -5,6 +5,8 @@ import sqlite3
 from contextlib import contextmanager
 from typing import Any, Dict, Iterator, List, Optional, Union
 
+from sgpo_editor.core.constants import TranslationStatus
+
 logger = logging.getLogger(__name__)
 
 
@@ -526,7 +528,7 @@ class Database:
         """エントリの一覧を取得
 
         Args:
-            filter_text: フィルタテキスト
+            filter_text: フィルタテキスト (非推奨、代わりにflag_conditionsとtranslation_statusを使用)
             search_text: 検索テキスト
             sort_column: ソートするカラム
             sort_order: ソート順序
@@ -535,10 +537,11 @@ class Database:
                     "include_flags": List[str],  # 含むべきフラグ
                     "exclude_flags": List[str],  # 除外するフラグ
                     "only_fuzzy": bool,  # fuzzyフラグを持つエントリのみ
+                    "obsolete_only": bool,  # 廃止済みエントリのみ
                 }
             translation_status: 翻訳状態によるフィルタリング
-                "translated": 翻訳済み
-                "untranslated": 未翻訳
+                "translated": 翻訳済み (msgstrが空でなく、fuzzyフラグなし)
+                "untranslated": 未翻訳 (msgstrが空、またはfuzzyフラグあり)
 
         Returns:
             List[Dict[str, Any]]: エントリのリスト
@@ -599,9 +602,13 @@ class Database:
                     )
                 """
                 )
+                
+            # 廃止済みエントリのみを取得
+            if flag_conditions.get("obsolete_only"):
+                conditions.append("e.obsolete = 1")
 
-        # 翻訳状態によるフィルタリング（filter_textと重複するため、filter_textがない場合のみ使用）
-        if not filter_text and translation_status:
+        # 翻訳状態によるフィルタリング
+        if translation_status:
             if translation_status == "translated":
                 conditions.append(
                     """
@@ -625,16 +632,16 @@ class Database:
                 """
                 )
 
-        # フィルタテキスト条件（翻訳状態のフィルタリング）
+        # フィルタテキスト条件（翻訳状態のフィルタリング） - 後方互換性のため残す
         if filter_text:
             # 「すべて」または「all」の場合は条件を追加しない
-            if filter_text.lower() == "すべて" or filter_text.lower() == "all":
+            if filter_text.lower() == "すべて" or filter_text.lower() == "all" or filter_text.lower() == TranslationStatus.ALL:
                 print(
                     f"フィルタテキスト '{filter_text}' はすべてのエントリを表示するため、条件を追加しません"
                 )
                 # 条件を追加しない
                 pass
-            elif filter_text.lower() == "translated":
+            elif filter_text.lower() == "translated" or filter_text.lower() == TranslationStatus.TRANSLATED:
                 conditions.append(
                     """
                     e.msgstr != '' AND
@@ -645,7 +652,7 @@ class Database:
                     )
                 """
                 )
-            elif filter_text.lower() == "untranslated":
+            elif filter_text.lower() == "untranslated" or filter_text.lower() == TranslationStatus.UNTRANSLATED:
                 conditions.append(
                     """
                     (e.msgstr = '' OR
@@ -656,7 +663,7 @@ class Database:
                     ))
                 """
                 )
-            elif filter_text.lower() == "fuzzy":
+            elif filter_text.lower() == "fuzzy" or filter_text.lower() == TranslationStatus.FUZZY:
                 conditions.append(
                     """
                     e.id IN (
@@ -666,6 +673,8 @@ class Database:
                     )
                 """
                 )
+            elif filter_text.lower() == "obsolete" or filter_text.lower() == TranslationStatus.OBSOLETE:
+                conditions.append("e.obsolete = 1")
             else:
                 # その他のフィルタテキストは通常の検索として扱う
                 conditions.append("(e.msgid LIKE ? OR e.msgstr LIKE ?)")

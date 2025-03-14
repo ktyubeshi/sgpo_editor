@@ -21,6 +21,7 @@ from sgpo_editor.utils.metadata_utils import (
     extract_metadata_from_comment, 
     create_comment_with_metadata
 )
+from sgpo_editor.core.constants import TranslationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -128,13 +129,13 @@ class EntryModel(BaseModel):
         """ステータスを取得"""
         # ステータスの優先順位: 廃止済み > ファジー > 未翻訳 > 翻訳済み
         if self.obsolete:
-            return "廃止済み"
+            return TranslationStatus.OBSOLETE
         elif self.fuzzy:
-            return "要確認"
+            return TranslationStatus.FUZZY
         elif self.is_untranslated:
-            return "未翻訳"
+            return TranslationStatus.UNTRANSLATED
         else:
-            return "完了"
+            return TranslationStatus.TRANSLATED
 
     @property
     def score(self) -> Optional[int]:
