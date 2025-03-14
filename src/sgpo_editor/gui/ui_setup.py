@@ -297,7 +297,8 @@ class UIManager:
 
         # 設定から最近使用したファイルのリストを取得
         settings = QSettings()
-        recent_files = settings.value("recent_files", [])
+        recent_files_str = settings.value("recent_files_str", "", type=str)
+        recent_files = recent_files_str.split(";") if recent_files_str else []
 
         if not recent_files:
             # 最近使用したファイルがない場合
@@ -308,7 +309,7 @@ class UIManager:
 
         # 最近使用したファイルのアクションを作成
         for filepath in recent_files:
-            if not isinstance(filepath, str):
+            if not filepath or not isinstance(filepath, str):
                 continue
 
             action = QAction(Path(filepath).name, self.main_window)
@@ -330,7 +331,9 @@ class UIManager:
     def _clear_recent_files(self) -> None:
         """最近使用したファイルの履歴をクリア"""
         settings = QSettings()
+        settings.setValue("recent_files_str", "")
         settings.setValue("recent_files", [])
+        settings.sync()  # 確実に保存
         self.update_recent_files_menu(lambda _: None)
 
     def setup_toolbar(self, show_review_dialog_callback: Callable[[str], None]) -> None:
