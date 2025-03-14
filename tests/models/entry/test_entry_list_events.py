@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, QItemSelectionModel
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.main_window import MainWindow
+from sgpo_editor.models.entry import EntryModel
 
 
 @pytest.fixture
@@ -29,19 +30,15 @@ def mock_entries():
     entries = []
     
     for i in range(5):
-        entry = MagicMock()
-        entry.position = i
-        entry.msgid = f"msgid_{i}"
-        entry.msgstr = f"msgstr_{i}" if i % 2 == 0 else ""
-        entry.msgctxt = f"context_{i}"
-        entry.fuzzy = (i == 2)  # 3番目のエントリはファジー
-        entry.obsolete = (i == 4)  # 5番目のエントリは廃止済み
-        entry.get_status.return_value = "translated" if i % 2 == 0 else "untranslated"
-        if i == 2:
-            entry.get_status.return_value = "fuzzy"
-        if i == 4:
-            entry.get_status.return_value = "obsolete"
-        entry.overall_quality_score.return_value = 90 - (i * 10) if i < 4 else None
+        entry = EntryModel(
+            position=i,
+            msgid=f"msgid_{i}",
+            msgstr=f"msgstr_{i}" if i % 2 == 0 else "",
+            msgctxt=f"context_{i}",
+            flags=["fuzzy"] if i == 2 else [],
+            obsolete=(i == 4),
+        )
+        entry.score = 90 - (i * 10) if i < 4 else None
         entries.append(entry)
     
     return entries

@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.core.constants import TranslationStatus
 
 
 class TestEntryModelValidator(unittest.TestCase):
@@ -78,13 +79,13 @@ class TestEntryModel(unittest.TestCase):
     def test_get_status(self):
         # get_statusメソッドのテスト
         entry1 = EntryModel(msgid="test", msgstr="", flags=[])
-        self.assertEqual(entry1.get_status(), "未翻訳")
+        self.assertEqual(entry1.get_status(), TranslationStatus.UNTRANSLATED)
 
         entry2 = EntryModel(msgid="test", msgstr="テスト", flags=[])
-        self.assertEqual(entry2.get_status(), "完了")
+        self.assertEqual(entry2.get_status(), TranslationStatus.TRANSLATED)
 
         entry3 = EntryModel(msgid="test", msgstr="テスト", flags=["fuzzy"])
-        self.assertEqual(entry3.get_status(), "要確認")
+        self.assertEqual(entry3.get_status(), TranslationStatus.FUZZY)
 
     @patch("sgpo_editor.models.entry.EntryModel.update_po_entry")
     def test_update_po_entry(self, mock_update):

@@ -11,6 +11,8 @@ from PySide6.QtGui import QColor
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.widgets.search import SearchCriteria
+from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.i18n import translate
 
 """Table Management Module
 
@@ -18,7 +20,7 @@ This module provides functionality for displaying and managing table entries fro
 """
 
 # 循環インポートを避けるために型アノテーションを文字列で指定
-POEntry = Any  # 実際の型は循環インポートを避けるため文字列で指定
+# POEntry = Any  # 実際の型は循環インポートを避けるため文字列で指定
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +47,7 @@ class TableManager:
         self._current_search_text: str = ""
         self._get_current_po = get_current_po
         # Entry cache
-        self._entry_cache: Dict[str, POEntry] = {}
+        self._entry_cache: Dict[str, EntryModel] = {}
         # 列幅の初期値を設定
         self._default_column_widths = [80, 120, 200, 200, 100, 80]
         # 列の表示/非表示設定
@@ -149,11 +151,11 @@ class TableManager:
 
     def update_table(
         self,
-        entries: Optional[List[POEntry]],
+        entries: Optional[List[EntryModel]],
         criteria: Optional[SearchCriteria] = None,
         sort_column: Optional[int] = None,
         sort_order: Optional[Qt.SortOrder] = None,
-    ) -> List[POEntry]:
+    ) -> List[EntryModel]:
         """Update table
 
         Args:
@@ -165,6 +167,8 @@ class TableManager:
         Returns:
             List of entries displayed
         """
+        logger.debug("テーブル更新開始")
+        
         # 現在の列の表示/非表示状態を内部状態と同期
         self._sync_column_visibility()
         
@@ -187,16 +191,31 @@ class TableManager:
         # エントリのキーを保存
         self._display_entries = [entry.key for entry in entries]
 
-        # Update cache
+        # Update cache - 既存のキャッシュを更新するだけでなく、完全に置き換える
         self._entry_cache = {entry.key: entry for entry in entries}
 
         # Sort
-        sorted_entries = self._sort_entries(
-            entries, self._current_sort_column, self._current_sort_order
-        )
+        if self._current_sort_column == 5:  # Score column
+            sorted_entries = self._sort_entries_by_score(
+                entries, self._current_sort_order
+            )
+        else:
+            sorted_entries = self._sort_entries(
+                entries, self._current_sort_column, self._current_sort_order
+            )
 
-        # テーブルを更新
-        self._update_table_contents(sorted_entries)
+        # テーブルの更新を一時停止して効率的に更新
+        self.table.setUpdatesEnabled(False)
+        try:
+            # テーブルを更新
+            self._update_table_contents(sorted_entries)
+        finally:
+            # 必ず更新を再開
+            self.table.setUpdatesEnabled(True)
+            # 表示を強制的に更新
+            self.table.viewport().update()
+            
+        logger.debug(f"テーブル更新完了: {len(sorted_entries)}件表示")
 
         return sorted_entries
 
@@ -454,8 +473,8 @@ class TableManager:
                 self._hidden_columns = set()
     
     def _sort_entries(
-        self, entries: List[POEntry], column: int, order: Qt.SortOrder
-    ) -> List[POEntry]:
+        self, entries: List[EntryModel], column: int, order: Qt.SortOrder
+    ) -> List[EntryModel]:
         """Sort entries
 
         Args:
@@ -470,7 +489,7 @@ class TableManager:
         if column == 5:  # Score column
             return self._sort_entries_by_score(entries, order)
             
-        def get_key_func(col: int) -> Callable[[POEntry], Union[str, int]]:
+        def get_key_func(col: int) -> Callable[[EntryModel], Union[str, int]]:
             if col == 0:  # Entry number
                 return lambda entry: entry.position
             elif col == 1:  # msgctxt
@@ -481,7 +500,7 @@ class TableManager:
                 return lambda entry: entry.msgstr or ""
             elif col == 4:  # Status
 
-                def status_key(entry: POEntry) -> int:
+                def status_key(entry: EntryModel) -> int:
                     if entry.obsolete:
                         return 3
                     elif entry.fuzzy:
@@ -497,70 +516,46 @@ class TableManager:
         reverse = order == Qt.SortOrder.DescendingOrder
         return sorted(entries, key=key_func, reverse=reverse)
         
-    def _sort_entries_by_score(self, entries: List[POEntry], order: Qt.SortOrder) -> List[POEntry]:
-        """Sort entries by score
-        
+    def _sort_entries_by_score(
+        self, entries: List[EntryModel], order: Qt.SortOrder
+    ) -> List[EntryModel]:
+        """スコアでエントリをソートする
+
         Args:
-            entries: List of entries to sort
-            order: Sort order
-            
+            entries: ソートするエントリのリスト
+            order: ソート順序
+
         Returns:
-            Sorted entry list by score
+            ソートされたエントリリスト
         """
-        # まず、スコアを持つエントリとNoneのエントリに分ける
-        entries_with_score = []
-        entries_without_score = []
-        
-        for entry in entries:
-            if hasattr(entry, "overall_quality_score") and callable(
-                getattr(entry, "overall_quality_score")
-            ):
-                score = entry.overall_quality_score()
-                if score is not None:
-                    entries_with_score.append((entry, score))
-                else:
-                    entries_without_score.append(entry)
+        def score_key(entry: EntryModel) -> tuple:
+            # スコアがNoneの場合は常に最後に来るようにする
+            if entry.score is None:
+                # 第1要素が1ならNoneのエントリ（後ろに配置）
+                return (1, 0)
             else:
-                entries_without_score.append(entry)
-        
-        # スコアを持つエントリをソート
-        reverse = order == Qt.SortOrder.DescendingOrder
-        sorted_entries_with_score = sorted(entries_with_score, key=lambda x: x[1], reverse=reverse)
-        
-        # 結果を結合（スコアなしのエントリは常に最後）
-        result = [entry for entry, _ in sorted_entries_with_score] + entries_without_score
-        
-        return result
+                # 第1要素が0なら通常のエントリ（前に配置）
+                # 第2要素は実際のスコア値
+                return (0, entry.score if order == Qt.SortOrder.AscendingOrder else -entry.score)
 
-    def _update_table_contents(self, entries: List[POEntry]) -> None:
+        # タプルによるソート: 第1要素でまず比較し、同じ場合は第2要素で比較
+        return sorted(entries, key=score_key)
+
+    def _update_table_contents(self, entries: List[EntryModel]) -> None:
         """Update table contents"""
-        # Temporarily disable table updates for better drawing performance
-        self.table.setUpdatesEnabled(False)
-        
-        # 列のヘッダーラベルが正しく設定されているか確認
-        if self.table.columnCount() == len(self._column_names):
-            self.table.setHorizontalHeaderLabels(self._column_names)
-            
-        # 内部状態の列の表示/非表示状態を保存
-        hidden_columns_backup = self._hidden_columns.copy()
-        logger.debug(f"更新前の非表示列バックアップ: {hidden_columns_backup}")
-        
-        # 各列の現在の表示状態をログ出力
-        for i in range(self.table.columnCount()):
-            logger.debug(f"更新前の列 {i} ({self.get_column_name(i)}) の状態: hidden={self.table.isColumnHidden(i)}")
-
         try:
-            # Update table
+            # テーブルの行数を設定
             self.table.setRowCount(len(entries))
 
-            # サンプルエントリの表示（最大3件）
-            if len(entries) > 0:
-                print("表示するエントリのサンプル:")
+            # サンプルエントリのログ出力（最大3件）
+            if len(entries) > 0 and logger.isEnabledFor(logging.DEBUG):
+                logger.debug("表示するエントリのサンプル:")
                 for i, entry in enumerate(entries[:3]):
-                    print(
+                    logger.debug(
                         f"  エントリ {i + 1}: msgid={entry.msgid[:30] if entry.msgid else ''}... msgstr={entry.msgstr[:30] if entry.msgstr else ''}..."
                     )
 
+            # 各エントリをテーブルに設定
             for i, entry in enumerate(entries):
                 # Entry number
                 item = QTableWidgetItem(str(entry.position + 1))
@@ -580,89 +575,21 @@ class TableManager:
                 self.table.setItem(i, 3, QTableWidgetItem(msgstr))
 
                 # Status
-                try:
-                    # エントリの型情報をログ出力
-                    if i < 3:  # 最初の数行だけログ出力
-                        logger.debug(
-                            f"Entry type: {type(entry)}, has get_status: {hasattr(entry, 'get_status')}"
-                        )
-
-                    # 状態取得方法を決定
-                    if hasattr(entry, "get_status") and callable(
-                        getattr(entry, "get_status")
-                    ):
-                        # get_statusメソッドがあれば使用
-                        status = entry.get_status()
-                        logger.debug(
-                            f"Get status by method: {status}"
-                        ) if i < 3 else None
-                    elif hasattr(entry, "obsolete") and entry.obsolete:
-                        status = "廃止済み"
-                    elif hasattr(entry, "fuzzy") and entry.fuzzy:
-                        status = "ファジー"
-                    elif hasattr(entry, "msgstr") and not entry.msgstr:
-                        status = "未翻訳"
-                    elif hasattr(entry, "msgstr") and entry.msgstr:
-                        status = "翻訳済み"
-                    else:
-                        # 型情報を詳細ログ出力
-                        logger.debug(f"Unknown entry state: {entry}")
-                        status = ""
-                except Exception as e:
-                    logger.error(f"エントリの状態取得中にエラー: {e}")
-                    status = ""
-
-                # 状態列を表示
-                status_item = QTableWidgetItem(status)
+                status = entry.get_status()
+                # ステータスを翻訳して表示
+                translated_status = translate(status)
+                status_item = QTableWidgetItem(translated_status)
                 self.table.setItem(i, 4, status_item)
-                
-                # Score列を追加
-                score_item = QTableWidgetItem()
-                score = None
-                
-                # overall_quality_scoreメソッドがあればスコアを取得
-                if hasattr(entry, "overall_quality_score") and callable(
-                    getattr(entry, "overall_quality_score")
-                ):
-                    score = entry.overall_quality_score()
-                
-                if score is not None:
-                    # スコアを文字列として表示
-                    score_item.setText(str(score))
-                    # データをソート用に保持（整数として）
-                    score_item.setData(Qt.ItemDataRole.UserRole, score)
-                    
-                    # スコアに応じて背景色を設定
-                    if score >= 80:  # 良好
-                        score_item.setBackground(QColor(200, 255, 200))  # 薄緑
-                    elif score >= 60:  # 普通
-                        score_item.setBackground(QColor(255, 255, 200))  # 薄黄
-                    else:  # 要改善
-                        score_item.setBackground(QColor(255, 200, 200))  # 薄赤
-                else:
-                    # スコアがない場合は「-」を表示
-                    score_item.setText("-")
-                    # ソート時に未評価が最後に来るように値を設定
-                    score_item.setData(Qt.ItemDataRole.UserRole, -1)
-                
+
+                # Score
+                score = entry.score
+                score_item = QTableWidgetItem(str(score) if score is not None else "")
                 self.table.setItem(i, 5, score_item)
 
         except Exception as e:
             logger.error(f"テーブル更新中にエラーが発生: {str(e)}")
             raise
         finally:
-            # 小さな遅延を入れてテーブルの描画を確実にする
-            import time
-            time.sleep(0.01)
-            
-            # 列のヘッダーラベルが正しく設定されているか再確認
-            if self.table.columnCount() == len(self._column_names):
-                self.table.setHorizontalHeaderLabels(self._column_names)
-            
-            # 内部状態を復元
-            self._hidden_columns = hidden_columns_backup
-            logger.debug(f"復元する非表示列: {self._hidden_columns}")
-            
             # 内部状態に基づいて列の表示/非表示状態を確実に適用
             self._apply_column_visibility()
             
@@ -670,17 +597,14 @@ class TableManager:
             header_height = self.table.horizontalHeader().height()
             self.table.horizontalHeader().setFixedHeight(header_height)
             
-            # Resume table updates
-            self.table.setUpdatesEnabled(True)
-            
             # テーブルの更新を促す
             self.table.horizontalHeader().updateGeometry()
             self.table.horizontalHeader().viewport().update()
-            self.table.repaint()
             
             # 各列の更新後の表示状態をログ出力
-            for i in range(self.table.columnCount()):
-                logger.debug(f"更新後の列 {i} ({self.get_column_name(i)}) の状態: hidden={self.table.isColumnHidden(i)}")
+            if logger.isEnabledFor(logging.DEBUG):
+                for i in range(self.table.columnCount()):
+                    logger.debug(f"更新後の列 {i} ({self.get_column_name(i)}) の状態: hidden={self.table.isColumnHidden(i)}")
 
         # Update sort indicator
         self.table.horizontalHeader().setSortIndicator(

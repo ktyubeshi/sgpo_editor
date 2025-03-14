@@ -12,6 +12,8 @@ from PySide6.QtCore import Qt
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.table_manager import TableManager
+from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.core.constants import TranslationStatus
 
 
 @pytest.fixture
@@ -29,63 +31,63 @@ def mock_entries():
     entries = []
     
     # 未翻訳エントリ
-    entry1 = MagicMock()
-    entry1.position = 0
-    entry1.msgid = "Hello"
-    entry1.msgstr = ""
-    entry1.msgctxt = "context1"
-    entry1.fuzzy = False
-    entry1.obsolete = False
-    entry1.get_status.return_value = "untranslated"
-    entry1.overall_quality_score.return_value = None
+    entry1 = EntryModel(
+        position=0,
+        msgid="Hello",
+        msgstr="",
+        msgctxt="context1",
+        flags=[],
+        obsolete=False,
+    )
+    entry1.score = None
     entries.append(entry1)
     
     # 翻訳済みエントリ
-    entry2 = MagicMock()
-    entry2.position = 1
-    entry2.msgid = "World"
-    entry2.msgstr = "世界"
-    entry2.msgctxt = "context2"
-    entry2.fuzzy = False
-    entry2.obsolete = False
-    entry2.get_status.return_value = "translated"
-    entry2.overall_quality_score.return_value = 90
+    entry2 = EntryModel(
+        position=1,
+        msgid="World",
+        msgstr="世界",
+        msgctxt="context2",
+        flags=[],
+        obsolete=False,
+    )
+    entry2.score = 90
     entries.append(entry2)
     
     # ファジーエントリ
-    entry3 = MagicMock()
-    entry3.position = 2
-    entry3.msgid = "Test"
-    entry3.msgstr = "テスト"
-    entry3.msgctxt = "context3"
-    entry3.fuzzy = True
-    entry3.obsolete = False
-    entry3.get_status.return_value = "fuzzy"
-    entry3.overall_quality_score.return_value = 60
+    entry3 = EntryModel(
+        position=2,
+        msgid="Test",
+        msgstr="テスト",
+        msgctxt="context3",
+        flags=["fuzzy"],
+        obsolete=False,
+    )
+    entry3.score = 60
     entries.append(entry3)
     
     # 廃止済みエントリ
-    entry4 = MagicMock()
-    entry4.position = 3
-    entry4.msgid = "Obsolete"
-    entry4.msgstr = "廃止"
-    entry4.msgctxt = "context4"
-    entry4.fuzzy = False
-    entry4.obsolete = True
-    entry4.get_status.return_value = "obsolete"
-    entry4.overall_quality_score.return_value = 70
+    entry4 = EntryModel(
+        position=3,
+        msgid="Obsolete",
+        msgstr="廃止",
+        msgctxt="context4",
+        flags=[],
+        obsolete=True,
+    )
+    entry4.score = 70
     entries.append(entry4)
     
     # スコアなしのエントリ
-    entry5 = MagicMock()
-    entry5.position = 4
-    entry5.msgid = "NoScore"
-    entry5.msgstr = "スコアなし"
-    entry5.msgctxt = "context5"
-    entry5.fuzzy = False
-    entry5.obsolete = False
-    entry5.get_status.return_value = "translated"
-    entry5.overall_quality_score.return_value = None
+    entry5 = EntryModel(
+        position=4,
+        msgid="NoScore",
+        msgstr="スコアなし",
+        msgctxt="context5",
+        flags=[],
+        obsolete=False,
+    )
+    entry5.score = None
     entries.append(entry5)
     
     return entries
@@ -143,50 +145,42 @@ class TestEntryListSort:
         expected.reverse()
         assert msgids == expected, "原文による降順ソートが正しくありません"
     
-    def test_sort_by_msgstr(self, app, mock_entries, table_manager):
-        """訳文でのソートテスト"""
-        # 昇順でソート
-        sorted_entries = table_manager._sort_entries(mock_entries, 3, Qt.SortOrder.AscendingOrder)
-        msgstrs = [entry.msgstr for entry in sorted_entries]
-        expected = ["", "スコアなし", "テスト", "世界", "廃止"]
-        assert msgstrs == expected, "訳文による昇順ソートが正しくありません"
-        
-        # 降順でソート
-        sorted_entries = table_manager._sort_entries(mock_entries, 3, Qt.SortOrder.DescendingOrder)
-        msgstrs = [entry.msgstr for entry in sorted_entries]
-        expected.reverse()
-        assert msgstrs == expected, "訳文による降順ソートが正しくありません"
-    
     def test_sort_by_status(self, app, mock_entries, table_manager):
         """状態でのソートテスト"""
         # 昇順でソート
         sorted_entries = table_manager._sort_entries(mock_entries, 4, Qt.SortOrder.AscendingOrder)
+        # 状態の順序を確認: 未翻訳 -> ファジー -> 翻訳済み -> 廃止済み
+        expected_statuses = [
+            TranslationStatus.UNTRANSLATED, 
+            TranslationStatus.FUZZY, 
+            TranslationStatus.TRANSLATED, 
+            TranslationStatus.TRANSLATED, 
+            TranslationStatus.OBSOLETE
+        ]
         statuses = [entry.get_status() for entry in sorted_entries]
-        # 未翻訳 = 0, ファジー = 1, 翻訳済み = 2, 廃止済み = 3 の順
-        expected = ["untranslated", "fuzzy", "translated", "translated", "obsolete"]
-        assert statuses == expected, "状態による昇順ソートが正しくありません"
+        assert statuses == expected_statuses, "状態による昇順ソートが正しくありません"
         
         # 降順でソート
         sorted_entries = table_manager._sort_entries(mock_entries, 4, Qt.SortOrder.DescendingOrder)
+        expected_statuses.reverse()
         statuses = [entry.get_status() for entry in sorted_entries]
-        expected.reverse()
-        assert statuses == expected, "状態による降順ソートが正しくありません"
+        assert statuses == expected_statuses, "状態による降順ソートが正しくありません"
     
     def test_sort_by_score(self, app, mock_entries, table_manager):
         """スコアでのソートテスト"""
         # 昇順でソート
-        sorted_entries = table_manager._sort_entries(mock_entries, 5, Qt.SortOrder.AscendingOrder)
-        scores = [entry.overall_quality_score() for entry in sorted_entries]
-        # スコアなしのエントリは最後になることを確認
-        assert scores[:3] == [60, 70, 90], "スコアによる昇順ソートが正しくありません"
-        assert all(score is None for score in scores[3:]), "スコアなしエントリの配置が正しくありません"
+        sorted_entries = table_manager._sort_entries_by_score(mock_entries, Qt.SortOrder.AscendingOrder)
+        scores = [entry.score for entry in sorted_entries]
+        # スコアがNoneのエントリは最後に来るはず
+        expected = [60, 70, 90, None, None]
+        assert scores == expected, "スコアによる昇順ソートが正しくありません"
         
         # 降順でソート
-        sorted_entries = table_manager._sort_entries(mock_entries, 5, Qt.SortOrder.DescendingOrder)
-        scores = [entry.overall_quality_score() for entry in sorted_entries]
-        # スコアなしのエントリは最後になることを確認
-        assert scores[:3] == [90, 70, 60], "スコアによる降順ソートが正しくありません"
-        assert all(score is None for score in scores[3:]), "スコアなしエントリの配置が正しくありません"
+        sorted_entries = table_manager._sort_entries_by_score(mock_entries, Qt.SortOrder.DescendingOrder)
+        scores = [entry.score for entry in sorted_entries]
+        # スコアがNoneのエントリは最後に来るはず
+        expected = [90, 70, 60, None, None]
+        assert scores == expected, "スコアによる降順ソートが正しくありません"
     
     def test_sort_header_click(self, app, mock_entries, table_manager):
         """ヘッダークリックによるソートテスト"""

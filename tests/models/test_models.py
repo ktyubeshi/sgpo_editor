@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.models.stats import StatsModel
+from sgpo_editor.core.constants import TranslationStatus
 
 
 def test_entry_model():
@@ -47,13 +48,24 @@ def test_entry_model():
     untranslated = EntryModel(msgid="test", msgstr="")  # 空文字列を指定
     assert not untranslated.translated()
     assert not untranslated.fuzzy
-    assert untranslated.get_status() == "未翻訳"
+    assert untranslated.get_status() == TranslationStatus.UNTRANSLATED
 
     # 翻訳済みのテスト
     translated = EntryModel(msgid="test", msgstr="テスト")  # fuzzyフラグなし
     assert translated.translated()
     assert not translated.fuzzy
-    assert translated.get_status() == "完了"  # 状態は「完了」
+    assert translated.get_status() == TranslationStatus.TRANSLATED
+
+    # ファジーのテスト
+    fuzzy = EntryModel(msgid="test", msgstr="テスト", flags=["fuzzy"])
+    assert not fuzzy.translated()
+    assert fuzzy.fuzzy
+    assert fuzzy.get_status() == TranslationStatus.FUZZY
+
+    # 廃止済みのテスト
+    obsolete = EntryModel(msgid="test", msgstr="", obsolete=True)
+    assert not obsolete.translated()
+    assert obsolete.get_status() == TranslationStatus.OBSOLETE
 
     # フラグのテスト
     entry = EntryModel(msgid="test", msgstr="テスト")

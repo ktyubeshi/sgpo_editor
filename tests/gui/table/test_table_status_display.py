@@ -6,6 +6,8 @@ from unittest.mock import MagicMock
 
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.core.constants import TranslationStatus
+from sgpo_editor.i18n import translate
 
 
 @pytest.fixture
@@ -52,8 +54,8 @@ def test_table_status_column_display(table_widget, entry_data):
     # テーブル更新
     table_manager.update_table(entry_data)
 
-    # 各行の状態セルの内容を確認
-    assert table_widget.item(0, 4).text() == "未翻訳"
-    assert table_widget.item(1, 4).text() == "完了"
-    assert table_widget.item(2, 4).text() == "要確認"
-    assert table_widget.item(3, 4).text() == "廃止済み"
+    # 各行の状態セルの内容を確認 - 翻訳された値を期待
+    assert table_widget.item(0, 4).text() == translate(TranslationStatus.UNTRANSLATED)
+    assert table_widget.item(1, 4).text() == translate(TranslationStatus.TRANSLATED)
+    assert table_widget.item(2, 4).text() == translate(TranslationStatus.FUZZY)
+    assert table_widget.item(3, 4).text() == translate(TranslationStatus.OBSOLETE)
