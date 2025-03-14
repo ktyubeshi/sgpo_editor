@@ -19,6 +19,7 @@ class EventHandler(QObject):
     """イベント処理クラス"""
 
     entry_updated = Signal(int)  # エントリが更新されたとき（引数：エントリ番号）
+    entry_selected = Signal(int)  # エントリが選択されたとき（引数：エントリ番号）
 
     def __init__(
         self,
@@ -135,9 +136,9 @@ class EventHandler(QObject):
                 entry = self._entry_cache[key]
                 self.entry_editor.set_entry(entry)
 
-                # エントリ選択変更時にシグナルを発行
+                # エントリ選択変更時に選択シグナルを発行
                 if hasattr(entry, "position"):
-                    self.entry_updated.emit(entry.position)
+                    self.entry_selected.emit(entry.position)
                 return
 
             # キャッシュになければPOファイルから取得
@@ -163,7 +164,7 @@ class EventHandler(QObject):
 
             # エントリ選択変更時にシグナルを発行
             if hasattr(entry, "position"):
-                self.entry_updated.emit(entry.position)
+                self.entry_selected.emit(entry.position)
 
             # 選択が完了したら、非同期でプリフェッチを開始
             if not self._prefetch_timer.isActive():
@@ -250,8 +251,23 @@ class EventHandler(QObject):
             if hasattr(entry, "key") and entry.key:
                 self._entry_cache[entry.key] = entry
 
-            # テーブルの更新
-            self._update_table()
+            # この時点でテーブルを更新すると重複更新が発生するため、ここでの更新は行わない
+            # MainWindowの_on_entry_updatedで一元的に更新される
+            # self._update_table()
+
+            # 更新されたエントリを選択状態に戻す
+            if hasattr(entry, "key") and entry.key:
+                # テーブルの現在の行データを使用して、更新されたエントリの行を見つける
+                for row in range(self.table.rowCount()):
+                    item = self.table.item(row, 0)
+                    if item is None:
+                        continue
+
+                    key = item.data(Qt.ItemDataRole.UserRole)
+                    if key == entry.key:
+                        # 該当する行を選択
+                        self.table.selectRow(row)
+                        break
 
             self._show_status(f"エントリ {entry.position} を更新しました", 3000)
             self.entry_updated.emit(entry.position)

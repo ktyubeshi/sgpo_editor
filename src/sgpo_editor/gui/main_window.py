@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
         # イベント接続
         self.event_handler.setup_connections()
         self.event_handler.entry_updated.connect(self._on_entry_updated)
+        self.event_handler.entry_selected.connect(self._on_entry_selected)
         
         # メタデータパネルのイベント接続
         self.metadata_panel.edit_requested.connect(self.edit_metadata)
@@ -350,6 +351,17 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
             self.statusBar().showMessage(f"エラー: {str(e)}")
 
+    def _on_entry_selected(self, entry_number: int) -> None:
+        """エントリが選択されたときの処理
+
+        Args:
+            entry_number: エントリ番号
+        """
+        logger.debug(f"エントリ選択通知を受信: エントリ番号={entry_number}")
+        
+        # メタデータパネルのみ更新し、テーブルの更新は行わない
+        self.update_metadata_panel()
+        
     def _on_entry_updated(self, entry_number: int) -> None:
         """エントリが更新されたときの処理
 
