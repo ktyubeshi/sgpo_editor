@@ -192,7 +192,9 @@ class TestPreviewIntegration:
         mock_entry.msgstr = "Test String with \\r\\n escape sequences"
         mock_entry.position = 1
 
-        # EventHandlerのget_current_entryをモック化してモックエントリを返すようにする
+        # ファサードパターンの変更に対応して、EntryEditorFacadeのget_current_entryをモック化
+        window.entry_editor_facade.get_current_entry = MagicMock(return_value=mock_entry)
+        # 互換性のためにEventHandlerのメソッドもモック化
         window.event_handler.get_current_entry = MagicMock(return_value=mock_entry)
 
         # プレビューダイアログを表示

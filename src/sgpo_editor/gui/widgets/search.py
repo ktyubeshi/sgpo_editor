@@ -3,7 +3,7 @@
 from typing import Callable, Optional
 
 from pydantic import BaseModel, ConfigDict
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -24,6 +24,9 @@ class SearchCriteria(BaseModel):
 
 class SearchWidget(QWidget):
     """フィルタリング用ウィジェット"""
+    
+    # シグナル定義
+    filter_changed = Signal()
 
     def __init__(
         self,
@@ -90,15 +93,21 @@ class SearchWidget(QWidget):
     def _start_filter_timer(self) -> None:
         """フィルタタイマーを開始"""
         self._filter_timer.start()
+        # フィルタ変更シグナルを発行
+        self.filter_changed.emit()
 
     def _start_search_timer(self) -> None:
         """キーワードフィルタタイマーを開始"""
         self._search_timer.start()
+        # フィルタ変更シグナルを発行
+        self.filter_changed.emit()
 
     def _clear_filter(self) -> None:
         """フィルタ条件をクリア"""
         self.search_edit.clear()
         self.filter_combo.setCurrentText("すべて")
+        # フィルタ変更シグナルを発行
+        self.filter_changed.emit()
         # 両方のコールバックを呼び出してテーブルを更新
         self._on_filter_changed()
         self._on_search_changed()

@@ -14,11 +14,13 @@ from sgpo_editor.models.entry import EntryModel
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.event_handler import EventHandler
+from sgpo_editor.gui.facades.entry_editor_facade import EntryEditorFacade
+from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
 from sgpo_editor.gui.file_handler import FileHandler
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.ui_setup import UIManager
 
-# ViewerPOFileのインポートを遅延させる
+# 必要なクラスをインポート
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.gui.widgets.po_format_editor import POFormatEditor
 from sgpo_editor.gui.widgets.preview_widget import PreviewDialog
@@ -40,11 +42,13 @@ class MainWindow(QMainWindow):
         # コンポーネントの作成
         self.entry_editor = EntryEditor()
         self.stats_widget = StatsWidget()
-        self.search_widget = SearchWidget(
-            on_filter_changed=self._on_filter_changed,
-            on_search_changed=self._on_search_changed,
-        )
         self.table = QTableWidget()
+        
+        # SearchWidgetの初期化（コールバック関数を渡す）
+        self.search_widget = SearchWidget(
+            on_filter_changed=lambda: self._update_table(),
+            on_search_changed=lambda: self._update_table()
+        )
 
         # 各マネージャの初期化
         self.table_manager = TableManager(self.table, self._get_current_po)
@@ -57,6 +61,21 @@ class MainWindow(QMainWindow):
             self._update_table,
             self.statusBar().showMessage,
         )
+        
+        # ファサードの初期化（新規追加）
+        self.entry_editor_facade = EntryEditorFacade(
+            self.entry_editor,
+            self._get_current_po,
+            self.statusBar().showMessage
+        )
+        self.entry_list_facade = EntryListFacade(
+            self.table,
+            self.table_manager,
+            self.search_widget,
+            self._get_current_po
+        )
+        
+        # 既存のイベントハンドラ（レガシー互換用）
         self.event_handler = EventHandler(
             self.table,
             self.entry_editor,
@@ -73,8 +92,17 @@ class MainWindow(QMainWindow):
 
         # イベント接続
         self.event_handler.setup_connections()
+        
+        # レガシーなイベント接続
         self.event_handler.entry_updated.connect(self._on_entry_updated)
         self.event_handler.entry_selected.connect(self._on_entry_selected)
+        
+        # ファサードを使った新しいイベント接続
+        self.entry_editor_facade.entry_applied.connect(self._on_entry_updated)
+        # エントリテキスト変更シグナルは現時点では必要ないのでコメントアウト
+        # self.entry_editor_facade.entry_changed.connect(self._on_entry_text_changed)
+        self.entry_list_facade.entry_selected.connect(self._on_entry_selected)
+        self.entry_list_facade.filter_changed.connect(self._update_table)
         
         # メタデータパネルのイベント接続
         self.metadata_panel.edit_requested.connect(self.edit_metadata)
@@ -187,45 +215,25 @@ class MainWindow(QMainWindow):
         self.stats_widget.update_stats(stats_model)
 
     def _update_table(self) -> None:
-        """テーブルを更新する"""
-        # 現在のPOファイルを取得
+        """テーブルを更新する
+        
+        ファサードパターンを使用して、テーブル更新処理を委譲します。
+        """
         current_po = self._get_current_po()
         if not current_po:
-            logger.debug(
-                "POファイルが読み込まれていないため、テーブル更新をスキップします"
-            )
+            logger.debug("POファイルが読み込まれていないため、テーブル更新をスキップします")
             return
-
+            
         try:
-            # フィルタ条件を取得
-            criteria = self.search_widget.get_search_criteria()
-            filter_text = criteria.filter
-            filter_keyword = criteria.filter_keyword
-
-            logger.debug(
-                f"テーブル更新: filter_text={filter_text}, filter_keyword={filter_keyword}"
-            )
-
-            # POファイルからフィルタ条件に合ったエントリを取得
-            # update_filter=Trueを指定して、キャッシュを使わずに強制的に最新データを取得
-            entries = current_po.get_filtered_entries(
-                update_filter=True,  # 強制的に更新
-                filter_text=filter_text,
-                filter_keyword=filter_keyword,
-            )
-
-            logger.debug(f"取得したエントリ数: {len(entries)}件")
-
-            # テーブルを更新（フィルタ条件を渡す）
-            # 現在のソート条件を維持したまま更新
-            sorted_entries = self.table_manager.update_table(entries, criteria)
-
-            logger.debug(
-                f"テーブル更新完了: {len(sorted_entries) if sorted_entries else 0}件表示"
-            )
-
-            # フィルタ結果の件数をステータスバーに表示
+            # EntryListFacadeにテーブル更新を委譲
+            self.entry_list_facade.update_table()
+            
+            # 件数表示のためにPOファイルから情報を取得
+            entries = current_po.get_filtered_entries()
             self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
+        except Exception as e:
+            logger.error(f"テーブル更新エラー: {e}")
+            self.statusBar().showMessage(f"テーブル更新エラー: {e}")
             
             # テーブルの表示を強制的に更新
             self.table.viewport().update()
@@ -376,46 +384,38 @@ class MainWindow(QMainWindow):
             logger.debug("現在のPOファイルが存在しないため、エントリ更新処理をスキップします")
             return
             
-        # 更新されたエントリのキーを取得します
-        updated_entry = None
         try:
-            # エントリ番号からエントリを取得
+            # 更新前の選択キーを取得
+            current_key = self.entry_list_facade.get_selected_entry_key()
+            logger.debug(f"更新前の選択キー: {current_key}")
+            
+            # 更新されたエントリを取得
             updated_entry = current_po.get_entry_by_position(entry_number)
+            updated_key = getattr(updated_entry, "key", None) if updated_entry else None
+            
+            # 統計情報の更新
+            stats = current_po.get_stats()
+            self._update_stats(stats)
+            
+            # ファサードを使用してテーブルを更新
+            logger.debug("エントリ更新後にテーブルを更新します")
+            self.entry_list_facade.update_table()
+            
+            # エントリの選択状態を維持
+            if updated_key:
+                # 更新されたエントリを選択
+                self.entry_list_facade.select_entry_by_key(updated_key)
+                logger.debug(f"更新されたエントリを選択: キー={updated_key}")
+            elif current_key:
+                # 元の選択状態を復元
+                self.entry_list_facade.select_entry_by_key(current_key)
+                logger.debug(f"元の選択状態を復元: キー={current_key}")
+            
+            # メタデータパネルの更新
+            self.update_metadata_panel()
+            
         except Exception as e:
-            logger.error(f"エントリ取得エラー: {e}")
-            
-        # 更新前のテーブル選択状態を保存
-        current_row = None
-        if self.table.selectionModel().hasSelection():
-            selection_rows = self.table.selectionModel().selectedRows()
-            if selection_rows:
-                current_row = selection_rows[0].row()
-        
-        # キーがあれば保存
-        current_key = None
-        if current_row is not None:
-            item = self.table.item(current_row, 0)
-            if item:
-                current_key = item.data(Qt.ItemDataRole.UserRole)
-                logger.debug(f"更新前の選択行: {current_row}, キー: {current_key}")
-        
-        # 統計情報の更新
-        stats = current_po.get_stats()
-        self._update_stats(stats)
-        
-        # エントリ更新後にテーブルを確実に更新
-        logger.debug("エントリ更新後にテーブルを更新します")
-        self._update_table()
-        
-        # 更新されたエントリがあれば、そのエントリを選択状態にします
-        if updated_entry and hasattr(updated_entry, "key"):
-            self._select_entry_by_key(updated_entry.key)
-        # そうでない場合は、以前の選択状態を复元します
-        elif current_key:
-            self._select_entry_by_key(current_key)
-            
-        # メタデータパネルの更新
-        self.update_metadata_panel()
+            logger.error(f"エントリ更新処理エラー: {e}")
 
     def _change_entry_layout(self, layout_type: LayoutType) -> None:
         """エントリ編集のレイアウトを変更する
@@ -426,17 +426,20 @@ class MainWindow(QMainWindow):
         self.event_handler.change_entry_layout(layout_type)
 
     def _show_preview_dialog(self) -> None:
-        """プレビューダイアログを表示する"""
-        # 現在選択されているエントリがない場合は何もしない
-        current_entry = self.event_handler.get_current_entry()
+        """プレビューダイアログを表示する
+        
+        ファサードパターンを使用して、エントリ編集ファサードから現在のエントリを取得します。
+        """
+        # ファサードから現在のエントリを取得
+        current_entry = self.entry_editor_facade.get_current_entry()
         if not current_entry:
             self.statusBar().showMessage("プレビューするエントリが選択されていません")
             return
 
         # プレビューダイアログを表示
         dialog = PreviewDialog(self)
-        # イベントハンドラーを設定してエントリ選択変更イベントを接続
-        dialog.set_event_handler(self.event_handler)
+        # ファサードを使用してイベントハンドラを設定
+        dialog.set_event_handler(self.event_handler)  # 互換性のためにイベントハンドラを使用
         # 現在のエントリを設定
         dialog.set_entry(current_entry)
         # ダイアログを表示
@@ -445,13 +448,18 @@ class MainWindow(QMainWindow):
         dialog.activateWindow()
 
     def _open_po_format_editor(self) -> None:
-        """POフォーマットエディタを開く"""
+        """POフォーマットエディタを開く
+        
+        ファサードパターンに対応して、エントリ更新シグナルをファサード経由で接続します。
+        """
         if not hasattr(self, "_po_format_editor"):
             self._po_format_editor = POFormatEditor(self, self._get_current_po)
-            # エントリ更新シグナルを接続
+            # エントリ更新シグナルをファサードのメソッドに接続
             self._po_format_editor.entry_updated.connect(self._on_entry_updated)
 
         self._po_format_editor.show()
+        self._po_format_editor.raise_()
+        self._po_format_editor.activateWindow()
         
     def _toggle_column_visibility(self, column_index: int) -> None:
         """列の表示/非表示を切り替える
