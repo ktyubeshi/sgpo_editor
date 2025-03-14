@@ -95,16 +95,10 @@ class EntryModel(BaseModel):
             raise TypeError("evaluation_stateはEvaluationState型である必要があります")
         self._evaluation_state = value
 
-    @computed_field
-    @property
-    def is_fuzzy(self) -> bool:
-        """ファジーかどうか"""
-        return "fuzzy" in self.flags
-
     @property
     def fuzzy(self) -> bool:
-        """ファジーかどうか（互換性のため）"""
-        return self.is_fuzzy
+        """ファジーかどうか"""
+        return "fuzzy" in self.flags
 
     @fuzzy.setter
     def fuzzy(self, value: bool) -> None:
@@ -118,7 +112,7 @@ class EntryModel(BaseModel):
     @property
     def is_translated(self) -> bool:
         """翻訳済みかどうか"""
-        return bool(self.msgstr) and not self.is_fuzzy
+        return bool(self.msgstr) and not self.fuzzy
 
     def translated(self) -> bool:
         """翻訳済みかどうか（互換性のため）"""
@@ -135,7 +129,7 @@ class EntryModel(BaseModel):
         # ステータスの優先順位: 廃止済み > ファジー > 未翻訳 > 翻訳済み
         if self.obsolete:
             return "廃止済み"
-        elif self.is_fuzzy:
+        elif self.fuzzy:
             return "要確認"
         elif self.is_untranslated:
             return "未翻訳"
@@ -170,33 +164,43 @@ class EntryModel(BaseModel):
             raise ValueError("スコアは0から100の範囲で指定してください")
         self._score = value
 
-    def add_review_comment(self, author: str, comment: str) -> None:
+    def add_review_comment(self, author: str, comment: str) -> str:
         """レビューコメントを追加
 
         Args:
             author: レビュー作成者
             comment: レビューコメント
+
+        Returns:
+            str: 生成されたコメントID
         """
         from datetime import datetime
 
+        comment_id = str(len(self.review_comments) + 1)
         self.review_comments.append(
             {
-                "id": str(len(self.review_comments) + 1),
+                "id": comment_id,
                 "author": author,
                 "comment": comment,
                 "created_at": datetime.now().isoformat(),
             }
         )
+        return comment_id
 
-    def remove_review_comment(self, comment_id: str) -> None:
+    def remove_review_comment(self, comment_id: str) -> bool:
         """特定のレビューコメントを削除
 
         Args:
             comment_id: 削除するコメントのID
+
+        Returns:
+            bool: 削除が成功した場合はTrue、失敗した場合はFalse
         """
+        original_length = len(self.review_comments)
         self.review_comments = [
             c for c in self.review_comments if c["id"] != comment_id
         ]
+        return len(self.review_comments) < original_length
 
     def clear_review_comments(self) -> None:
         """全てのレビューコメントをクリア"""
@@ -257,6 +261,18 @@ class EntryModel(BaseModel):
     def overall_quality_score(self) -> Optional[int]:
         """総合品質スコアを取得"""
         return self._overall_quality_score
+        
+    @overall_quality_score.setter
+    def overall_quality_score(self, score: int) -> None:
+        """総合品質スコアを設定
+        
+        Args:
+            score: スコア値（0-100）
+            
+        Raises:
+            ValueError: スコアが0-100の範囲外の場合
+        """
+        self.set_overall_quality_score(score)
 
     def set_overall_quality_score(self, score: int) -> None:
         """総合品質スコアを設定
@@ -271,6 +287,13 @@ class EntryModel(BaseModel):
             raise ValueError("スコアは0から100の範囲で指定してください")
         self._overall_quality_score = score
 
+    def clear_quality_scores(self) -> None:
+        """品質スコアをクリア
+        総合品質スコアとカテゴリ別品質スコアをクリアします。
+        """
+        self._overall_quality_score = None
+        self.category_quality_scores.clear()
+        
     def reset_scores(self) -> None:
         """全てのスコアをリセット"""
         self._overall_quality_score = None
@@ -362,6 +385,9 @@ class EntryModel(BaseModel):
             "metadata": self.metadata,
             "overall_quality_score": self.overall_quality_score,
             "category_quality_scores": self.category_quality_scores,
+            "fuzzy": self.fuzzy,  # fuzzyフラグを追加
+            "is_translated": self.is_translated,  # 翻訳状態を追加
+            "is_untranslated": self.is_untranslated  # 未翻訳状態を追加
         }
         
         return result

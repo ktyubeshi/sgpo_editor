@@ -338,7 +338,7 @@ def setup_mock_entry_model(monkeypatch):
     # 必要な属性とメソッドを設定
     mock_entry_model.msgid = ""
     mock_entry_model.msgstr = ""
-    mock_entry_model.is_fuzzy = False
+    mock_entry_model.fuzzy = False
     mock_entry_model.is_translated = False
 
     monkeypatch.setattr(

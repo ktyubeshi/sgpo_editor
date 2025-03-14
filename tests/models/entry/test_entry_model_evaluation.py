@@ -47,32 +47,34 @@ class TestEntryModelEvaluation(unittest.TestCase):
         entry = EntryModel(msgid="test", msgstr="テスト")
 
         # デフォルト値
-        self.assertEqual(entry.review_comments, {})
+        self.assertEqual(entry.review_comments, [])
 
-        # 単一言語のコメント追加
-        entry.add_review_comment("ja", "翻訳の品質は良好です")
-        self.assertIn("ja", entry.review_comments)
-        self.assertEqual(entry.review_comments["ja"], "翻訳の品質は良好です")
+        # 日本語のコメント追加
+        comment_id_ja = entry.add_review_comment("テスト太郎", "翻訳の品質は良好です")
+        self.assertEqual(len(entry.review_comments), 1)
+        self.assertEqual(entry.review_comments[0]["author"], "テスト太郎")
+        self.assertEqual(entry.review_comments[0]["comment"], "翻訳の品質は良好です")
+        self.assertEqual(entry.review_comments[0]["id"], comment_id_ja)
 
-        # 複数言語のコメント追加
-        entry.add_review_comment("en", "The translation quality is good")
-        self.assertIn("en", entry.review_comments)
-        self.assertEqual(entry.review_comments["en"], "The translation quality is good")
+        # 英語のコメント追加
+        comment_id_en = entry.add_review_comment("Test User", "The translation quality is good")
+        self.assertEqual(len(entry.review_comments), 2)
+        self.assertEqual(entry.review_comments[1]["author"], "Test User")
+        self.assertEqual(entry.review_comments[1]["comment"], "The translation quality is good")
+        self.assertEqual(entry.review_comments[1]["id"], comment_id_en)
 
-        # 既存コメントの更新
-        entry.add_review_comment("ja", "翻訳の品質は非常に良好です")
-        self.assertEqual(entry.review_comments["ja"], "翻訳の品質は非常に良好です")
+        # コメントの削除
+        result = entry.remove_review_comment(comment_id_en)
+        self.assertTrue(result)
+        self.assertEqual(len(entry.review_comments), 1)
 
-        # 特定言語のコメント削除
-        entry.remove_review_comment("en")
-        self.assertNotIn("en", entry.review_comments)
+        # 存在しないIDで削除を試みると失敗することを確認
+        result = entry.remove_review_comment("non-existent-id")
+        self.assertFalse(result)
 
-        # 存在しない言語のコメント削除
-        entry.remove_review_comment("fr")  # エラーにならず無視される
-
-        # 全言語のコメント削除
+        # 全てのコメントをクリア
         entry.clear_review_comments()
-        self.assertEqual(entry.review_comments, {})
+        self.assertEqual(entry.review_comments, [])
 
     def test_metric_scores(self):
         """評価指標ごとのスコアのテスト"""
@@ -143,8 +145,8 @@ class TestEntryModelEvaluation(unittest.TestCase):
         # 評価情報を設定
         entry.score = 85
         entry.evaluation_state = EvaluationState.EVALUATED
-        entry.add_review_comment("ja", "翻訳の品質は良好です")
-        entry.add_review_comment("en", "The translation quality is good")
+        comment_id_ja = entry.add_review_comment("テスト太郎", "翻訳の品質は良好です")
+        comment_id_en = entry.add_review_comment("Test User", "The translation quality is good")
         entry.set_metric_score("accuracy", 90)
         entry.set_metric_score("fluency", 80)
 
@@ -154,8 +156,23 @@ class TestEntryModelEvaluation(unittest.TestCase):
         # 評価関連の情報が正しく含まれているか確認
         self.assertEqual(entry_dict["score"], 85)
         self.assertEqual(entry_dict["evaluation_state"], EvaluationState.EVALUATED)
-        self.assertEqual(entry_dict["review_comments"]["ja"], "翻訳の品質は良好です")
-        self.assertEqual(entry_dict["review_comments"]["en"], "The translation quality is good")
+        
+        # review_commentsがリスト形式であることを確認
+        self.assertEqual(len(entry_dict["review_comments"]), 2)
+        
+        # 日本語のコメントを確認
+        ja_comment = next((c for c in entry_dict["review_comments"] if c["author"] == "テスト太郎"), None)
+        self.assertIsNotNone(ja_comment)
+        self.assertEqual(ja_comment["comment"], "翻訳の品質は良好です")
+        self.assertEqual(ja_comment["id"], comment_id_ja)
+        
+        # 英語のコメントを確認
+        en_comment = next((c for c in entry_dict["review_comments"] if c["author"] == "Test User"), None)
+        self.assertIsNotNone(en_comment)
+        self.assertEqual(en_comment["comment"], "The translation quality is good")
+        self.assertEqual(en_comment["id"], comment_id_en)
+        
+        # 指標スコアを確認
         self.assertEqual(entry_dict["metric_scores"]["accuracy"], 90)
         self.assertEqual(entry_dict["metric_scores"]["fluency"], 80)
 

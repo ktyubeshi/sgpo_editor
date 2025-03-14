@@ -316,7 +316,7 @@ class TestMainWindow:
             return_value=selected_entry.msgstr
         )
         mock_main_window.entry_editor.fuzzy_checkbox.isChecked = MagicMock(
-            return_value=selected_entry.is_fuzzy
+            return_value=selected_entry.fuzzy
         )
 
         # エントリエディタの内容を確認
@@ -330,7 +330,7 @@ class TestMainWindow:
         )
         assert (
             mock_main_window.entry_editor.fuzzy_checkbox.isChecked()
-            == selected_entry.is_fuzzy
+            == selected_entry.fuzzy
         )
 
     def test_entry_list_layout(self, mock_main_window):
