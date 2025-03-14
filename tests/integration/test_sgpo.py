@@ -7,7 +7,10 @@ from sgpo.core import KeyTuple, SGPOFile, pofile, pofile_from_text
 
 
 def get_test_data_dir() -> Path:
-    return Path(__file__).parent / "data" / "test_sgpo"
+    # プロジェクトルートディレクトリを取得
+    project_root = Path(__file__).parents[2]  # tests/integration から2階層上がプロジェクトルート
+    # プロジェクトルートからのテストデータへの相対パス
+    return project_root / "tests" / "data" / "test_sgpo"
 
 
 def get_test_data_path(*paths: str) -> Path:
