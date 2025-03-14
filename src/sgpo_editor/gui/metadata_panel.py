@@ -79,7 +79,8 @@ class MetadataPanel(QWidget):
         if not self.entry:
             return
         
-        metadata = self.entry.get_all_metadata()
+        # EntryModelクラスのmetadataプロパティを使用
+        metadata = getattr(self.entry, 'metadata', {})
         
         if not metadata:
             no_data_item = QTreeWidgetItem(["", "メタデータなし"])
