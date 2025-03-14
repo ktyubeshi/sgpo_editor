@@ -57,30 +57,32 @@ def test_get_entries(test_po_file):
     # get_entriesメソッドが削除されたため、get_filtered_entriesを使用
     entries = test_po_file.get_filtered_entries()
     assert len(entries) == 3
-    assert all(isinstance(entry, dict) for entry in entries)
+    # Entryオブジェクトを返すことを確認
+    from sgpo_editor.models.entry_model import Entry
+    assert all(isinstance(entry, Entry) for entry in entries)
 
     # フィルタリングのテスト
     test_po_file.filter_text = "test1"
     filtered = test_po_file.get_filtered_entries(update_filter=True)
     assert len(filtered) == 1
-    assert filtered[0]["msgid"] == "test1"
+    assert filtered[0].msgid == "test1"
 
 
 def test_update_entry(test_po_file):
     """エントリを更新できることを確認する"""
     entries = test_po_file.get_filtered_entries()
     entry = entries[0]
-    entry_key = entry["key"]
+    entry_key = entry.key
 
     # エントリを更新
-    updated_entry = entry.copy()
-    updated_entry["msgstr"] = "更新テスト"
-    test_po_file.update_entry(updated_entry)
+    # Entryオブジェクトの属性を直接更新
+    entry.msgstr = "更新テスト"
+    test_po_file.update_entry(entry)
 
     # 更新されたことを確認
     updated = test_po_file.get_entry_by_key(entry_key)
     assert updated is not None
-    assert updated["msgstr"] == "更新テスト"
+    assert updated.msgstr == "更新テスト"
 
 
 def test_search_entries(test_po_file):
@@ -93,7 +95,7 @@ def test_search_entries(test_po_file):
         results = test_po_file.get_filtered_entries(update_filter=True)
 
     assert len(results) == 1
-    assert results[0]["msgid"] == "test1"
+    assert results[0].msgid == "test1"
 
 
 def test_get_stats(test_po_file):
