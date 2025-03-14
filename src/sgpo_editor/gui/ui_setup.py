@@ -252,10 +252,7 @@ class UIManager:
             
             # シンプルなQAction.triggered接続方法に変更
             action.triggered.connect(
-                lambda checked=False, idx=index: (
-                    print(f"Menu clicked for column {idx}"),
-                    toggle_callback(idx)
-                )
+                lambda checked=False, idx=index: self._handle_column_toggle(idx, toggle_callback)
             )
             
             self.column_visibility_menu.addAction(action)
@@ -274,6 +271,16 @@ class UIManager:
             print(f"Action updated for column {column_index}")
         else:
             print(f"Column index {column_index} out of range (0-{len(self.column_visibility_actions)-1})")
+    
+    def _handle_column_toggle(self, index: int, toggle_callback: Callable[[int], None]) -> None:
+        """列の表示/非表示を切り替えるハンドラー
+        
+        Args:
+            index: 列インデックス
+            toggle_callback: 列の表示/非表示を切り替えるコールバック関数
+        """
+        print(f"Menu clicked for column {index}")
+        toggle_callback(index)
     
     def update_recent_files_menu(self, callback: Callable[[str], None]) -> None:
         """最近使用したファイルメニューを更新する

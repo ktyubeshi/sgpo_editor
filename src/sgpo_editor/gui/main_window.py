@@ -402,17 +402,28 @@ class MainWindow(QMainWindow):
         Args:
             column_index: 列インデックス
         """
-        # デバッグ情報を表示
-        print(f"_toggle_column_visibility called with column_index={column_index}")
-        self.statusBar().showMessage(f"列{column_index}の表示/非表示を切り替えました")
-        
-        # 列の表示/非表示を切り替える
-        self.table_manager.toggle_column_visibility(column_index)
-        
-        # UIのチェック状態を更新
-        visible = self.table_manager.is_column_visible(column_index)
-        print(f"Column {column_index} visibility is now: {visible}")
-        self.ui_manager.update_column_visibility_action(column_index, visible)
+        try:
+            # 変更前の状態を記録
+            was_visible = self.table_manager.is_column_visible(column_index)
+            logger.debug(f"列 {column_index} の切り替え前の状態: {'表示' if was_visible else '非表示'}")
+            
+            # 列の表示/非表示を切り替える
+            self.table_manager.toggle_column_visibility(column_index)
+            
+            # 変更後の状態を取得
+            now_visible = self.table_manager.is_column_visible(column_index)
+            logger.debug(f"列 {column_index} の切り替え後の状態: {'表示' if now_visible else '非表示'}")
+            
+            # UIのチェック状態を確実に更新
+            self.ui_manager.update_column_visibility_action(column_index, now_visible)
+            
+            # デバッグ情報とユーザー通知
+            action_text = '表示' if now_visible else '非表示'
+            self.statusBar().showMessage(f"列 {column_index} を{action_text}に設定しました")
+            logger.info(f"列 {column_index} の表示状態を {was_visible} から {now_visible} に変更しました")
+        except Exception as e:
+            logger.error(f"列表示の切り替えエラー: {str(e)}", exc_info=True)
+            self.statusBar().showMessage(f"列表示の切り替えエラー: {str(e)}")
 
 
     def setup_metadata_menu(self) -> None:
