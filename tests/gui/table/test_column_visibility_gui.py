@@ -32,7 +32,15 @@ def app():
 @pytest.fixture
 def main_window(app):
     """Create and return MainWindow instance."""
+    # 設定をクリアしてからメインウィンドウを作成
+    settings = QSettings("SGPOEditor", "TableSettings")
+    settings.clear()
+    settings.sync()
+    
     window = MainWindow()
+    # テスト用に明示的にすべての列を表示状態に設定
+    for i in range(window.table_manager.table.columnCount()):
+        window.table_manager.table.setColumnHidden(i, False)
     yield window
     window.close()
 

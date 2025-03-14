@@ -26,6 +26,10 @@ class TestColumnVisibility(unittest.TestCase):
         # 実際のTableManagerを使用
         self.table_manager = TableManager(self.table, self.get_current_po)
         
+        # テスト用に内部状態をセットアップ
+        # _hidden_columnsを実際のset型にして、比較が正しく動作するようにする
+        self.table_manager._hidden_columns = set()
+        
         # UIManagerのモック
         self.ui_manager = MagicMock(spec=UIManager)
         
@@ -97,6 +101,7 @@ class TestColumnVisibility(unittest.TestCase):
         result = self.table_manager.is_column_visible(column_index)
         self.assertFalse(result)
         
+        # 最後の呼び出しを確認
         self.table.isColumnHidden.assert_called_with(column_index)
 
     def test_sync_column_visibility(self):
@@ -106,7 +111,10 @@ class TestColumnVisibility(unittest.TestCase):
         
         # 最初の2列を非表示に設定
         def isColumnHidden_side_effect(idx):
-            return idx in [0, 1]
+            # 整数との比較が確実に行われるようにする
+            if isinstance(idx, int):
+                return idx in [0, 1]
+            return False
         
         self.table.isColumnHidden.side_effect = isColumnHidden_side_effect
         
@@ -135,7 +143,13 @@ class TestColumnVisibility(unittest.TestCase):
         self.table.setColumnHidden.reset_mock()
         
         # isColumnHiddenメソッドのモック動作を設定
-        self.table.isColumnHidden.side_effect = lambda idx: idx == hidden_column
+        def is_column_hidden_side_effect(idx):
+            # 整数との比較が確実に行われるようにする
+            if isinstance(idx, int):
+                return idx == hidden_column
+            return False
+            
+        self.table.isColumnHidden.side_effect = is_column_hidden_side_effect
         
         # _load_column_visibilityをテストする前に、列の非表示状態を確認
         self.assertTrue(self.table.isColumnHidden(hidden_column))
@@ -160,12 +174,14 @@ class TestColumnVisibility(unittest.TestCase):
         self.table.setColumnHidden.reset_mock()
         
         # 静的なメソッドで列の非表示状態を確認
+        # モックの動作を再設定
+        self.table.isColumnHidden.side_effect = is_column_hidden_side_effect
         self.assertFalse(self.table_manager.is_column_visible(hidden_column))
         self.assertTrue(self.table_manager.is_column_visible(visible_column))
         
         # 最終確認：非表示列が正しく機能しているか検証
         self.table.setColumnHidden.reset_mock()
-        self.table.isColumnHidden.side_effect = lambda idx: idx == hidden_column
+        self.table.isColumnHidden.side_effect = is_column_hidden_side_effect
         
         # 非表示状態の列を再適用
         self.table.setColumnHidden(hidden_column, True)

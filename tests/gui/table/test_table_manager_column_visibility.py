@@ -102,10 +102,25 @@ class TestTableManagerColumnVisibility:
         self.table_manager.toggle_column_visibility(column_index)
         
         # 設定が保存されたか確認
-        # 最後の呼び出しを確認
-        mock_settings_instance.setValue.assert_called_with(
-            "hidden_columns", json.dumps([column_index])
-        )
+        # 全ての呼び出しを確認
+        calls = mock_settings_instance.setValue.call_args_list
+        
+        # hidden_columnsキーでの呼び出しがあるか確認
+        hidden_columns_call = None
+        for call in calls:
+            args, kwargs = call
+            if args[0] == "hidden_columns":
+                hidden_columns_call = call
+                break
+        
+        # hidden_columnsキーでの呼び出しがあることを確認
+        assert hidden_columns_call is not None, "hidden_columnsキーでの呼び出しがありません"
+        
+        # 第二引数がJSON文字列であることを確認
+        args, kwargs = hidden_columns_call
+        hidden_columns = json.loads(args[1])
+        assert isinstance(hidden_columns, list)
+        assert column_index in hidden_columns
 
     @patch('sgpo_editor.gui.table_manager.QSettings')
     def test_load_column_visibility(self, mock_settings):

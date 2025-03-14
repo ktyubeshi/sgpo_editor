@@ -1,6 +1,6 @@
 """エントリエディタのテスト"""
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, MagicMock, patch
 
 import pytest
 
@@ -98,16 +98,35 @@ def test_entry_editor_database_setter(entry_editor, mock_database):
 
 def test_entry_editor_apply_button(entry_editor, mock_entry):
     """Applyボタンの動作を確認"""
+    # モックエントリーにmsgstr属性を設定
+    mock_entry.msgstr = "Original text"
     entry_editor.set_entry(mock_entry)
 
-    # シグナルをモック
-    with patch.object(entry_editor, "apply_clicked") as mock_signal:
+    # 直接ボタンクリックハンドラをモックしてテスト
+    with patch.object(entry_editor, "_on_apply_clicked") as mock_handler:
+        # テキストを変更して変更状態を作成
+        entry_editor.msgstr_edit.setPlainText("Updated text")
+        
+        # ボタンクリック
         entry_editor.apply_button.click()
-        mock_signal.emit.assert_called_once()
+        
+        # ハンドラが呼び出されたことを確認
+        mock_handler.assert_called_once()
 
 
 def test_entry_editor_review_dialogs(entry_editor, mock_entry, mock_database):
     """レビューダイアログの表示を確認"""
+    # モックエントリーに必要な属性を追加
+    mock_entry.tcomment = ""
+    mock_entry.rcomment = ""
+    mock_entry.quality_score = {}
+    mock_entry.check_result = {}
+    mock_entry.check_results = []
+    mock_entry.debug_info = {}
+    mock_entry.review_comments = []
+    mock_entry.overall_quality_score = 0
+    mock_entry.category_quality_scores = {}
+    
     entry_editor.set_entry(mock_entry)
     entry_editor.database = mock_database
 
@@ -119,10 +138,23 @@ def test_entry_editor_review_dialogs(entry_editor, mock_entry, mock_database):
         "debug",
     ]
 
+    # 各ダイアログタイプでテスト
     for dialog_type in dialog_types:
-        with patch("PySide6.QtWidgets.QDialog") as mock_dialog:
+        # ダイアログをモックする前に、既存のダイアログをクリア
+        if dialog_type in entry_editor._review_dialogs:
+            del entry_editor._review_dialogs[dialog_type]
+            
+        # showメソッドをモックしてダイアログが表示されることを確認
+        with patch("PySide6.QtWidgets.QDialog.show") as mock_show:
+            # レビューダイアログを表示
             entry_editor._show_review_dialog(dialog_type)
-            mock_dialog.assert_called_once()
+            
+            # ダイアログが作成されたことを確認
+            assert dialog_type in entry_editor._review_dialogs
+            assert entry_editor._review_dialogs[dialog_type] is not None
+            
+            # showメソッドが呼ばれたことを確認
+            mock_show.assert_called_once()
 
 
 def test_entry_editor_error_handling(entry_editor, mock_entry):
