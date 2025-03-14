@@ -153,7 +153,7 @@ class TestTableManagerColumnVisibility:
 
     def test_get_column_count(self):
         """列数取得機能のテスト"""
-        assert self.table_manager.get_column_count() == 5
+        assert self.table_manager.get_column_count() == 6
 
     @patch('sgpo_editor.gui.table_manager.QSettings')
     def test_load_column_visibility_with_invalid_data(self, mock_settings):

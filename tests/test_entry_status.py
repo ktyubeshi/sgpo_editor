@@ -12,7 +12,7 @@ def test_get_status_when_obsolete():
 def test_get_status_when_fuzzy():
     """ファジーエントリの状態表示テスト"""
     entry = EntryModel(key="test", msgid="test", msgstr="テスト", flags=["fuzzy"])
-    assert entry.get_status() == "ファジー"
+    assert entry.get_status() == "要確認"
 
 
 def test_get_status_when_untranslated():
@@ -24,4 +24,4 @@ def test_get_status_when_untranslated():
 def test_get_status_when_translated():
     """翻訳済みエントリの状態表示テスト"""
     entry = EntryModel(key="test", msgid="test", msgstr="テスト")
-    assert entry.get_status() == "翻訳済み"
+    assert entry.get_status() == "完了"

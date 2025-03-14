@@ -54,6 +54,6 @@ def test_table_status_column_display(table_widget, entry_data):
 
     # 各行の状態セルの内容を確認
     assert table_widget.item(0, 4).text() == "未翻訳"
-    assert table_widget.item(1, 4).text() == "翻訳済み"
-    assert table_widget.item(2, 4).text() == "ファジー"
+    assert table_widget.item(1, 4).text() == "完了"
+    assert table_widget.item(2, 4).text() == "要確認"
     assert table_widget.item(3, 4).text() == "廃止済み"
