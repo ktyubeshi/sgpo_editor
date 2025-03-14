@@ -206,8 +206,9 @@ class MainWindow(QMainWindow):
             )
 
             # POファイルからフィルタ条件に合ったエントリを取得
+            # update_filter=Trueを指定して、キャッシュを使わずに強制的に最新データを取得
             entries = current_po.get_filtered_entries(
-                update_filter=True,  # ファイル読み込み直後は強制的に更新
+                update_filter=True,  # 強制的に更新
                 filter_text=filter_text,
                 filter_keyword=filter_keyword,
             )
@@ -215,6 +216,7 @@ class MainWindow(QMainWindow):
             logger.debug(f"取得したエントリ数: {len(entries)}件")
 
             # テーブルを更新（フィルタ条件を渡す）
+            # 現在のソート条件を維持したまま更新
             sorted_entries = self.table_manager.update_table(entries, criteria)
 
             logger.debug(
@@ -223,6 +225,9 @@ class MainWindow(QMainWindow):
 
             # フィルタ結果の件数をステータスバーに表示
             self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
+            
+            # テーブルの表示を強制的に更新
+            self.table.viewport().update()
         except Exception as e:
             logger.error(f"テーブル更新エラー: {str(e)}", exc_info=True)
             self.statusBar().showMessage(f"テーブル更新エラー: {str(e)}")
@@ -351,11 +356,18 @@ class MainWindow(QMainWindow):
         Args:
             entry_number: エントリ番号
         """
-        # 統計情報の更新
+        logger.debug(f"エントリ更新通知を受信: エントリ番号={entry_number}")
+        
+        # 現在のPOファイルを取得
         current_po = self._get_current_po()
         if current_po:
+            # 統計情報の更新
             stats = current_po.get_stats()
             self._update_stats(stats)
+            
+            # エントリ更新後にテーブルを確実に更新
+            logger.debug("エントリ更新後にテーブルを更新します")
+            self._update_table()
             
         # メタデータパネルの更新
         self.update_metadata_panel()

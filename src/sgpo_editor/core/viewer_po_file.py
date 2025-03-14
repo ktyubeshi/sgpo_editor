@@ -494,6 +494,13 @@ class ViewerPOFile:
                         "is_basic_info": True,
                     }
                     self._basic_info_cache[key] = Entry.from_dict(basic_info_dict)
+                
+                # filtered_entriesリストの更新処理
+                for i, filtered_entry in enumerate(self.filtered_entries):
+                    if hasattr(filtered_entry, "key") and filtered_entry.key == key:
+                        logger.debug(f"filtered_entriesリストのエントリを更新: インデックス={i}, キー={key}")
+                        self.filtered_entries[i] = entry_obj
+                        break
 
             # 変更フラグを設定
             self.modified = True
