@@ -180,7 +180,8 @@ class MetadataEditDialog(QDialog):
     
     def load_metadata(self) -> None:
         """既存のメタデータをテーブルに読み込む"""
-        metadata = self.entry.get_all_metadata()
+        # EntryModelクラスのmetadataプロパティを使用
+        metadata = getattr(self.entry, 'metadata', {})
         self.metadata_table.setRowCount(len(metadata))
         
         for row, (key, value) in enumerate(metadata.items()):
