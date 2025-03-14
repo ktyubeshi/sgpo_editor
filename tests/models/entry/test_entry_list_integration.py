@@ -85,4 +85,4 @@ def test_entry_list_status_display(app, sample_po_path):
     assert "未翻訳" in states, "未翻訳状態が表示されていません"
     assert "翻訳済み" in states, "翻訳済み状態が表示されていません"
     assert "ファジー" in states, "ファジー状態が表示されていません"
-    assert "廃止済み" in states, "廃止済み状態が表示されていません"
+    assert "廃止" in states, "廃止状態が表示されていません"
