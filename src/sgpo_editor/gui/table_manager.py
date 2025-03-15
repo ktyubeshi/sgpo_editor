@@ -167,12 +167,13 @@ class TableManager:
         Returns:
             List of entries displayed
         """
-        logger.debug("テーブル更新開始")
+        logger.debug("TableManager.update_table: 開始")
         
         # 現在の列の表示/非表示状態を内部状態と同期
         self._sync_column_visibility()
         
         if not entries:
+            logger.debug("TableManager.update_table: エントリが空のため、テーブルをクリア")
             self.table.setRowCount(0)
             self._display_entries = []
             self._entry_cache.clear()
@@ -190,11 +191,14 @@ class TableManager:
 
         # エントリのキーを保存
         self._display_entries = [entry.key for entry in entries]
+        logger.debug(f"TableManager.update_table: 表示エントリ数: {len(self._display_entries)}件")
 
         # Update cache - 既存のキャッシュを更新するだけでなく、完全に置き換える
         self._entry_cache = {entry.key: entry for entry in entries}
+        logger.debug(f"TableManager.update_table: キャッシュを更新: {len(self._entry_cache)}件")
 
         # Sort
+        logger.debug(f"TableManager.update_table: エントリをソート column={self._current_sort_column}, order={self._current_sort_order}")
         if self._current_sort_column == 5:  # Score column
             sorted_entries = self._sort_entries_by_score(
                 entries, self._current_sort_order
@@ -203,19 +207,31 @@ class TableManager:
             sorted_entries = self._sort_entries(
                 entries, self._current_sort_column, self._current_sort_order
             )
+        logger.debug(f"TableManager.update_table: ソート完了: {len(sorted_entries)}件")
 
         # テーブルの更新を一時停止して効率的に更新
+        logger.debug(f"TableManager.update_table: テーブル更新を一時停止")
         self.table.setUpdatesEnabled(False)
         try:
             # テーブルを更新
+            logger.debug(f"TableManager.update_table: テーブル内容を更新")
             self._update_table_contents(sorted_entries)
+            logger.debug(f"TableManager.update_table: テーブル内容の更新完了")
         finally:
             # 必ず更新を再開
+            logger.debug(f"TableManager.update_table: テーブル更新を再開")
             self.table.setUpdatesEnabled(True)
             # 表示を強制的に更新
+            logger.debug(f"TableManager.update_table: 表示を強制的に更新")
             self.table.viewport().update()
+            # テーブルのレイアウトを更新
+            logger.debug(f"TableManager.update_table: テーブルのレイアウトを更新")
+            self.table.updateGeometry()
+            # テーブルを再描画
+            logger.debug(f"TableManager.update_table: テーブルを再描画")
+            self.table.repaint()
             
-        logger.debug(f"テーブル更新完了: {len(sorted_entries)}件表示")
+        logger.debug(f"TableManager.update_table: 完了: {len(sorted_entries)}件表示")
 
         return sorted_entries
 
@@ -542,74 +558,63 @@ class TableManager:
         return sorted(entries, key=score_key)
 
     def _update_table_contents(self, entries: List[EntryModel]) -> None:
-        """Update table contents"""
-        try:
-            # テーブルの行数を設定
-            self.table.setRowCount(len(entries))
+        """テーブルの内容を更新する
 
-            # サンプルエントリのログ出力（最大3件）
-            if len(entries) > 0 and logger.isEnabledFor(logging.DEBUG):
-                logger.debug("表示するエントリのサンプル:")
-                for i, entry in enumerate(entries[:3]):
-                    logger.debug(
-                        f"  エントリ {i + 1}: msgid={entry.msgid[:30] if entry.msgid else ''}... msgstr={entry.msgstr[:30] if entry.msgstr else ''}..."
-                    )
-
-            # 各エントリをテーブルに設定
-            for i, entry in enumerate(entries):
-                # Entry number
-                item = QTableWidgetItem(str(entry.position + 1))
-                item.setData(Qt.ItemDataRole.UserRole, entry.key)
-                self.table.setItem(i, 0, item)
-
-                # msgctxt
-                msgctxt = entry.msgctxt if entry.msgctxt else ""
-                self.table.setItem(i, 1, QTableWidgetItem(msgctxt))
-
-                # msgid
-                msgid = entry.msgid if entry.msgid else ""
-                self.table.setItem(i, 2, QTableWidgetItem(msgid))
-
-                # msgstr
-                msgstr = entry.msgstr if entry.msgstr else ""
-                self.table.setItem(i, 3, QTableWidgetItem(msgstr))
-
-                # Status
-                status = entry.get_status()
-                # ステータスを翻訳して表示
-                translated_status = translate(status)
-                status_item = QTableWidgetItem(translated_status)
-                self.table.setItem(i, 4, status_item)
-
-                # Score
-                score = entry.score
-                score_item = QTableWidgetItem(str(score) if score is not None else "")
-                self.table.setItem(i, 5, score_item)
-
-        except Exception as e:
-            logger.error(f"テーブル更新中にエラーが発生: {str(e)}")
-            raise
-        finally:
-            # 内部状態に基づいて列の表示/非表示状態を確実に適用
-            self._apply_column_visibility()
+        Args:
+            entries: 表示するエントリのリスト
+        """
+        logger.debug(f"TableManager._update_table_contents: 開始 entries={len(entries)}件")
+        
+        # テーブルの行数を設定
+        self.table.setRowCount(len(entries))
+        
+        # 各エントリをテーブルに追加
+        for row, entry in enumerate(entries):
+            # エントリ番号
+            item = QTableWidgetItem(str(entry.position))
+            item.setData(Qt.ItemDataRole.UserRole, entry.key)
+            self.table.setItem(row, 0, item)
             
-            # 列ヘッダーの全高を取得し、再設定
-            header_height = self.table.horizontalHeader().height()
-            self.table.horizontalHeader().setFixedHeight(header_height)
+            # msgctxt
+            item = QTableWidgetItem(entry.msgctxt or "")
+            self.table.setItem(row, 1, item)
             
-            # テーブルの更新を促す
-            self.table.horizontalHeader().updateGeometry()
-            self.table.horizontalHeader().viewport().update()
+            # msgid
+            item = QTableWidgetItem(entry.msgid)
+            self.table.setItem(row, 2, item)
             
-            # 各列の更新後の表示状態をログ出力
-            if logger.isEnabledFor(logging.DEBUG):
-                for i in range(self.table.columnCount()):
-                    logger.debug(f"更新後の列 {i} ({self.get_column_name(i)}) の状態: hidden={self.table.isColumnHidden(i)}")
-
-        # Update sort indicator
-        self.table.horizontalHeader().setSortIndicator(
-            self._current_sort_column, self._current_sort_order
-        )
+            # msgstr
+            item = QTableWidgetItem(entry.msgstr)
+            self.table.setItem(row, 3, item)
+            
+            # ステータス
+            status = "Fuzzy" if entry.fuzzy else "Translated" if entry.msgstr else "Untranslated"
+            item = QTableWidgetItem(status)
+            
+            # ステータスに応じて背景色を設定
+            if entry.fuzzy:
+                item.setBackground(QColor(255, 255, 200))  # 薄い黄色
+            elif not entry.msgstr:
+                item.setBackground(QColor(255, 200, 200))  # 薄い赤色
+            else:
+                item.setBackground(QColor(200, 255, 200))  # 薄い緑色
+            
+            self.table.setItem(row, 4, item)
+            
+            # スコア（仮の実装）
+            score = "N/A"
+            item = QTableWidgetItem(score)
+            self.table.setItem(row, 5, item)
+        
+        # 列の表示/非表示を適用
+        self._apply_column_visibility()
+        
+        # テーブルの表示を強制的に更新
+        self.table.viewport().update()
+        self.table.updateGeometry()
+        self.table.repaint()
+        
+        logger.debug(f"TableManager._update_table_contents: 完了")
 
     def _get_filter_conditions(self) -> tuple[Optional[str], Optional[str]]:
         """現在のフィルタ条件を取得

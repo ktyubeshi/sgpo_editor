@@ -8,7 +8,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal, Qt
-from PySide6.QtWidgets import QTableWidget
+from PySide6.QtWidgets import QTableWidget, QApplication
 
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.widgets.search import SearchWidget
@@ -55,9 +55,10 @@ class EntryListFacade(QObject):
         
     def update_table(self) -> None:
         """テーブルを最新の状態に更新する"""
+        logger.debug("EntryListFacade.update_table: 開始")
         current_po = self._get_current_po()
         if not current_po:
-            logger.debug("POファイルが読み込まれていないため、テーブル更新をスキップします")
+            logger.debug("EntryListFacade.update_table: POファイルが読み込まれていないため、テーブル更新をスキップします")
             return
             
         try:
@@ -66,25 +67,38 @@ class EntryListFacade(QObject):
             filter_text = criteria.filter
             filter_keyword = criteria.filter_keyword
             
-            logger.debug(f"テーブル更新: filter_text={filter_text}, filter_keyword={filter_keyword}")
+            logger.debug(f"EntryListFacade.update_table: フィルタ条件 filter_text={filter_text}, filter_keyword={filter_keyword}")
             
             # POファイルからフィルタ条件に合ったエントリを取得
+            logger.debug(f"EntryListFacade.update_table: POファイルからエントリ取得開始 _force_filter_update={current_po._force_filter_update}")
             entries = current_po.get_filtered_entries(
                 update_filter=True,  # 強制的に更新
                 filter_text=filter_text,
                 filter_keyword=filter_keyword,
             )
             
-            logger.debug(f"取得したエントリ数: {len(entries)}件")
+            logger.debug(f"EntryListFacade.update_table: 取得したエントリ数: {len(entries)}件")
             
             # テーブルを更新（フィルタ条件を渡す）
+            logger.debug(f"EntryListFacade.update_table: TableManagerのupdate_table呼び出し")
             sorted_entries = self._table_manager.update_table(entries, criteria)
             
-            logger.debug(f"テーブル更新完了: {len(sorted_entries) if sorted_entries else 0}件表示")
+            logger.debug(f"EntryListFacade.update_table: テーブル更新完了: {len(sorted_entries) if sorted_entries else 0}件表示")
             
             # テーブルの表示を強制的に更新
+            logger.debug(f"EntryListFacade.update_table: テーブルの表示を強制的に更新")
             self._table.viewport().update()
+            self._table.updateGeometry()
+            self._table.repaint()
+            
+            # イベントループを処理して表示を更新
+            logger.debug(f"EntryListFacade.update_table: イベントループを処理して表示を更新")
+            QApplication.processEvents()
+            
+            logger.debug(f"EntryListFacade.update_table: 完了")
+            
         except Exception as e:
+            logger.error(f"EntryListFacade.update_table: エラー発生 {e}")
             logger.error(f"テーブル更新エラー: {e}")
     
     def select_entry_by_key(self, key: str) -> bool:

@@ -171,6 +171,14 @@ class MainWindow(QMainWindow):
     def _open_file(self) -> None:
         """ファイルを開く"""
         self.file_handler.open_file()
+        
+        # EntryEditorにデータベースを設定
+        current_po = self._get_current_po()
+        if current_po:
+            logger.debug(f"MainWindow._open_file: EntryEditorにデータベースを設定")
+            self.entry_editor.database = current_po.db
+            logger.debug(f"MainWindow._open_file: データベース設定完了")
+        
         # 最近使用したファイルメニューを更新
         self.ui_manager.update_recent_files_menu(self._open_recent_file)
 
@@ -182,6 +190,14 @@ class MainWindow(QMainWindow):
         """
         if filepath:
             self.file_handler.open_file(filepath)
+            
+            # EntryEditorにデータベースを設定
+            current_po = self._get_current_po()
+            if current_po:
+                logger.debug(f"MainWindow._open_recent_file: EntryEditorにデータベースを設定")
+                self.entry_editor.database = current_po.db
+                logger.debug(f"MainWindow._open_recent_file: データベース設定完了")
+            
             # 最近使用したファイルメニューを更新
             self.ui_manager.update_recent_files_menu(self._open_recent_file)
 
@@ -380,45 +396,63 @@ class MainWindow(QMainWindow):
         Args:
             entry_number: エントリ番号
         """
-        logger.debug(f"エントリ更新通知を受信: エントリ番号={entry_number}")
+        logger.debug(f"MainWindow._on_entry_updated: 開始 entry_number={entry_number}")
         
         # 現在のPOファイルを取得
         current_po = self._get_current_po()
         if not current_po:
-            logger.debug("現在のPOファイルが存在しないため、エントリ更新処理をスキップします")
+            logger.debug("MainWindow._on_entry_updated: 現在のPOファイルが存在しないため、エントリ更新処理をスキップします")
             return
             
         try:
             # 更新前の選択キーを取得
             current_key = self.entry_list_facade.get_selected_entry_key()
-            logger.debug(f"更新前の選択キー: {current_key}")
+            logger.debug(f"MainWindow._on_entry_updated: 更新前の選択キー: {current_key}")
             
             # 更新されたエントリを取得
-            updated_entry = current_po.get_entry_by_position(entry_number)
-            updated_key = getattr(updated_entry, "key", None) if updated_entry else None
+            # ViewerPOFileにはget_entry_by_positionメソッドがないため、
+            # 現在選択されているエントリのキーを使用してget_entry_by_keyメソッドで取得する
+            logger.debug(f"MainWindow._on_entry_updated: 更新されたエントリを取得 position={entry_number}, key={current_key}")
+            
+            if current_key:
+                updated_entry = current_po.get_entry_by_key(current_key)
+                updated_key = getattr(updated_entry, "key", None) if updated_entry else None
+                logger.debug(f"MainWindow._on_entry_updated: 更新されたエントリ key={updated_key}")
+            else:
+                logger.debug(f"MainWindow._on_entry_updated: 現在のキーが取得できないため、更新されたエントリを取得できません")
+                updated_key = None
             
             # 統計情報の更新
+            logger.debug(f"MainWindow._on_entry_updated: 統計情報の更新")
             stats = current_po.get_stats()
             self._update_stats(stats)
             
+            # 強制的にフィルタ更新フラグを設定
+            logger.debug(f"MainWindow._on_entry_updated: 強制的にフィルタ更新フラグを設定")
+            current_po._force_filter_update = True
+            
             # ファサードを使用してテーブルを更新
-            logger.debug("エントリ更新後にテーブルを更新します")
+            logger.debug(f"MainWindow._on_entry_updated: テーブル更新開始")
             self.entry_list_facade.update_table()
+            logger.debug(f"MainWindow._on_entry_updated: テーブル更新完了")
             
             # エントリの選択状態を維持
             if updated_key:
                 # 更新されたエントリを選択
+                logger.debug(f"MainWindow._on_entry_updated: 更新されたエントリを選択 key={updated_key}")
                 self.entry_list_facade.select_entry_by_key(updated_key)
-                logger.debug(f"更新されたエントリを選択: キー={updated_key}")
             elif current_key:
                 # 元の選択状態を復元
+                logger.debug(f"MainWindow._on_entry_updated: 元の選択状態を復元 key={current_key}")
                 self.entry_list_facade.select_entry_by_key(current_key)
-                logger.debug(f"元の選択状態を復元: キー={current_key}")
             
             # メタデータパネルの更新
+            logger.debug(f"MainWindow._on_entry_updated: メタデータパネルの更新")
             self.update_metadata_panel()
+            logger.debug(f"MainWindow._on_entry_updated: 完了")
             
         except Exception as e:
+            logger.error(f"MainWindow._on_entry_updated: エラー発生 {e}")
             logger.error(f"エントリ更新処理エラー: {e}")
 
     def _change_entry_layout(self, layout_type: LayoutType) -> None:
