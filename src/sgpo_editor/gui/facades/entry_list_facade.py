@@ -187,7 +187,7 @@ class EntryListFacade(QObject):
             return
             
         try:
-            entry = current_po.get_entry(key)
+            entry = current_po.get_entry_by_key(key)
             if entry and hasattr(entry, "position"):
                 logger.debug(f"EntryListFacade._on_cell_clicked: エントリ位置={entry.position}のシグナルを発行")
                 self.entry_selected.emit(entry.position)

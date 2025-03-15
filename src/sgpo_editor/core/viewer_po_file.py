@@ -9,8 +9,8 @@ from collections import namedtuple
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import polib
-
+from sgpo_editor.core.po_factory import get_po_factory, POLibraryType
+from sgpo_editor.core.po_interface import POEntry, POFile
 from sgpo_editor.models.database import Database
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.core.constants import TranslationStatus
@@ -24,8 +24,12 @@ Stats = namedtuple("Stats", ["total", "translated", "fuzzy", "untranslated", "pr
 class ViewerPOFile:
     """POファイルを読み込み、表示するためのクラス"""
 
-    def __init__(self):
-        """初期化"""
+    def __init__(self, library_type: Optional[POLibraryType] = POLibraryType.SGPO):
+        """初期化
+        
+        Args:
+            library_type: 使用するPOライブラリの種類
+        """
         self.db = Database()
         self.path = None
         self.filtered_entries = []
@@ -36,6 +40,8 @@ class ViewerPOFile:
         self.flag_conditions = {}
         self.translation_status = None
         self.modified = False
+        self.metadata = {}  # POファイルのメタデータを保存するための変数を追加
+        self.library_type = library_type
 
         # エントリキャッシュを初期化
         self._entry_cache = {}
@@ -58,20 +64,15 @@ class ViewerPOFile:
             path = Path(path)
             self.path = path
 
-            # バイナリヘッダを読み込む
-            with open(path, "rb") as f:
-                header = f.read(10)
+            # POファイルファクトリを取得
+            factory = get_po_factory(self.library_type)
+            
+            # POファイルを読み込む
+            pofile = factory.load_file(path)
 
-            pofile = None
-            if header.startswith(b"\xde\xbb\xbf"):  # UTF-8 BOM
-                logger.debug("UTF-8 with BOM検出")
-                with open(path, encoding="utf-8-sig") as f:
-                    postr = f.read()
-                pofile = polib.pofile(postr)
-            else:
-                logger.debug("通常のPOファイル読み込み")
-                pofile = polib.pofile(str(path), encoding="utf-8")
-
+            # メタデータを保存
+            self.metadata = dict(pofile.metadata)
+            
             # データベースをクリア
             self.db.clear()
 
@@ -239,9 +240,9 @@ class ViewerPOFile:
         return self._basic_info_cache.get(key)
 
     def _convert_entry_to_dict(
-        self, entry: polib.POEntry, position: int
+        self, entry: POEntry, position: int
     ) -> Dict[str, Any]:
-        """polibエントリをディクショナリに変換する"""
+        """POエントリをディクショナリに変換する"""
         key = f"{position}"
         entry_dict = {
             "key": key,
@@ -259,7 +260,7 @@ class ViewerPOFile:
             entry_dict["msgstr_plural"] = entry.msgstr_plural
 
         # コンテキスト
-        if hasattr(entry, "msgctxt") and entry.msgctxt:
+        if entry.msgctxt:
             entry_dict["msgctxt"] = entry.msgctxt
 
         # 前バージョン
@@ -271,9 +272,9 @@ class ViewerPOFile:
             entry_dict["previous_msgctxt"] = entry.previous_msgctxt
 
         # コメント
-        if hasattr(entry, "comment") and entry.comment:
+        if entry.comment:
             entry_dict["comment"] = entry.comment
-        if hasattr(entry, "tcomment") and entry.tcomment:
+        if entry.tcomment:
             entry_dict["tcomment"] = entry.tcomment
 
         return entry_dict
@@ -714,50 +715,64 @@ class ViewerPOFile:
 
             # データベースからすべてのエントリを取得
             entries = self.db.get_entries(sort_column="position", sort_order="ASC")
-            pofile = polib.POFile()
+            
+            # POファイルファクトリを取得
+            factory = get_po_factory(self.library_type)
+            
+            # 新しいPOファイルを作成
+            pofile = factory.create_file()
+            
+            # メタデータを設定
+            if self.metadata:
+                pofile.metadata = dict(self.metadata)
 
             for entry_dict in entries:
-                # データベースの辞書形式のデータからpolib.POEntryを作成
-                entry = polib.POEntry(
-                    msgid=entry_dict.get("msgid", ""),
-                    msgstr=entry_dict.get("msgstr", ""),
-                    occurrences=entry_dict.get("references", []),
-                    flags=entry_dict.get("flags", []),
-                    obsolete=entry_dict.get("obsolete", False),
-                )
+                # データベースの辞書形式のデータからPOEntryを作成
+                entry_kwargs = {
+                    "msgid": entry_dict.get("msgid", ""),
+                    "msgstr": entry_dict.get("msgstr", ""),
+                    "occurrences": entry_dict.get("references", []),
+                    "flags": entry_dict.get("flags", []),
+                    "obsolete": entry_dict.get("obsolete", False),
+                }
 
                 # 複数形
                 if "msgid_plural" in entry_dict and entry_dict["msgid_plural"]:
-                    entry.msgid_plural = entry_dict["msgid_plural"]
-                    entry.msgstr_plural = entry_dict.get("msgstr_plural", {})
+                    entry_kwargs["msgid_plural"] = entry_dict["msgid_plural"]
+                    entry_kwargs["msgstr_plural"] = entry_dict.get("msgstr_plural", {})
 
                 # コンテキスト
                 if "msgctxt" in entry_dict and entry_dict["msgctxt"]:
-                    entry.msgctxt = entry_dict["msgctxt"]
+                    entry_kwargs["msgctxt"] = entry_dict["msgctxt"]
 
                 # 前バージョン
                 if "previous_msgid" in entry_dict and entry_dict["previous_msgid"]:
-                    entry.previous_msgid = entry_dict["previous_msgid"]
+                    entry_kwargs["previous_msgid"] = entry_dict["previous_msgid"]
                 if (
                     "previous_msgid_plural" in entry_dict
                     and entry_dict["previous_msgid_plural"]
                 ):
-                    entry.previous_msgid_plural = entry_dict["previous_msgid_plural"]
+                    entry_kwargs["previous_msgid_plural"] = entry_dict["previous_msgid_plural"]
                 if "previous_msgctxt" in entry_dict and entry_dict["previous_msgctxt"]:
-                    entry.previous_msgctxt = entry_dict["previous_msgctxt"]
+                    entry_kwargs["previous_msgctxt"] = entry_dict["previous_msgctxt"]
 
                 # コメント
                 if "comment" in entry_dict and entry_dict["comment"]:
-                    entry.comment = entry_dict["comment"]
+                    entry_kwargs["comment"] = entry_dict["comment"]
                 if "tcomment" in entry_dict and entry_dict["tcomment"]:
-                    entry.tcomment = entry_dict["tcomment"]
+                    entry_kwargs["tcomment"] = entry_dict["tcomment"]
 
                 # Fuzzyフラグの設定
-                if entry_dict.get("fuzzy", False) and "fuzzy" not in entry.flags:
-                    entry.flags.append("fuzzy")
+                if entry_dict.get("fuzzy", False) and "fuzzy" not in entry_kwargs.get("flags", []):
+                    if "flags" not in entry_kwargs:
+                        entry_kwargs["flags"] = []
+                    entry_kwargs["flags"].append("fuzzy")
 
+                # エントリを作成して追加
+                entry = factory.create_entry(**entry_kwargs)
                 pofile.append(entry)
 
+            # POファイルを保存
             pofile.save(str(path))
             logger.debug(f"POファイル保存完了: {path}")
             return True
@@ -809,3 +824,35 @@ class ViewerPOFile:
                     "is_basic_info": True,
                 }
                 self._basic_info_cache[key] = EntryModel(**basic_info)
+
+    def get_entry_at(self, position: int) -> Optional[EntryModel]:
+        """位置（インデックス）からエントリを取得する
+        
+        Args:
+            position: エントリの位置（インデックス）
+            
+        Returns:
+            Optional[EntryModel]: 指定された位置のエントリ。見つからない場合はNone
+        """
+        logger.debug(f"ViewerPOFile.get_entry_at: 位置={position}のエントリを取得")
+        try:
+            # 位置をキーに変換（キーは文字列型の位置）
+            key = str(position)
+            # キーを使用してエントリを取得
+            return self.get_entry_by_key(key)
+        except Exception as e:
+            logger.error(f"ViewerPOFile.get_entry_at: エラー発生 {e}", exc_info=True)
+            return None
+            
+    # 互換性のためのエイリアス
+    def get_entry(self, key: str) -> Optional[EntryModel]:
+        """get_entry_by_keyのエイリアス（後方互換性のため）
+        
+        Args:
+            key: エントリのキー
+            
+        Returns:
+            Optional[EntryModel]: 指定されたキーのエントリ。見つからない場合はNone
+        """
+        logger.debug(f"ViewerPOFile.get_entry: キー={key}のエントリを取得（get_entry_by_keyを使用）")
+        return self.get_entry_by_key(key)
