@@ -170,23 +170,32 @@ class EntryListFacade(QObject):
             row: クリックされた行
             column: クリックされた列
         """
+        logger.debug(f"EntryListFacade._on_cell_clicked: 行={row}, 列={column}")
+        
         item = self._table.item(row, 0)
         if not item:
+            logger.debug("EntryListFacade._on_cell_clicked: アイテムが取得できない")
             return
             
         key = item.data(Qt.ItemDataRole.UserRole)
+        logger.debug(f"EntryListFacade._on_cell_clicked: キー={key}")
         
         # POファイルからエントリを取得
         current_po = self._get_current_po()
         if not current_po:
+            logger.debug("EntryListFacade._on_cell_clicked: POファイルが取得できない")
             return
             
         try:
             entry = current_po.get_entry(key)
             if entry and hasattr(entry, "position"):
+                logger.debug(f"EntryListFacade._on_cell_clicked: エントリ位置={entry.position}のシグナルを発行")
                 self.entry_selected.emit(entry.position)
+                logger.debug("EntryListFacade._on_cell_clicked: シグナル発行完了")
+            else:
+                logger.debug("EntryListFacade._on_cell_clicked: エントリが取得できないか、positionがない")
         except Exception as e:
-            logger.error(f"エントリ選択エラー: {e}")
+            logger.error(f"EntryListFacade._on_cell_clicked: エラー発生 {e}", exc_info=True)
             
     def toggle_column_visibility(self, column_index: int) -> None:
         """列の表示/非表示を切り替える
