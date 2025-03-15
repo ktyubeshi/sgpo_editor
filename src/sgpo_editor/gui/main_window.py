@@ -135,12 +135,15 @@ class MainWindow(QMainWindow):
         
         # メタデータメニューの追加
         self.setup_metadata_menu()
+        
+        # メタデータパネルのドックウィジェット設定
+        self.setup_metadata_panel()
+        
+        # ウィンドウメニューのセットアップ
+        self.ui_manager.setup_window_menu()
 
         # ステータスバー
         self.ui_manager.setup_statusbar()
-
-        # メタデータパネルのドックウィジェット設定
-        self.setup_metadata_panel()
         
         # ウィンドウ状態の復元
         self.ui_manager.restore_dock_states()
@@ -509,12 +512,16 @@ class MainWindow(QMainWindow):
         """メタデータパネルの設定"""
         # メタデータパネルを右側のドックウィジェットとして追加
         self.metadata_dock = QDockWidget("メタデータ", self)
+        self.metadata_dock.setObjectName("metadata_dock")
         self.metadata_dock.setWidget(self.metadata_panel)
         self.metadata_dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.metadata_dock)
         
         # 初期状態では非表示
         self.metadata_dock.setVisible(False)
+        
+        # UIManagerにドックウィジェットを登録
+        self.ui_manager.register_dock_widget("metadata", self.metadata_dock)
 
     def toggle_metadata_panel(self, checked: bool) -> None:
         """メタデータパネルの表示/非表示を切り替え

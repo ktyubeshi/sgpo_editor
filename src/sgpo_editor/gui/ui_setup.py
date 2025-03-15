@@ -52,6 +52,10 @@ class UIManager:
 
         # ドックウィジェット
         self.entry_editor_dock = QDockWidget("エントリ編集", main_window)
+        # ドックウィジェット参照を保持する辞書を追加
+        self.dock_widgets = {
+            "entry_editor": self.entry_editor_dock,
+        }
 
         # メニューアクション
         self.layout1_action: Optional[QAction] = None
@@ -106,6 +110,34 @@ class UIManager:
         self.main_window.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, stats_dock
         )
+        
+        # 統計情報ドックをdock_widgets辞書に追加
+        self.dock_widgets["stats"] = stats_dock
+
+    def register_dock_widget(self, name: str, dock_widget: QDockWidget) -> None:
+        """ドックウィジェットを登録
+
+        Args:
+            name: ドックウィジェットの名前
+            dock_widget: ドックウィジェット
+        """
+        self.dock_widgets[name] = dock_widget
+        
+    def setup_window_menu(self) -> None:
+        """ウィンドウメニューの設定"""
+        window_menu = self.main_window.menuBar().addMenu("ウィンドウ")
+        window_menu.setObjectName("window_menu")
+        
+        # 登録されたドックウィジェットごとにメニュー項目を作成
+        for name, dock_widget in self.dock_widgets.items():
+            action = QAction(dock_widget.windowTitle(), self.main_window)
+            action.setCheckable(True)
+            action.setChecked(dock_widget.isVisible())
+            # pylint: disable=cell-var-from-loop
+            action.triggered.connect(
+                lambda checked, d=dock_widget: d.setVisible(checked)
+            )
+            window_menu.addAction(action)
 
     def setup_menubar(self, callbacks: Dict[str, Callable[..., Any]]) -> None:
         """メニューバーの設定
@@ -118,6 +150,8 @@ class UIManager:
               - close: アプリケーションを閉じる
               - change_layout: レイアウト変更
               - open_recent_file: 最近使用したファイルを開く
+              - toggle_column_visibility: 列表示の切り替え
+              - table_manager: テーブルマネージャ
         """
         # ファイルメニュー
         file_menu = self.main_window.menuBar().addMenu("ファイル")
@@ -195,14 +229,13 @@ class UIManager:
         self.column_visibility_menu = display_menu.addMenu("表示列の設定")
         self.column_visibility_menu.setObjectName("column_visibility_menu")
         
-        # 列表示設定のコールバックが提供されている場合、メニューを設定
-        if "toggle_column_visibility" in callbacks and "table_manager" in callbacks:
-            # メニュー設定を明示的に実行
-            print("Setting up column visibility menu with callbacks")
-            toggle_cb = callbacks["toggle_column_visibility"]
-            table_mgr = callbacks["table_manager"]
-            self._setup_column_visibility_menu(toggle_cb, table_mgr)
-
+        # テーブルマネージャが提供されている場合は列表示設定を構成
+        if callbacks.get("table_manager") and callbacks.get("toggle_column_visibility"):
+            self._setup_column_visibility_menu(
+                callbacks["toggle_column_visibility"],
+                callbacks["table_manager"]
+            )
+            
         # ツールメニュー
         tools_menu = self.main_window.menuBar().addMenu("ツール")
         tools_menu.setObjectName("tools_menu")
