@@ -294,6 +294,7 @@ class ViewerPOFile:
         Returns:
             フィルター条件に一致するEntryModelのリスト
         """
+        logger.debug(f"ViewerPOFile.get_filtered_entries: 開始 update_filter={update_filter}, filter_text={filter_text}, filter_keyword={filter_keyword}, _force_filter_update={self._force_filter_update}")
         # フィルタ条件の更新
         if update_filter or filter_text is not None:
             self.filter_text = filter_text or TranslationStatus.ALL
@@ -302,7 +303,7 @@ class ViewerPOFile:
 
         # フィルタ条件をログ出力
         logger.debug(
-            f"フィルタ条件: filter_text={self.filter_text}, search_text={self.search_text}"
+            f"ViewerPOFile.get_filtered_entries: フィルタ条件: filter_text={self.filter_text}, search_text={self.search_text}"
         )
 
         # キャッシュキーの生成
@@ -314,6 +315,7 @@ class ViewerPOFile:
         
         # 強制更新フラグがある場合はキャッシュをクリア
         if self._force_filter_update:
+            logger.debug(f"ViewerPOFile.get_filtered_entries: 強制更新フラグがあるためキャッシュをクリア")
             self._force_filter_update = False
             update_filter = True
         
@@ -327,14 +329,16 @@ class ViewerPOFile:
             hasattr(self, cache_key_attr) and 
             getattr(self, cache_key_attr) == cache_key
         ):
-            logger.debug("キャッシュからフィルタリング済みエントリを返します")
+            logger.debug("ViewerPOFile.get_filtered_entries: キャッシュからフィルタリング済みエントリを返します")
             return getattr(self, cache_attr)
 
         try:
             # 翻訳ステータスに基づいてフラグ条件を設定
+            logger.debug(f"ViewerPOFile.get_filtered_entries: フラグ条件を設定")
             self._set_flag_conditions_from_status(self.filter_text)
             
             # データベースからエントリを取得
+            logger.debug(f"ViewerPOFile.get_filtered_entries: データベースからエントリを取得")
             entries_dict = self.db.get_entries(
                 filter_text=None,  # ステータスベースのフィルタリングはflag_conditionsに移動
                 search_text=self.search_text,
@@ -343,6 +347,7 @@ class ViewerPOFile:
                 sort_column=self.sort_column,
                 sort_order=self.sort_order,
             )
+            logger.debug(f"ViewerPOFile.get_filtered_entries: データベースから {len(entries_dict)} 件のエントリを取得")
             
             # エントリオブジェクトのリストを作成
             result = []
@@ -376,11 +381,12 @@ class ViewerPOFile:
             setattr(self, cache_key_attr, cache_key)
             
             self.filtered_entries = result
-            logger.debug(f"フィルタ済みエントリを更新しました: {len(self.filtered_entries)}件")
+            logger.debug(f"ViewerPOFile.get_filtered_entries: フィルタ済みエントリを更新しました: {len(self.filtered_entries)}件")
             
             return self.filtered_entries
             
         except Exception as e:
+            logger.error(f"ViewerPOFile.get_filtered_entries: エラー発生 {e}")
             logger.error(f"エントリの取得中にエラーが発生しました: {str(e)}")
             logger.exception(e)
             return []
@@ -475,9 +481,11 @@ class ViewerPOFile:
 
     def update_entry(self, entry: Union[Dict[str, Any], EntryModel]) -> bool:
         """エントリを更新する"""
+        logger.debug(f"ViewerPOFile.update_entry: 開始")
         try:
             # EntryModelオブジェクトを辞書に変換（必要な場合）
             if isinstance(entry, EntryModel):
+                logger.debug(f"ViewerPOFile.update_entry: EntryModelをPOEntryに変換 key={entry.key}")
                 # EntryModelをPOEntryに変換し、それを辞書に変換
                 po_entry = entry.to_po_entry()
                 entry_dict = {
@@ -500,11 +508,14 @@ class ViewerPOFile:
                 entry_dict = entry
 
             # データベースを更新
+            logger.debug(f"ViewerPOFile.update_entry: データベース更新開始 key={entry_dict.get('key')}")
             result = self.db.update_entry(entry_dict)
+            logger.debug(f"ViewerPOFile.update_entry: データベース更新結果 result={result}")
 
             # キャッシュを更新
             if result and self._cache_enabled and "key" in entry_dict:
                 key = entry_dict["key"]
+                logger.debug(f"ViewerPOFile.update_entry: キャッシュ更新 key={key}")
                 # EntryModelオブジェクトをキャッシュに保存
                 entry_obj = (
                     entry if isinstance(entry, EntryModel) else EntryModel(**entry_dict)
@@ -525,47 +536,19 @@ class ViewerPOFile:
                     )
                     self._basic_info_cache[key] = basic_info
                 
-                # 重要: filtered_entriesの完全な再計算が必要な場合を検出
-                need_refilter = False
-                old_entry = None
-                
-                # 現在のフィルタリング条件に影響する可能性のある変更を検出
-                if self.filter_text:
-                    # 古いエントリの状態を取得
-                    if key in self._entry_cache:
-                        old_entry = self._entry_cache[key]
-                    
-                    # fuzzyフラグやobsoleteフラグなど、フィルタリングに影響するフィールドの変化をチェック
-                    if old_entry and (
-                        'fuzzy' in self.filter_text and old_entry.fuzzy != entry_obj.fuzzy or 
-                        'obsolete' in self.filter_text and old_entry.obsolete != entry_obj.obsolete or
-                        'translated' in self.filter_text and (old_entry.msgstr == '' and entry_obj.msgstr != '' or 
-                                                             old_entry.msgstr != '' and entry_obj.msgstr == '')
-                    ):
-                        logger.debug(f"フィルタリング条件に影響する変更を検出: {key}")
-                        need_refilter = True
-                
                 # filtered_entriesリストの更新処理
                 if hasattr(self, 'filtered_entries') and self.filtered_entries:
-                    if need_refilter:
-                        # 完全な再フィルタリングが必要
-                        logger.debug(f"フィルタリング条件に影響する変更のため、filtered_entriesをリセットします")
-                        # 後で更新されるようにフラグをセット
-                        self._force_filter_update = True  # 次回のget_filtered_entries呼び出しで強制更新
-                    else:
-                        # 通常のエントリ更新の場合はインデックスを使用して高速化
-                        filtered_keys = {e.key: i for i, e in enumerate(self.filtered_entries) if hasattr(e, 'key')}
-                        
-                        if key in filtered_keys:
-                            index = filtered_keys[key]
-                            logger.debug(f"filtered_entriesリストのエントリを更新: インデックス={index}, キー={key}")
-                            self.filtered_entries[index] = entry_obj
+                    # 常に次回のget_filtered_entriesで強制更新されるようにフラグを設定
+                    logger.debug(f"ViewerPOFile.update_entry: 次回のフィルタリングで強制更新するようにフラグを設定")
+                    self._force_filter_update = True
 
             # 変更フラグを設定
             self.modified = True
+            logger.debug(f"ViewerPOFile.update_entry: 完了 result={result}")
 
             return result
         except Exception as e:
+            logger.error(f"ViewerPOFile.update_entry: エラー発生 {e}")
             logger.error(f"エントリ更新エラー: {e}")
             return False
 

@@ -235,28 +235,36 @@ class EventHandler(QObject):
 
     def _on_apply_clicked(self) -> None:
         """適用ボタンクリック時の処理"""
+        logger.debug("EventHandler._on_apply_clicked: 開始")
         try:
             entry = self.entry_editor.current_entry
             if not entry:
+                logger.debug("EventHandler._on_apply_clicked: エントリがNoneのため終了")
                 return
 
             current_po = self._get_current_po()
             if not current_po:
+                logger.debug("EventHandler._on_apply_clicked: POファイルがNoneのため終了")
                 return
 
             # エントリの更新
+            logger.debug(f"EventHandler._on_apply_clicked: エントリ更新開始 key={entry.key}, position={entry.position}")
             current_po.update_entry(entry)
+            logger.debug(f"EventHandler._on_apply_clicked: エントリ更新完了")
 
             # キャッシュの更新
             if hasattr(entry, "key") and entry.key:
+                logger.debug(f"EventHandler._on_apply_clicked: キャッシュ更新 key={entry.key}")
                 self._entry_cache[entry.key] = entry
 
             # この時点でテーブルを更新すると重複更新が発生するため、ここでの更新は行わない
             # MainWindowの_on_entry_updatedで一元的に更新される
             # self._update_table()
+            logger.debug(f"EventHandler._on_apply_clicked: テーブル更新はMainWindowに委譲")
 
             # 更新されたエントリを選択状態に戻す
             if hasattr(entry, "key") and entry.key:
+                logger.debug(f"EventHandler._on_apply_clicked: 更新されたエントリを選択状態に戻す key={entry.key}")
                 # テーブルの現在の行データを使用して、更新されたエントリの行を見つける
                 for row in range(self.table.rowCount()):
                     item = self.table.item(row, 0)
@@ -265,14 +273,19 @@ class EventHandler(QObject):
 
                     key = item.data(Qt.ItemDataRole.UserRole)
                     if key == entry.key:
+                        logger.debug(f"EventHandler._on_apply_clicked: 該当する行を選択 row={row}")
                         # 該当する行を選択
                         self.table.selectRow(row)
                         break
 
+            logger.debug(f"EventHandler._on_apply_clicked: ステータス表示")
             self._show_status(f"エントリ {entry.position} を更新しました", 3000)
+            logger.debug(f"EventHandler._on_apply_clicked: entry_updatedシグナル発行 position={entry.position}")
             self.entry_updated.emit(entry.position)
+            logger.debug(f"EventHandler._on_apply_clicked: 完了")
 
         except Exception as e:
+            logger.error(f"EventHandler._on_apply_clicked: エラー発生 {e}")
             logger.error(f"エントリを適用する際にエラーが発生しました: {e}")
             QMessageBox.critical(
                 None, "エラー", f"エントリを適用する際にエラーが発生しました:\n{e}"
