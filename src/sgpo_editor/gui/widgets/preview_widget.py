@@ -343,14 +343,11 @@ class PreviewDialog(QDialog):
             entry: 設定するエントリ
         """
         self.preview_widget.set_entry(entry)
-
+        
     def closeEvent(self, event) -> None:
-        """ダイアログが閉じられるときの処理
-
-        Args:
-            event: クローズイベント
-        """
-        # イベントハンドラーからの接続を解除
-        if self._event_handler and hasattr(self._event_handler, "entry_updated"):
-            self._event_handler.entry_updated.disconnect(self._on_entry_updated)
-        super().closeEvent(event)
+        """ウィンドウが閉じられるときのイベント処理"""
+        # 親ウィンドウの参照を削除
+        parent = self.parent()
+        if parent and hasattr(parent, "_preview_dialog"):
+            parent._preview_dialog = None
+        event.accept()

@@ -152,6 +152,10 @@ class UIManager:
               - open_recent_file: 最近使用したファイルを開く
               - toggle_column_visibility: 列表示の切り替え
               - table_manager: テーブルマネージャ
+              - open_po_format_editor: POフォーマットエディタを開く
+              - show_preview: プレビューを表示
+              - show_translation_evaluate: 翻訳品質評価ダイアログを表示
+              - show_translation_evaluation_result: 翻訳品質評価結果ダイアログを表示
         """
         # ファイルメニュー
         file_menu = self.main_window.menuBar().addMenu("ファイル")
@@ -253,6 +257,22 @@ class UIManager:
         preview_action.setShortcut("Ctrl+R")
         preview_action.triggered.connect(callbacks["show_preview"])
         tools_menu.addAction(preview_action)
+        
+        # 翻訳品質評価
+        if "show_translation_evaluate" in callbacks:
+            translation_evaluate_action = QAction("翻訳品質評価", self.main_window)
+            translation_evaluate_action.setObjectName("translation_evaluate_action")
+            translation_evaluate_action.setShortcut("Ctrl+E")
+            translation_evaluate_action.triggered.connect(callbacks["show_translation_evaluate"])
+            tools_menu.addAction(translation_evaluate_action)
+            
+        # 翻訳品質評価結果表示
+        if "show_translation_evaluation_result" in callbacks:
+            translation_result_action = QAction("翻訳品質評価結果", self.main_window)
+            translation_result_action.setObjectName("translation_result_action")
+            translation_result_action.setShortcut("Ctrl+Shift+E")
+            translation_result_action.triggered.connect(callbacks["show_translation_evaluation_result"])
+            tools_menu.addAction(translation_result_action)
 
     def _setup_column_visibility_menu(self, toggle_callback: Callable[[int], None], table_manager: Any) -> None:
         """列表示設定メニューを設定
