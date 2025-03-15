@@ -2,14 +2,15 @@
 
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, List
 
 from po_viewer.gui.main_window import MainWindow
 from PySide6.QtWidgets import QApplication
 from rich.console import Console
 from rich.table import Table
 
-import sgpo
+from sgpo_editor.core.po_factory import get_po_factory, POLibraryType
+from sgpo_editor.core.po_interface import POFile, POEntry
 
 console = Console()
 
@@ -17,15 +18,17 @@ console = Console()
 class PoFile:
     """POファイルを扱うクラス"""
 
-    def __init__(self, file_path: str | Path):
+    def __init__(self, file_path: str | Path, library_type: Optional[POLibraryType] = POLibraryType.SGPO):
         """
         POファイルを読み込む
 
         Args:
             file_path: POファイルのパス
+            library_type: 使用するPOライブラリの種類
         """
         self.file_path = Path(file_path)
-        self.po = sgpo.pofile(str(self.file_path))
+        factory = get_po_factory(library_type)
+        self.po = factory.load_file(self.file_path)
         self._modified = False
 
     @property
@@ -47,7 +50,7 @@ class PoFile:
         if file_path:
             self.file_path = save_path
 
-    def set_msgstr(self, entry, msgstr: str) -> None:
+    def set_msgstr(self, entry: POEntry, msgstr: str) -> None:
         """翻訳文を設定する
 
         Args:
@@ -79,11 +82,15 @@ class PoFile:
         Args:
             filter_type: 表示するエントリの種類（'translated', 'untranslated', 'fuzzy'）
         """
-        entries = {
-            "translated": self.po.translated_entries,
-            "untranslated": self.po.untranslated_entries,
-            "fuzzy": self.po.fuzzy_entries,
-        }.get(filter_type, lambda: self.po)()
+        entries: List[POEntry] = []
+        if filter_type == 'translated':
+            entries = self.po.translated_entries()
+        elif filter_type == 'untranslated':
+            entries = self.po.untranslated_entries()
+        elif filter_type == 'fuzzy':
+            entries = self.po.fuzzy_entries()
+        else:
+            entries = list(self.po)
 
         table = Table(title=f"エントリ一覧 ({filter_type or 'all'})")
         table.add_column("msgid", style="cyan", no_wrap=True)
