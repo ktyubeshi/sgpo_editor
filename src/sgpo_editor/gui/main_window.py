@@ -28,6 +28,7 @@ from sgpo_editor.gui.widgets.preview_widget import PreviewDialog
 from sgpo_editor.gui.widgets.search import SearchWidget
 from sgpo_editor.gui.widgets.stats import StatsWidget
 from sgpo_editor.gui.translation_evaluate_dialog import TranslationEvaluateDialog
+from sgpo_editor.gui.evaluation_dialog import EvaluationDialog
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class MainWindow(QMainWindow):
         self.entry_editor = EntryEditor()
         self.stats_widget = StatsWidget()
         self.table = QTableWidget()
-        
+
         # SearchWidgetの初期化（コールバック関数を渡す）
         self.search_widget = SearchWidget(
             on_filter_changed=lambda: self._update_table(),
@@ -63,7 +64,7 @@ class MainWindow(QMainWindow):
             self._update_table,
             self.statusBar().showMessage,
         )
-        
+
         # ファサードの初期化（新規追加）
         self.entry_editor_facade = EntryEditorFacade(
             self.entry_editor,
@@ -76,7 +77,7 @@ class MainWindow(QMainWindow):
             self.search_widget,
             self._get_current_po
         )
-        
+
         # 既存のイベントハンドラ（レガシー互換用）
         self.event_handler = EventHandler(
             self.table,
@@ -85,7 +86,7 @@ class MainWindow(QMainWindow):
             self._update_table,
             self.statusBar().showMessage,
         )
-        
+
         # メタデータパネルの初期化
         self.metadata_panel = MetadataPanel(self)
 
@@ -94,18 +95,18 @@ class MainWindow(QMainWindow):
 
         # イベント接続
         self.event_handler.setup_connections()
-        
+
         # レガシーなイベント接続
         self.event_handler.entry_updated.connect(self._on_entry_updated)
         self.event_handler.entry_selected.connect(self._on_entry_selected)
-        
+
         # ファサードを使った新しいイベント接続
         self.entry_editor_facade.entry_applied.connect(self._on_entry_updated)
         # エントリテキスト変更シグナルは現時点では必要ないのでコメントアウト
         # self.entry_editor_facade.entry_changed.connect(self._on_entry_text_changed)
         self.entry_list_facade.entry_selected.connect(self._on_entry_selected)
         self.entry_list_facade.filter_changed.connect(self._update_table)
-        
+
         # メタデータパネルのイベント接続
         self.metadata_panel.edit_requested.connect(self.edit_metadata)
 
@@ -135,19 +136,19 @@ class MainWindow(QMainWindow):
             "show_translation_evaluate": self._show_translation_evaluate_dialog,
             "show_translation_evaluation_result": self._show_translation_evaluation_result_dialog,
         })
-        
+
         # メタデータメニューの追加
         self.setup_metadata_menu()
-        
+
         # メタデータパネルのドックウィジェット設定
         self.setup_metadata_panel()
-        
+
         # ウィンドウメニューのセットアップ
         self.ui_manager.setup_window_menu()
 
         # ステータスバー
         self.ui_manager.setup_statusbar()
-        
+
         # ウィンドウ状態の復元
         self.ui_manager.restore_dock_states()
         self.ui_manager.restore_window_state()
@@ -174,14 +175,14 @@ class MainWindow(QMainWindow):
     def _open_file(self) -> None:
         """ファイルを開く"""
         self.file_handler.open_file()
-        
+
         # EntryEditorにデータベースを設定
         current_po = self._get_current_po()
         if current_po:
             logger.debug(f"MainWindow._open_file: EntryEditorにデータベースを設定")
             self.entry_editor.database = current_po.db
             logger.debug(f"MainWindow._open_file: データベース設定完了")
-        
+
         # 最近使用したファイルメニューを更新
         self.ui_manager.update_recent_files_menu(self._open_recent_file)
 
@@ -193,14 +194,14 @@ class MainWindow(QMainWindow):
         """
         if filepath:
             self.file_handler.open_file(filepath)
-            
+
             # EntryEditorにデータベースを設定
             current_po = self._get_current_po()
             if current_po:
                 logger.debug(f"MainWindow._open_recent_file: EntryEditorにデータベースを設定")
                 self.entry_editor.database = current_po.db
                 logger.debug(f"MainWindow._open_recent_file: データベース設定完了")
-            
+
             # 最近使用したファイルメニューを更新
             self.ui_manager.update_recent_files_menu(self._open_recent_file)
 
@@ -239,25 +240,25 @@ class MainWindow(QMainWindow):
 
     def _update_table(self) -> None:
         """テーブルを更新する
-        
+
         ファサードパターンを使用して、テーブル更新処理を委譲します。
         """
         current_po = self._get_current_po()
         if not current_po:
             logger.debug("POファイルが読み込まれていないため、テーブル更新をスキップします")
             return
-            
+
         try:
             # EntryListFacadeにテーブル更新を委譲
             self.entry_list_facade.update_table()
-            
+
             # 件数表示のためにPOファイルから情報を取得
             entries = current_po.get_filtered_entries()
             self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
         except Exception as e:
             logger.error(f"テーブル更新エラー: {e}")
             self.statusBar().showMessage(f"テーブル更新エラー: {e}")
-            
+
             # テーブルの表示を強制的に更新
             self.table.viewport().update()
         except Exception as e:
@@ -389,26 +390,28 @@ class MainWindow(QMainWindow):
             entry_number: エントリ番号
         """
         logger.debug(f"エントリ選択通知を受信: エントリ番号={entry_number}")
-        
+
         try:
             # メタデータパネルのみ更新し、テーブルの更新は行わない
             logger.debug("MainWindow._on_entry_selected: メタデータパネルを更新")
             self.update_metadata_panel()
-            
+
             # プレビューウィンドウが表示されている場合は更新
             logger.debug("MainWindow._on_entry_selected: プレビューダイアログの更新を試行")
             has_preview = hasattr(self, "_preview_dialog") and self._preview_dialog and self._preview_dialog.isVisible()
-            logger.debug(f"MainWindow._on_entry_selected: プレビューダイアログの状態: 存在={hasattr(self, '_preview_dialog')}, 有効={bool(getattr(self, '_preview_dialog', None))}, 表示中={getattr(self, '_preview_dialog', None).isVisible() if hasattr(self, '_preview_dialog') and self._preview_dialog else False}")
-            
+            logger.debug(
+                f"MainWindow._on_entry_selected: プレビューダイアログの状態: 存在={hasattr(self, '_preview_dialog')}, 有効={bool(getattr(self, '_preview_dialog', None))}, 表示中={getattr(self, '_preview_dialog', None).isVisible() if hasattr(self, '_preview_dialog') and self._preview_dialog else False}")
+
             self._update_preview_dialog(entry_number)
-            
+
             # 評価結果ウィンドウが表示されている場合は更新
             logger.debug("MainWindow._on_entry_selected: 評価結果ウィンドウの更新を試行")
             has_evaluation = hasattr(self, "_evaluation_result_window") and self._evaluation_result_window and self._evaluation_result_window.isVisible()
-            logger.debug(f"MainWindow._on_entry_selected: 評価結果ウィンドウの状態: 存在={hasattr(self, '_evaluation_result_window')}, 有効={bool(getattr(self, '_evaluation_result_window', None))}, 表示中={getattr(self, '_evaluation_result_window', None).isVisible() if hasattr(self, '_evaluation_result_window') and self._evaluation_result_window else False}")
-            
+            logger.debug(
+                f"MainWindow._on_entry_selected: 評価結果ウィンドウの状態: 存在={hasattr(self, '_evaluation_result_window')}, 有効={bool(getattr(self, '_evaluation_result_window', None))}, 表示中={getattr(self, '_evaluation_result_window', None).isVisible() if hasattr(self, '_evaluation_result_window') and self._evaluation_result_window else False}")
+
             self._update_evaluation_result_window(entry_number)
-            
+
             logger.debug(f"MainWindow._on_entry_selected: 処理完了 (プレビュー={has_preview}, 評価結果={has_evaluation})")
         except Exception as e:
             logger.error(f"MainWindow._on_entry_selected: エラー発生 {e}", exc_info=True)
@@ -421,23 +424,23 @@ class MainWindow(QMainWindow):
             entry_number: エントリ番号
         """
         logger.debug(f"MainWindow._on_entry_updated: 開始 entry_number={entry_number}")
-        
+
         # 現在のPOファイルを取得
         current_po = self._get_current_po()
         if not current_po:
             logger.debug("MainWindow._on_entry_updated: 現在のPOファイルが存在しないため、エントリ更新処理をスキップします")
             return
-            
+
         try:
             # 更新前の選択キーを取得
             current_key = self.entry_list_facade.get_selected_entry_key()
             logger.debug(f"MainWindow._on_entry_updated: 更新前の選択キー: {current_key}")
-            
+
             # 更新されたエントリを取得
             # ViewerPOFileにはget_entry_by_positionメソッドがないため、
             # 現在選択されているエントリのキーを使用してget_entry_by_keyメソッドで取得する
             logger.debug(f"MainWindow._on_entry_updated: 更新されたエントリを取得 position={entry_number}, key={current_key}")
-            
+
             if current_key:
                 updated_entry = current_po.get_entry_by_key(current_key)
                 updated_key = getattr(updated_entry, "key", None) if updated_entry else None
@@ -445,21 +448,21 @@ class MainWindow(QMainWindow):
             else:
                 logger.debug(f"MainWindow._on_entry_updated: 現在のキーが取得できないため、更新されたエントリを取得できません")
                 updated_key = None
-            
+
             # 統計情報の更新
             logger.debug(f"MainWindow._on_entry_updated: 統計情報の更新")
             stats = current_po.get_stats()
             self._update_stats(stats)
-            
+
             # 強制的にフィルタ更新フラグを設定
             logger.debug(f"MainWindow._on_entry_updated: 強制的にフィルタ更新フラグを設定")
             current_po._force_filter_update = True
-            
+
             # ファサードを使用してテーブルを更新
             logger.debug(f"MainWindow._on_entry_updated: テーブル更新開始")
             self.entry_list_facade.update_table()
             logger.debug(f"MainWindow._on_entry_updated: テーブル更新完了")
-            
+
             # エントリの選択状態を維持
             if updated_key:
                 # 更新されたエントリを選択
@@ -469,12 +472,12 @@ class MainWindow(QMainWindow):
                 # 元の選択状態を復元
                 logger.debug(f"MainWindow._on_entry_updated: 元の選択状態を復元 key={current_key}")
                 self.entry_list_facade.select_entry_by_key(current_key)
-            
+
             # メタデータパネルの更新
             logger.debug(f"MainWindow._on_entry_updated: メタデータパネルの更新")
             self.update_metadata_panel()
             logger.debug(f"MainWindow._on_entry_updated: 完了")
-            
+
         except Exception as e:
             logger.error(f"MainWindow._on_entry_updated: エラー発生 {e}")
             logger.error(f"エントリ更新処理エラー: {e}")
@@ -489,7 +492,7 @@ class MainWindow(QMainWindow):
 
     def _show_preview_dialog(self) -> None:
         """プレビューダイアログを表示する
-        
+
         ファサードパターンを使用して、エントリ編集ファサードから現在のエントリを取得します。
         """
         # ファサードから現在のエントリを取得
@@ -508,10 +511,10 @@ class MainWindow(QMainWindow):
         dialog.show()
         dialog.raise_()
         dialog.activateWindow()
-        
+
         # ダイアログへの参照を保持
         self._preview_dialog = dialog
-        
+
         # エントリ選択時にプレビューダイアログを更新するシグナルを接続
         if not hasattr(self, "_connected_preview_signal"):
             self.entry_list_facade.entry_selected.connect(self._update_preview_dialog)
@@ -519,7 +522,7 @@ class MainWindow(QMainWindow):
 
     def _open_po_format_editor(self) -> None:
         """POフォーマットエディタを開く
-        
+
         ファサードパターンに対応して、エントリ更新シグナルをファサード経由で接続します。
         """
         if not hasattr(self, "_po_format_editor"):
@@ -530,10 +533,10 @@ class MainWindow(QMainWindow):
         self._po_format_editor.show()
         self._po_format_editor.raise_()
         self._po_format_editor.activateWindow()
-        
+
     def _toggle_column_visibility(self, column_index: int) -> None:
         """列の表示/非表示を切り替える
-        
+
         Args:
             column_index: 列インデックス
         """
@@ -541,17 +544,17 @@ class MainWindow(QMainWindow):
             # 変更前の状態を記録
             was_visible = self.table_manager.is_column_visible(column_index)
             logger.debug(f"列 {column_index} の切り替え前の状態: {'表示' if was_visible else '非表示'}")
-            
+
             # 列の表示/非表示を切り替える
             self.table_manager.toggle_column_visibility(column_index)
-            
+
             # 変更後の状態を取得
             now_visible = self.table_manager.is_column_visible(column_index)
             logger.debug(f"列 {column_index} の切り替え後の状態: {'表示' if now_visible else '非表示'}")
-            
+
             # UIのチェック状態を確実に更新
             self.ui_manager.update_column_visibility_action(column_index, now_visible)
-            
+
             # デバッグ情報とユーザー通知
             action_text = '表示' if now_visible else '非表示'
             self.statusBar().showMessage(f"列 {column_index} を{action_text}に設定しました")
@@ -560,15 +563,14 @@ class MainWindow(QMainWindow):
             logger.error(f"列表示の切り替えエラー: {str(e)}", exc_info=True)
             self.statusBar().showMessage(f"列表示の切り替えエラー: {str(e)}")
 
-
     def setup_metadata_menu(self) -> None:
         """メタデータ関連のメニューを設定"""
         metadata_menu = self.menuBar().addMenu("メタデータ")
-        
+
         edit_action = QAction("メタデータ編集", self)
         edit_action.triggered.connect(self.edit_metadata)
         metadata_menu.addAction(edit_action)
-        
+
         view_action = QAction("メタデータパネル表示", self)
         view_action.setCheckable(True)
         view_action.triggered.connect(self.toggle_metadata_panel)
@@ -582,38 +584,38 @@ class MainWindow(QMainWindow):
         self.metadata_dock.setWidget(self.metadata_panel)
         self.metadata_dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.metadata_dock)
-        
+
         # 初期状態では非表示
         self.metadata_dock.setVisible(False)
-        
+
         # UIManagerにドックウィジェットを登録
         self.ui_manager.register_dock_widget("metadata", self.metadata_dock)
 
     def toggle_metadata_panel(self, checked: bool) -> None:
         """メタデータパネルの表示/非表示を切り替え
-        
+
         Args:
             checked: チェック状態
         """
         self.metadata_dock.setVisible(checked)
-        
+
         # 表示されたときに現在の選択エントリを表示
         if checked:
             self.update_metadata_panel()
 
     def _select_entry_by_key(self, key: str) -> bool:
         """指定されたキーを持つエントリをテーブルで選択する
-        
+
         Args:
             key: 検索するエントリのキー
-            
+
         Returns:
             選択成功時はTrue、失敗時はFalse
         """
         if not key:
             logger.debug(f"キーが空のため選択できません: {key}")
             return False
-            
+
         logger.debug(f"キーによるエントリ選択: {key}")
         try:
             # テーブル内の全ての行を確認
@@ -621,7 +623,7 @@ class MainWindow(QMainWindow):
                 item = self.table.item(row, 0)  # 最初の列に対するアイテムを取得
                 if item is None:
                     continue
-                    
+
                 item_key = item.data(Qt.ItemDataRole.UserRole)
                 if item_key == key:
                     logger.debug(f"エントリを選択: 行={row}, キー={key}")
@@ -630,16 +632,16 @@ class MainWindow(QMainWindow):
                     # ビューをスクロールして選択した行を表示
                     self.table.scrollTo(self.table.model().index(row, 0))
                     return True
-                    
+
             logger.debug(f"キー {key} を持つエントリがテーブルに見つかりませんでした")
             return False
         except Exception as e:
             logger.error(f"エントリ選択エラー: {e}")
             return False
-    
+
     def edit_metadata(self, entry: Optional[EntryModel] = None) -> None:
         """メタデータ編集ダイアログを表示
-        
+
         Args:
             entry: 編集対象のエントリ（指定がない場合は選択中のエントリ）
         """
@@ -649,18 +651,18 @@ class MainWindow(QMainWindow):
             if not current_entry:
                 self.statusBar().showMessage("メタデータを編集するエントリが選択されていません")
                 return
-            
+
             entry = current_entry
-        
+
         dialog = MetadataEditDialog(entry, self)
-        
+
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # メタデータパネルを更新
             self.update_metadata_panel()
-            
+
             # メタデータが変更されたフラグを設定
             self.file_handler.set_modified(True)
-            
+
             # ステータスバーに表示
             self.statusBar().showMessage("メタデータを更新しました")
 
@@ -668,7 +670,7 @@ class MainWindow(QMainWindow):
         """メタデータパネルを更新"""
         # 現在選択されているエントリを取得
         current_entry = self.event_handler.get_current_entry()
-        
+
         # メタデータパネルにエントリを設定
         self.metadata_panel.set_entry(current_entry)
 
@@ -699,174 +701,126 @@ class MainWindow(QMainWindow):
                 )
                 return
 
-            # ダイアログの作成
-            dialog = TranslationEvaluateDialog(self)
-            
-            # 現在のエントリとエントリリストを設定
-            dialog.set_current_entry(current_entry)
-            
-            # エントリリストを取得
-            entries = current_po.get_filtered_entries()
-            dialog.set_entries(entries)
-            
-            # データベースを設定
-            if hasattr(current_po, "db") and current_po.db:
-                dialog.set_database(current_po.db)
-            
-            # ダイアログを表示
-            dialog.exec()
-            
+            # 新しいLLM評価ダイアログを使用
+            if current_po.path:
+                # EvaluationDatabaseを作成
+                from sgpo_editor.models.evaluation_db import EvaluationDatabase
+                eval_db = EvaluationDatabase(str(current_po.path))
+                
+                # 新しいEvaluationDialogを使用
+                dialog = EvaluationDialog(current_entry, eval_db, self)
+
+                # 評価完了時のシグナルを接続
+                dialog.evaluation_completed.connect(
+                    lambda entry, result: self._on_evaluation_completed(entry, result)
+                )
+
+                # ダイアログを表示
+                dialog.exec()
+            else:
+                # データベースが利用できない場合は従来のダイアログを使用
+                dialog = TranslationEvaluateDialog(self)
+
+                # 現在のエントリとエントリリストを設定
+                dialog.set_current_entry(current_entry)
+
+                # エントリリストを取得
+                entries = current_po.get_filtered_entries()
+                dialog.set_entries(entries)
+
+                # ダイアログを表示
+                dialog.exec()
+
         except Exception as e:
             logger.error(f"翻訳品質評価ダイアログ表示エラー: {e}", exc_info=True)
             QMessageBox.critical(
                 self, "エラー", f"翻訳品質評価ダイアログの表示中にエラーが発生しました: {e}"
             )
 
-    def _show_translation_evaluation_result_dialog(self) -> None:
-        """翻訳品質評価結果ウィンドウを表示"""
-        logger.debug("MainWindow._show_translation_evaluation_result_dialog: 開始")
-        
-        try:
-            # 現在のPOファイルを取得
-            current_po = self._get_current_po()
-            if not current_po:
-                logger.debug("MainWindow._show_translation_evaluation_result_dialog: 現在のPOファイルが存在しない")
-                QMessageBox.warning(
-                    self, "警告", "POファイルが読み込まれていません。"
-                )
-                return
-            
-            # 現在選択中のエントリを取得
-            current_entry = None
-            current_entry_key = self.entry_list_facade.get_selected_entry_key()
-            logger.debug(f"MainWindow._show_translation_evaluation_result_dialog: 選択中のエントリキー={current_entry_key}")
-            
-            if current_entry_key and current_po:
-                current_entry = current_po.get_entry_by_key(current_entry_key)
-                if current_entry:
-                    logger.debug(f"MainWindow._show_translation_evaluation_result_dialog: エントリを取得 msgid='{current_entry.msgid[:30]}...'")
-                else:
-                    logger.debug("MainWindow._show_translation_evaluation_result_dialog: エントリが取得できなかった")
-                    QMessageBox.warning(
-                        self, "警告", "選択されたエントリを取得できませんでした。"
-                    )
-                    return
-            else:
-                logger.debug("MainWindow._show_translation_evaluation_result_dialog: エントリが選択されていない")
-                QMessageBox.warning(
-                    self, "警告", "エントリが選択されていません。先にエントリを選択してください。"
-                )
-                return
-                
-            # 評価結果ウィンドウを表示
-            from sgpo_editor.gui.translation_evaluate_dialog import TranslationEvaluationResultWindow
-            
-            # 既存のウィンドウがあれば、そのウィンドウを表示
-            if hasattr(self, "_evaluation_result_window") and self._evaluation_result_window:
-                logger.debug("MainWindow._show_translation_evaluation_result_dialog: 既存のウィンドウを更新")
-                self._evaluation_result_window.set_entry(current_entry)
-                self._evaluation_result_window.show()
-                self._evaluation_result_window.raise_()
-                self._evaluation_result_window.activateWindow()
-            else:
-                # 新しいウィンドウを作成
-                logger.debug("MainWindow._show_translation_evaluation_result_dialog: 新しいウィンドウを作成")
-                self._evaluation_result_window = TranslationEvaluationResultWindow(current_entry, self)
-                self._evaluation_result_window.show()
-                
-            # エントリ選択時に評価結果ウィンドウを更新するシグナルを接続
-            if not hasattr(self, "_connected_entry_selection_signal"):
-                logger.debug("MainWindow._show_translation_evaluation_result_dialog: エントリ選択シグナルを接続")
-                
-                # PySide6ではreceiversメソッドが利用できないため、シグナル接続状態の確認は行わない
-                # 代わりに、シグナル接続を行い、フラグを設定する
-                self.entry_list_facade.entry_selected.connect(self._update_evaluation_result_window)
-                logger.debug("MainWindow._show_translation_evaluation_result_dialog: シグナル接続完了")
-                
-                self._connected_entry_selection_signal = True
-                logger.debug("MainWindow._show_translation_evaluation_result_dialog: シグナル接続フラグを設定")
-            else:
-                logger.debug("MainWindow._show_translation_evaluation_result_dialog: シグナルは既に接続済み")
-            
-            logger.debug("MainWindow._show_translation_evaluation_result_dialog: 完了")
-            
-        except Exception as e:
-            logger.error(f"MainWindow._show_translation_evaluation_result_dialog: エラー発生 {e}", exc_info=True)
-            QMessageBox.critical(
-                self, "エラー", f"翻訳品質評価結果ウィンドウの表示中にエラーが発生しました: {e}"
-            )
-            
     def _update_evaluation_result_window(self, entry_number: int) -> None:
         """エントリ選択時に評価結果ウィンドウを更新
-        
+
         Args:
             entry_number: 選択されたエントリの番号
         """
         logger.debug(f"MainWindow._update_evaluation_result_window: 開始 entry_number={entry_number}")
-        
-        if not hasattr(self, "_evaluation_result_window") or not self._evaluation_result_window:
-            logger.debug("MainWindow._update_evaluation_result_window: 評価結果ウィンドウが存在しないか、参照が無効")
+
+        # 評価結果ウィンドウが表示されていない場合は何もしない
+        if not hasattr(self, "_evaluation_result_window") or not self._evaluation_result_window or not self._evaluation_result_window.isVisible():
+            logger.debug("MainWindow._update_evaluation_result_window: 評価結果ウィンドウが表示されていないため更新をスキップ")
             return
-            
-        if not self._evaluation_result_window.isVisible():
-            logger.debug("MainWindow._update_evaluation_result_window: 評価結果ウィンドウが表示されていない")
-            return
-            
-        # 現在のPOファイルを取得
-        current_po = self._get_current_po()
-        if not current_po:
-            logger.debug("MainWindow._update_evaluation_result_window: 現在のPOファイルが存在しない")
-            return
-            
+
         try:
             # 選択されたエントリを取得
-            logger.debug(f"MainWindow._update_evaluation_result_window: フィルタリングされたエントリを取得")
-            entries = current_po.get_filtered_entries()
-            logger.debug(f"MainWindow._update_evaluation_result_window: 取得したエントリ数={len(entries)}")
-            
-            if 0 <= entry_number < len(entries):
-                entry = entries[entry_number]
-                logger.debug(f"MainWindow._update_evaluation_result_window: エントリ {entry_number} を取得 msgid='{entry.msgid[:30]}...'")
-                
-                # エントリのキーを取得
-                entry_key = getattr(entry, "key", None)
-                logger.debug(f"MainWindow._update_evaluation_result_window: エントリキー={entry_key}")
-                
-                # 評価結果ウィンドウを更新
-                logger.debug("MainWindow._update_evaluation_result_window: 評価結果ウィンドウにエントリを設定")
-                self._evaluation_result_window.set_entry(entry)
-                logger.debug("MainWindow._update_evaluation_result_window: 評価結果ウィンドウを更新")
-            else:
-                logger.debug(f"MainWindow._update_evaluation_result_window: エントリ番号 {entry_number} が範囲外 (0-{len(entries)-1})")
-            
-            logger.debug("MainWindow._update_evaluation_result_window: 完了")
+            current_po = self._get_current_po()
+            if not current_po:
+                logger.debug("MainWindow._update_evaluation_result_window: 現在のPOファイルが存在しない")
+                return
+
+            # エントリ番号からエントリを取得
+            current_entry = current_po.get_entry_by_number(entry_number)
+            if not current_entry:
+                logger.debug(f"MainWindow._update_evaluation_result_window: エントリが取得できなかった entry_number={entry_number}")
+                return
+
+            # 評価結果ウィンドウを更新
+            logger.debug(f"MainWindow._update_evaluation_result_window: 評価結果ウィンドウを更新 entry_number={entry_number}")
+            self._evaluation_result_window.set_entry(current_entry)
+
         except Exception as e:
             logger.error(f"MainWindow._update_evaluation_result_window: エラー発生 {e}", exc_info=True)
 
+    def _on_evaluation_completed(self, entry: EntryModel, result: Any) -> None:
+        """評価完了時の処理
+
+        Args:
+            entry: 評価されたエントリ
+            result: 評価結果
+        """
+        logger.debug(f"MainWindow._on_evaluation_completed: 評価完了 entry={entry.key}")
+
+        try:
+            # テーブルを更新
+            self._update_table()
+
+            # 評価結果ウィンドウが表示されている場合は更新
+            if hasattr(self, "_evaluation_result_window") and self._evaluation_result_window and self._evaluation_result_window.isVisible():
+                logger.debug("MainWindow._on_evaluation_completed: 評価結果ウィンドウを更新")
+                self._evaluation_result_window.set_entry(entry)
+
+            # ステータスバーに表示
+            self.statusBar().showMessage(f"翻訳評価が完了しました。総合スコア: {result.overall_score}")
+
+            # ファイルの変更フラグを設定
+            self.file_handler.set_modified(True)
+
+        except Exception as e:
+            logger.error(f"MainWindow._on_evaluation_completed: エラー発生 {e}", exc_info=True)
+
     def _update_preview_dialog(self, entry_number: int) -> None:
         """エントリ選択時にプレビューダイアログを更新
-        
+
         Args:
             entry_number: 選択されたエントリの番号
         """
         logger.debug(f"MainWindow._update_preview_dialog: 開始 entry_number={entry_number}")
-        
+
         # プレビューダイアログが存在しない、または表示されていない場合は何もしない
         if not hasattr(self, "_preview_dialog") or not self._preview_dialog or not self._preview_dialog.isVisible():
             logger.debug("MainWindow._update_preview_dialog: プレビューダイアログが存在しないか表示されていない")
             return
-            
+
         # 現在のPOファイルを取得
         current_po = self._get_current_po()
         if not current_po:
             logger.debug("MainWindow._update_preview_dialog: 現在のPOファイルが存在しない")
             return
-            
+
         # 選択されたエントリを取得
         logger.debug(f"MainWindow._update_preview_dialog: フィルタリングされたエントリを取得")
         entries = current_po.get_filtered_entries()
         logger.debug(f"MainWindow._update_preview_dialog: 取得したエントリ数={len(entries)}")
-        
+
         if 0 <= entry_number < len(entries):
             entry = entries[entry_number]
             logger.debug(f"MainWindow._update_preview_dialog: エントリ {entry_number} を取得 msgid='{entry.msgid[:30]}...'")
@@ -875,18 +829,94 @@ class MainWindow(QMainWindow):
             logger.debug("MainWindow._update_preview_dialog: プレビューダイアログを更新")
         else:
             logger.debug(f"MainWindow._update_preview_dialog: エントリ番号 {entry_number} が範囲外 (0-{len(entries)-1})")
-        
+
         logger.debug("MainWindow._update_preview_dialog: 完了")
 
+    def _show_translation_evaluation_result_dialog(self) -> None:
+        """翻訳品質評価結果ダイアログを表示"""
+        logger.debug("MainWindow._show_translation_evaluation_result_dialog: 開始")
+        
+        try:
+            # 現在のPOファイルを取得
+            current_po = self._get_current_po()
+            if not current_po:
+                QMessageBox.warning(
+                    self, "警告", "POファイルが開かれていません。"
+                )
+                return
+                
+            # 現在選択されているエントリの番号を取得
+            current_entry_number = self._get_selected_entry_number()
+            if current_entry_number is None:
+                QMessageBox.warning(
+                    self, "警告", "エントリが選択されていません。"
+                )
+                return
+                
+            # 選択されたエントリを取得
+            current_entry = current_po.get_entry_by_number(current_entry_number)
+            if not current_entry:
+                QMessageBox.warning(
+                    self, "警告", "選択されたエントリを取得できませんでした。"
+                )
+                return
+                
+            # 評価結果ウィンドウが既に存在する場合は、それを使用
+            if hasattr(self, "_evaluation_result_window") and self._evaluation_result_window:
+                logger.debug("MainWindow._show_translation_evaluation_result_dialog: 既存の評価結果ウィンドウを使用")
+                self._evaluation_result_window.set_entry(current_entry)
+                self._evaluation_result_window.show()
+                self._evaluation_result_window.activateWindow()
+            else:
+                # 新しい評価結果ウィンドウを作成
+                logger.debug("MainWindow._show_translation_evaluation_result_dialog: 新しい評価結果ウィンドウを作成")
+                from sgpo_editor.gui.translation_evaluate_dialog import TranslationEvaluationResultWindow
+                self._evaluation_result_window = TranslationEvaluationResultWindow(current_entry, self)
+                self._evaluation_result_window.show()
+                
+        except Exception as e:
+            logger.error(f"MainWindow._show_translation_evaluation_result_dialog: エラー発生 {e}", exc_info=True)
+            QMessageBox.critical(
+                self, "エラー", f"評価結果ダイアログの表示中にエラーが発生しました: {e}"
+            )
+
+    def _get_selected_entry_number(self) -> Optional[int]:
+        """現在選択されているエントリの番号を取得する
+        
+        Returns:
+            Optional[int]: 選択されているエントリの番号。選択がない場合はNone
+        """
+        logger.debug("MainWindow._get_selected_entry_number: 開始")
+        
+        # 現在選択されているエントリのキーを取得
+        entry_key = self.entry_list_facade.get_selected_entry_key()
+        if not entry_key:
+            logger.debug("MainWindow._get_selected_entry_number: エントリが選択されていません")
+            return None
+            
+        # 現在のPOファイルを取得
+        current_po = self._get_current_po()
+        if not current_po:
+            logger.debug("MainWindow._get_selected_entry_number: POファイルが開かれていません")
+            return None
+            
+        # キーからエントリを取得
+        entry = current_po.get_entry_by_key(entry_key)
+        if not entry or not hasattr(entry, "position"):
+            logger.debug("MainWindow._get_selected_entry_number: エントリが取得できないか、positionがありません")
+            return None
+            
+        logger.debug(f"MainWindow._get_selected_entry_number: エントリ番号={entry.position}を返します")
+        return entry.position
 
 def main():
     """アプリケーションのエントリーポイント"""
     app = QApplication(sys.argv)
     app.setApplicationName("PO Editor")
-    
+
     # 国際化設定
     setup_translator()
-    
+
     main_window = MainWindow()
     main_window.show()
 
