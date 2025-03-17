@@ -1,0 +1,27 @@
+{
+  "dateFormat": "yyyy-MM-dd'T'HH:mm",
+  "enableCreateTime": true,
+  "headerUpdated": "updated",
+  "headerCreated": "created",
+  "minMinutesBetweenSaves": 1,
+  "ignoreGlobalFolder": [],
+  "ignoreCreatedFolder": [],
+  "enableExperimentalHash": false,
+  "fileHashMap": {
+    "memo/po_format_window 適用ボタン.md": "539cad4e2723040044e08a8fc21e62c7bf0f976ba1601ab2c7d04b2dda6f54e9",
+    "test_guideline.md": "9113c2a6cf673be5d9eea271732c2c1268c8bffb1b8abb6bee29f01daae2b2e0",
+    "todo.md": "7a1185f378e26ce2cce9b7f1e539a8c4e9929ff095f5385b967a2c62ceb72456",
+    "nuitka-build-guide.md": "fbdb2d1781a0c2c275a7e36f6a11fbc543b16e50a1cbe5e6c26452e6f604c30a",
+    "issue/po_format_window/適用に失敗する.md": "44bb5bb8997fb2737aa981bed74ba3322a4e675fa5f0043e230e29d62aaa62a3",
+    "gui_components_specification.md": "579ce3002a1bf723fe64171d762f6027265d9ee30903645937e305980a3ece1e",
+    "facade_pattern.md": "469c2929828ebbcf2dc72151e33be260e430b60f20035e66563338181ce793ea",
+    "edit_behavior.md": "bdd29224fef0e8167e8380176a294e9a9703bd2835d8c98cfbd92556b31a4a86",
+    "6_glossary.md": "0d76f386342b81e16cd7dccec452f3b84059c732e7931abd810d74c033ed50d7",
+    "5_test_plan.md": "b6390d9262245fe7299c250815df55b3e07476d29e939d73006e828c7f03f672",
+    "3_data_model_design.md": "32425141036b31329c232e4501ec129d268ec6cd0290abfc2271917d63b815d0",
+    "4_ui_component_design.md": "091b2e3439a416aedfbb3da4f18195b07ca5d3cbf9bade88075bd470c6df7c6c",
+    "2_architecture_design.md": "22165b681186bc1ca6d204a566db52cf46c0392bc8dab4e23146476cc31e7798",
+    "1_system_overview.md": "a1c981ab046c145e61c4c84c6286e80248a6e2bbebe6c6b3def0488c8925ba65",
+    "0_requirements_specification.md": "43bd8e23031b51875b08533a95f0cfb6b0ef18575c4d0073be222b5e7d763253"
+  }
+}

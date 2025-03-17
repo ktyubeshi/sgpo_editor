@@ -4,6 +4,8 @@ date: 2025-03-13
 status: reviewed
 author: 
 description: Nuitkaを使用したPython/PySide6アプリケーションの実行ファイル化手順と最適化方法
+created: 2025-03-13T10:43
+updated: 2025-03-13T10:43
 ---
 
 # Nuitkaを使用したPython実行ファイルのビルドガイド
