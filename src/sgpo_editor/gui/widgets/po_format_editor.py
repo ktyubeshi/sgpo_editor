@@ -220,7 +220,7 @@ class POFormatEditor(QDialog):
             return
 
         # すべてのエントリを取得
-        entries = po_file.get_entries()
+        entries = po_file.get_filtered_entries()
         if not entries:
             QMessageBox.warning(self, "エラー", "エントリがありません")
             return
@@ -406,7 +406,7 @@ class POFormatEditor(QDialog):
                     # キーが見つからない場合は別の方法で検索
                     # ViewerPOFileにはmsgidで直接検索するメソッドがないため、
                     # 全エントリを取得して手動で検索する
-                    all_entries = po_file.get_entries()
+                    all_entries = po_file.get_filtered_entries()
                     for e in all_entries:
                         if e.msgid == msgid and e.msgctxt == msgctxt:
                             entry = e
