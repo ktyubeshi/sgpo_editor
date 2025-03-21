@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+## プロジェクト管理
+
+uv を使用して仮想環境やプロジェクトの構成管理をしています。以下にしたがってください。
+
+* run script:　uv run <script_name>
+* add package: uv add <package_name>

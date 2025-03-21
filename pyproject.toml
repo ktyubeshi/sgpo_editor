@@ -20,6 +20,12 @@ dependencies = [
     "anthropic>=0.15.0", # Claude APIクライアント
 ]
 
+[tool.setuptools]
+py-modules = ["src"]
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+
 [project.optional-dependencies]
 test = [
     "pytest>=7.4.0",
