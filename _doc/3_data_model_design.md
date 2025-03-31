@@ -95,6 +95,8 @@ class ViewerPOFile:
         # 実装詳細...
 ```
 
+**注: ViewerPOFileはファイル読み込み、データベース操作（キャッシュ）、フィルタリング、ソート、統計計算など多くの責務を持っており、単一責任の原則から考えると機能が肥大化しています。今後の改善として、キャッシュ管理を`EntryCacheManager`クラスに、データベースアクセスを`DatabaseAccessor`クラスに分割することを検討すべきです。**
+
 #### POEntry クラス
 
 個々の翻訳エントリを表すクラス（sgpoライブラリで提供）。
@@ -106,6 +108,72 @@ class ViewerPOFile:
 - `obsolete`: 廃止されたエントリかどうか
 - `flags`: 特殊フラグ（fuzzy等）
 
+### 2.3 データベースクラス構造
+
+#### Database クラス
+
+**重要: このクラスはインメモリデータストアとして機能し、ViewerPOFileの内部キャッシュ層として使用されます。アプリケーション終了時にデータは消失します。永続化はPOファイルへの保存で行われます。**
+
+```python
+class Database:
+    """インメモリSQLiteデータベースを使用したデータストア
+    
+    このクラスはViewerPOFileの内部キャッシュとして機能し、
+    POファイルのエントリをSQLiteのインメモリデータベースに格納します。
+    フィルタリングやソートを高速に行うためのクエリ機能を提供します。
+    """
+    
+    def __init__(self):
+        """インメモリデータベースを初期化"""
+        self.conn = sqlite3.connect(":memory:")
+        self._create_tables()
+    
+    def add_entries(self, entries: list[EntryModel]) -> None:
+        """エントリをデータベースに追加"""
+        # 実装詳細...
+    
+    def get_entries(self, filter_expr: str, order_by: str) -> list[tuple]:
+        """フィルタ条件に一致するエントリを取得"""
+        # 実装詳細...
+    
+    def update_entry(self, entry: EntryModel) -> None:
+        """エントリを更新"""
+        # 実装詳細...
+```
+
+#### EvaluationDatabase クラス
+
+**重要: このクラスはLLM評価データをSQLiteファイルに永続化するサイドカーデータベースとして機能します。POファイルと同じディレクトリに.evaldb拡張子で保存され、アプリケーション再起動後も評価データを保持します。**
+
+```python
+class EvaluationDatabase:
+    """LLM評価データを永続化するサイドカーデータベース
+    
+    このクラスは各POファイルに対応する評価データを永続化します。
+    POファイルのパスに基づいて.evaldb拡張子のファイルを作成し、
+    エントリのLLM評価結果（スコア、レビューコメント）を保存します。
+    msgctxtとmsgidの組み合わせをキーとして、POエントリと評価データを関連付けます。
+    """
+    
+    def __init__(self, po_file_path: str | Path):
+        """評価データベースを初期化
+        
+        Args:
+            po_file_path: 対応するPOファイルのパス
+        """
+        self.db_path = Path(str(po_file_path) + ".evaldb")
+        self.conn = sqlite3.connect(str(self.db_path))
+        self._create_tables()
+    
+    def save_evaluation(self, entry_key: tuple, score: float, comments: dict) -> None:
+        """評価データを保存"""
+        # 実装詳細...
+    
+    def get_evaluation(self, entry_key: tuple) -> dict:
+        """評価データを取得"""
+        # 実装詳細...
+```
+
 ## 3. データフロー
 
 ### 3.1 POファイル読み込み
@@ -113,10 +181,11 @@ class ViewerPOFile:
 1. FileHandlerがPOファイルのパスを取得
 2. PoFileクラスのインスタンスを作成し、ファイルを読み込む
 3. ViewerPOFileクラスがPoFileを受け取り、UI表示用データに変換
-4. TableManagerがViewerPOFileからエントリリストを取得し、テーブルを構築
+4. ViewerPOFileがデータをインメモリのDatabaseに格納
+5. TableManagerがViewerPOFileからエントリリストを取得し、テーブルを構築
 
 ```
-ファイルパス → PoFile → ViewerPOFile → TableManager → UI表示
+ファイルパス → PoFile → ViewerPOFile → Database(インメモリ) → TableManager → UI表示
 ```
 
 ### 3.2 POエントリ編集
@@ -126,11 +195,12 @@ class ViewerPOFile:
 3. EntryEditorにエントリデータを表示
 4. ユーザーが編集を実行
 5. EntryEditorが変更内容をMainWindowに通知
-6. MainWindowがViewerPOFileを通じてPoFileのエントリを更新
-7. TableManagerがテーブルを更新
+6. MainWindowがViewerPOFileを通じてエントリを更新
+7. ViewerPOFileはインメモリDatabaseとPoFileの両方を更新
+8. TableManagerがテーブルを更新
 
 ```
-ユーザー操作 → EntryEditor → MainWindow → ViewerPOFile → PoFile → 保存
+ユーザー操作 → EntryEditor → MainWindow → ViewerPOFile → Database(インメモリ)/PoFile → 保存
 ```
 
 ### 3.3 検索・フィルタリング
@@ -138,11 +208,25 @@ class ViewerPOFile:
 1. ユーザーがSearchWidgetで検索条件を入力
 2. SearchWidgetが変更を通知
 3. MainWindowが新しい検索条件をViewerPOFileに渡す
-4. ViewerPOFileがフィルタリングしたエントリリストを返す
-5. TableManagerがテーブルを更新
+4. ViewerPOFileがインメモリDatabaseにフィルタリング条件を渡す
+5. Databaseがフィルタリングしたエントリリストを返す
+6. ViewerPOFileがエントリオブジェクトをキャッシュからロードまたは新規作成
+7. TableManagerがテーブルを更新
 
 ```
-検索条件 → ViewerPOFile → フィルタリング → TableManager → UI表示
+検索条件 → ViewerPOFile → Database(フィルタリング) → キャッシュ → TableManager → UI表示
+```
+
+### 3.4 LLM評価と永続化
+
+1. ユーザーがLLM評価を実行
+2. EvaluationDialogがLLM APIを呼び出し
+3. 評価結果をEntryModelに設定
+4. ViewerPOFileを通じてEntryModelを更新
+5. EvaluationDatabaseに評価データを永続化
+
+```
+ユーザー操作 → EvaluationDialog → LLM API → EntryModel → ViewerPOFile → EvaluationDatabase(永続化)
 ```
 
 ## 4. 状態管理

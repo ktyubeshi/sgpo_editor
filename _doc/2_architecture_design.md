@@ -73,6 +73,52 @@ class PoFile:
 #### ViewerPOFile クラス
 UIと連携するためのPOファイル表示モデル。エントリのフィルタリングや検索機能を提供します。
 
+**注: 現在のViewerPOFileクラスは、ファイル読み込み、データベース操作、フィルタリング、キャッシュ管理など多くの責務を持っています。将来のリファクタリングでは、以下のように責務を分割することを検討しています：**
+
+```
+┌────────────────────────┐      ┌────────────────────────┐
+│     ViewerPOFile       │      │    EntryCacheManager   │
+│ (UIとデータの連携管理)   │◄────►│  (キャッシュ戦略の実装)  │
+└────────────────────────┘      └────────────────────────┘
+            │                               │
+            ▼                               ▼
+┌────────────────────────┐      ┌────────────────────────┐
+│   DatabaseAccessor     │      │   InMemoryEntryStore   │
+│  (データベース操作)      │◄────►│ (インメモリキャッシュDB) │
+└────────────────────────┘      └────────────────────────┘
+```
+
+#### データベースコンポーネント
+
+##### InMemoryEntryStore (Database) クラス
+ViewerPOFileの内部キャッシュとして機能する、インメモリSQLiteデータベースを提供します。アプリケーション終了時にデータは消失し、永続化はPOファイルへの保存で行われます。フィルタリングとソートのためのクエリ機能を提供します。
+
+```python
+class Database:  # 将来的にInMemoryEntryStoreに改名予定
+    """インメモリSQLiteデータベースを使用したデータストア"""
+    
+    def __init__(self):
+        self.conn = sqlite3.connect(":memory:")
+        self._create_tables()
+    
+    def add_entries(self, entries: list):
+        """エントリをデータベースに追加"""
+        # 実装詳細...
+```
+
+##### EvaluationDatabase クラス
+LLM評価データを永続化するためのサイドカーデータベース。POファイルと同じディレクトリに.evaldb拡張子で保存され、アプリケーション再起動後も評価データを保持します。
+
+```python
+class EvaluationDatabase:
+    """LLM評価データを永続化するサイドカーデータベース"""
+    
+    def __init__(self, po_file_path: str | Path):
+        self.db_path = Path(str(po_file_path) + ".evaldb")
+        self.conn = sqlite3.connect(str(self.db_path))
+        # 実装詳細...
+```
+
 ### 3.2 ビューコンポーネント
 
 #### MainWindow クラス
@@ -188,3 +234,43 @@ SGPO Editorは以下の方法で拡張性を確保しています：
 2. **インターフェース分離**: 実装の詳細からインターフェースを分離
 3. **設定可能なコンポーネント**: カスタマイズや拡張が可能な設計
 4. **プラグインアーキテクチャ**: 将来的なプラグインシステムのための基盤
+
+## 8. パフォーマンスと最適化
+
+### 8.1 キャッシュ戦略
+
+SGPO Editorは以下のキャッシュ戦略を採用しています：
+
+1. **インメモリデータベース**: POファイルのエントリは、高速なフィルタリングとソートのためにSQLiteインメモリデータベースにロードされます。
+2. **オブジェクトキャッシュ**: 頻繁にアクセスされるEntryModelオブジェクトはメモリにキャッシュされ、再利用されます。
+3. **プリフェッチ**: ユーザーの操作パターンを予測し、次に表示される可能性が高いエントリを事前にロードします。
+4. **キャッシュ無効化メカニズム**: データが更新された場合、関連するキャッシュを無効化するフラグシステムを使用します。
+
+### 8.2 非同期処理
+
+UIの応答性を維持するため、時間のかかる処理は非同期で実行されます：
+
+1. **LLM評価**: 大規模言語モデルを使用した翻訳品質評価は、バックグラウンドスレッドで実行されます。
+2. **大規模ファイルの読み込み**: 大きなPOファイルの読み込みは非同期で行われ、進捗状況が表示されます。
+3. **進捗通知**: 非同期タスクはシグナル/スロットメカニズムを使用して進捗と完了を通知します。
+
+```python
+# 非同期処理の例
+class LLMEvaluationWorker(QRunnable):
+    """LLM評価を非同期で実行するワーカークラス"""
+    
+    def __init__(self, entry, api_key):
+        super().__init__()
+        self.entry = entry
+        self.api_key = api_key
+        self.signals = WorkerSignals()
+    
+    def run(self):
+        try:
+            # LLM評価の実行
+            result = self._evaluate_translation()
+            self.signals.result.emit(result)
+        except Exception as e:
+            self.signals.error.emit(str(e))
+        finally:
+            self.signals.finished.emit()

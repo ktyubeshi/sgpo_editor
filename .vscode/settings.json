@@ -11,5 +11,9 @@
         "**/__pycache__": true,
         "**/*.pyc": true
     },
-    "python.languageServer": "None"
+    "python.languageServer": "None",
+    "repomix.ignore.customPatterns": [
+        "tests/**",
+        "logs/**"
+    ]
 }
