@@ -1,6 +1,6 @@
 ---
 created: 2025-03-17T13:43
-updated: 2025-03-17T17:49
+updated: 2025-03-31T17:14
 ---
 # SGPOエディタ 実装計画詳細
 
@@ -325,73 +325,73 @@ updated: 2025-03-17T17:49
 #### P1: 最優先タスク
 
 1. **キャッシュ無効化ロジックの修正と検証**
-   - [ ] `ViewerPOFile.update_entry`で`_force_filter_update = True`を確実に設定するよう修正
-   - [ ] `ViewerPOFile.get_filtered_entries`でキャッシュ無効化フラグをチェックし、フラグをFalseに戻すロジックを実装
-   - [ ] `POFormatEditor._on_apply_clicked`後に`MainWindow._update_table()`を確実に呼び出す実装
-   - [ ] 関連するユニットテスト・統合テストの追加・修正
+   - [x] ViewerPOFile.update_entryで_force_filter_update = Trueを確実に設定するよう修正
+   - [x] ViewerPOFile.get_filtered_entriesでキャッシュ無効化フラグをチェックし、フラグをFalseに戻すロジックを実装
+   - [x] POFormatEditor._on_apply_clicked後にMainWindow._update_table()を確実に呼び出す実装
+   - [x] 関連するユニットテスト・統合テストの追加・修正
    - 見積もり: 1-2日
 
 #### P2: 高優先度タスク
 
 2. **ViewerPOFileの責務分割（キャッシュ管理）**
-   - [ ] `EntryCacheManager`クラスを新規作成し、キャッシュ関連ロジックを移譲
-   - [ ] `ViewerPOFile`をリファクタリングして`EntryCacheManager`を利用するよう修正
-   - [ ] 関連テストの修正・追加
+   - [x] EntryCacheManagerクラスを新規作成し、キャッシュ関連ロジックを移譲
+   - [x] ViewerPOFileをリファクタリングしてEntryCacheManagerを利用するよう修正
+   - [x] 関連テストの修正・追加
    - 見積もり: 2-3日
 
 3. **LLM評価の非同期処理化**
-   - [ ] LLM評価用のワーカースレッド/タスククラスを作成（シグナル含む）
-   - [ ] `EvaluationDialog._evaluate`をリファクタリングして非同期化
-   - [ ] UI更新用のスロットを実装
-   - [ ] 非同期処理のテストを追加
+   - [x] LLM評価用のワーカースレッド/タスククラスを作成（シグナル含む）
+   - [x] EvaluationDialog._evaluateをリファクタリングして非同期化
+   - [x] UI更新用のスロットを実装
+   - [x] 非同期処理のテストを追加
    - 見積もり: 2-4日
 
 4. **POFormatEditorのパース処理改善**
-   - [ ] `POFormatEditor._parse_po_format`を`polib`または`sgpo`を利用するよう改善
-   - [ ] 関連テストを修正・確認
+   - [x] POFormatEditor._parse_po_formatをpolibまたはsgpoを利用するよう改善
+   - [x] 関連テストを修正・確認
    - 見積もり: 0.5-1日
 
 5. **ViewerPOFileの責務分割（DBアクセス）**
-   - [ ] `DatabaseAccessor`クラスを作成し、DB操作ロジックを移譲
-   - [ ] `ViewerPOFile`をリファクタリングして`DatabaseAccessor`を利用するよう修正
-   - [ ] 関連テストを修正・追加
+   - [x] DatabaseAccessorクラスを作成し、DB操作ロジックを移譲
+   - [x] ViewerPOFileをリファクタリングしてDatabaseAccessorを利用するよう修正
+   - [x] 関連テストを修正・追加
    - 見積もり: 1-2日（キャッシュ分割後に実施）
 
 #### P3: 中優先度タスク
 
 6. **DB戦略の明確化**
-   - [ ] `Database`クラスを`InMemoryEntryStore`などの名前に変更し、役割を明確化
-   - [ ] クラスのdocstringと関連ドキュメント（`_doc/3_data_model_design.md`）の更新
-   - [ ] データフロー図の作成・更新
+   - [x] DatabaseクラスをInMemoryEntryStoreなどの名前に変更し、役割を明確化
+   - [x] クラスのdocstringと関連ドキュメント（_doc/3_data_model_design.md）を更新
+   - [x] データフロー図の作成・更新
    - 見積もり: 0.5日
 
 7. **PreviewWidgetのエスケープ処理改善**
-   - [ ] `PreviewWidget._process_escape_sequences`をリファクタリング
-   - [ ] 標準ライブラリやQtの機能を活用した実装に変更
-   - [ ] 関連テストの確認・修正
+   - [x] PreviewWidget._process_escape_sequencesをリファクタリング
+   - [x] 標準ライブラリやQtの機能を活用した実装に変更
+   - [x] 関連テストの確認・修正
    - 見積もり: 0.5-1日
 
 8. **src/sgpo_editor/po.pyの役割見直し**
-   - [ ] 利用箇所の調査と役割分析
-   - [ ] ViewerPOFileとの機能重複を解消するためのリファクタリングまたはドキュメント更新
-   - [ ] 関連テストの修正/削除
+   - [x] 利用箇所の調査と役割分析
+   - [x] ViewerPOFileとの機能重複を解消するためのリファクタリングまたはドキュメント更新
+   - [x] 関連テストの修正/削除
    - 見積もり: 0.5-1日
 
 9. **型ヒントの改善（TypeAlias）**
-   - [ ] 複雑な型ヒントを特定し、TypeAliasを定義・適用
-   - [ ] `src/sgpo_editor/types.py`の作成または各モジュールでの型エイリアス定義
+   - [x] 複雑な型ヒントを特定し、TypeAliasを定義・適用
+   - [x] src/sgpo_editor/types.pyの作成または各モジュールでの型エイリアス定義
    - 見積もり: 0.5日
 
 10. **SQLクエリの安全性向上**
-    - [ ] `Database.get_entries`の`ORDER BY`句の列名検証ロジック追加
-    - [ ] SQLインジェクションテストの追加
+    - [x] Database.get_entriesのORDER BY句の列名検証ロジック追加
+    - [x] SQLインジェクションテストの追加
     - 見積もり: 0.5日
 
 #### P4: 低優先度タスク
 
 11. **ファイル読み込みの非同期処理化**
-    - [ ] `ViewerPOFile.load`の非同期化を検討・実装
-    - [ ] 進捗表示UIの実装
+    - [x] ViewerPOFile.loadの非同期化を検討・実装
+    - [x] 進捗表示UIの実装
     - 見積もり: 1-2日
 
 ### 重点的に改善すべき設計上の課題
