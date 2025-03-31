@@ -14,7 +14,6 @@ from sgpo_editor.core.po_interface import POEntry
 from sgpo_editor.models.database import Database
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.core.constants import TranslationStatus
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -311,19 +310,21 @@ class ViewerPOFile:
         )
 
         # キャッシュキーの生成
-        cache_key = (
-            f"{self.filter_text}|{self.search_text}|"
-            f"{self.flag_conditions}|{self.translation_status}|"
-            f"{self.sort_column}|{self.sort_order}"
-        )
+        cache_key = self._generate_filter_cache_key()
 
-        # 強制更新フラグがある場合はキャッシュをクリア
+        # 強制更新フラグがある場合またはキャッシュが無効な場合はキャッシュをクリア
         if self._force_filter_update:
             logger.debug(
                 "ViewerPOFile.get_filtered_entries: 強制更新フラグがあるためキャッシュをクリア"
             )
             self._force_filter_update = False
             update_filter = True
+            
+            # キャッシュ属性が存在する場合は削除
+            if hasattr(self, "_filtered_entries_cache"):
+                delattr(self, "_filtered_entries_cache")
+            if hasattr(self, "_filtered_entries_cache_key"):
+                delattr(self, "_filtered_entries_cache_key")
 
         # キャッシュチェック - 強制更新でなければキャッシュから返す
         cache_key_attr = "_filtered_entries_cache_key"
@@ -363,7 +364,6 @@ class ViewerPOFile:
 
             # エントリオブジェクトのリストを作成
             result = []
-            self._entry_obj_cache = {}
 
             for entry_dict in entries_dict:
                 key = entry_dict.get("key", "")
@@ -378,11 +378,11 @@ class ViewerPOFile:
                         or entry_obj.fuzzy != ("fuzzy" in entry_dict.get("flags", []))
                     ):
                         # 新しいオブジェクトを作成してキャッシュを更新
-                        entry_obj = EntryModel(**entry_dict)
+                        entry_obj = EntryModel.from_dict(entry_dict)
                         self._entry_cache[key] = entry_obj
                 else:
                     # 新しいEntryModelオブジェクトを作成してキャッシュに追加
-                    entry_obj = EntryModel(**entry_dict)
+                    entry_obj = EntryModel.from_dict(entry_dict)
                     if key:
                         self._entry_cache[key] = entry_obj
 
@@ -527,25 +527,32 @@ class ViewerPOFile:
             logger.debug(
                 f"ViewerPOFile.update_entry: データベース更新開始 key={entry_dict.get('key')}"
             )
+            
+            # トランザクション内で更新を実行
+            key = entry_dict.get('key', '')
             result = self.db.update_entry(entry_dict)
             logger.debug(
                 f"ViewerPOFile.update_entry: データベース更新結果 result={result}"
             )
 
+            if not result:
+                logger.error(f"ViewerPOFile.update_entry: データベース更新失敗 key={key}")
+                return False
+
             # キャッシュを更新
-            if result and self._cache_enabled and "key" in entry_dict:
-                key = entry_dict["key"]
+            if result and self._cache_enabled and key:
                 logger.debug(f"ViewerPOFile.update_entry: キャッシュ更新 key={key}")
                 # EntryModelオブジェクトをキャッシュに保存
                 entry_obj = (
                     entry if isinstance(entry, EntryModel) else EntryModel(**entry_dict)
                 )
 
+                # 完全なエントリキャッシュを更新
                 if key in self._entry_cache:
                     self._entry_cache[key] = entry_obj
 
+                # 基本情報キャッシュも更新
                 if key in self._basic_info_cache:
-                    # 基本情報キャッシュも更新
                     basic_info = EntryModel(
                         key=entry_obj.key,
                         msgid=entry_obj.msgid,
@@ -559,12 +566,21 @@ class ViewerPOFile:
                 # フィルタされたエントリリストのキャッシュを無効化するためのフラグを設定
                 # これにより次回get_filtered_entriesが呼ばれたときにキャッシュが更新される
                 self._force_filter_update = True
+                logger.debug("ViewerPOFile.update_entry: キャッシュ強制更新フラグを設定しました")
+                
+                # 既存のフィルタキャッシュ属性がある場合はクリア
+                if hasattr(self, "_filtered_entries_cache"):
+                    logger.debug("ViewerPOFile.update_entry: フィルタキャッシュをクリアします")
+                    delattr(self, "_filtered_entries_cache")
+                if hasattr(self, "_filtered_entries_cache_key"):
+                    delattr(self, "_filtered_entries_cache_key")
 
             # 変更フラグを設定
             self.modified = True
             logger.debug(f"ViewerPOFile.update_entry: 完了 result={result}")
 
             return result
+
         except Exception as e:
             logger.error(f"ViewerPOFile.update_entry: エラー発生 {e}")
             logger.error(f"エントリ更新エラー: {e}")
@@ -609,9 +625,7 @@ class ViewerPOFile:
             if result and self._cache_enabled:
                 for key, entry in entries.items():
                     entry_obj = (
-                        entry
-                        if isinstance(entry, EntryModel)
-                        else EntryModel(**entries_dict[key])
+                        entry if isinstance(entry, EntryModel) else EntryModel.from_dict(entries_dict[key])
                     )
 
                     # 完全なエントリキャッシュを更新
@@ -895,14 +909,14 @@ class ViewerPOFile:
         Returns:
             str: キャッシュキー
         """
-        # フィルタ条件をJSON文字列化してハッシュ化
-        filter_data = {
-            "filter_text": self.filter_text,
-            "search_text": self.search_text,
-            "sort_column": self.sort_column,
-            "sort_order": self.sort_order,
-            "flag_conditions": str(
-                self.flag_conditions
-            ),  # 辞書は直接ハッシュ化できないため文字列化
-        }
-        return json.dumps(filter_data)
+        # フィルタ条件を文字列として連結
+        flag_conditions_str = "|".join(f"{k}:{v}" for k, v in sorted(self.flag_conditions.items())) if self.flag_conditions else ""
+        
+        # キャッシュキーを生成
+        cache_key = (
+            f"{self.filter_text}|{self.search_text}|"
+            f"{flag_conditions_str}|{self.translation_status}|"
+            f"{self.sort_column}|{self.sort_order}"
+        )
+        
+        return cache_key

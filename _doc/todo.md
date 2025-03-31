@@ -1,413 +1,105 @@
----
-created: 2025-03-17T13:43
-updated: 2025-03-31T17:14
----
-# SGPOエディタ 実装計画詳細
-
-以下は、各機能要件に対する詳細な実装計画です。
-
-## 0. ファサードパターンとEntryModelクラス移行の完了
-
-### 実装計画
-1. **EntryModelクラスへの移行**
-   - [x] EntryModelクラスを実装し、既存のEntryクラスを置き換える
-   - [x] ファサードクラス（EntryEditorFacade, EntryListFacade）を実装
-   - [x] メタデータパネルのエラーを修正（get_all_metadataメソッド対応）
-   - [x] メタデータダイアログのエラーを修正（get_all_metadataメソッド対応）
-   - [x] table_manager.pyのEntryクラス参照を確認・修正
-   - [x] ViewerPOFileクラスのEntryModel対応
-   - [x] 全ファイルでのインポート文の確認（EntryからEntryModelへ）
-   - [x] 型アノテーションの確認（EntryからEntryModelへ）
-   - [x] テストコードの確認・修正
-
-2. **ドキュメント更新**
-   - [x] クラス図の更新（ファサードパターンとEntryModelクラスを反映）
-   - [x] API仕様書の更新
-   - [x] 開発者向けガイドの更新
-
-3. **テスト強化**
-   - [x] ファサードクラスのテストケース追加
-   - [x] EntryModelクラスの機能をカバーするテストケース追加
-   - [x] エッジケースや異常系のテスト追加
-
-## 1. エントリリストの列幅を可変にする
-
-### 実装計画
-1. **UI設計**
-   - [x] QTableWidgetのヘッダーにリサイズハンドルを追加する
-   - [x] 列幅の変更をユーザー操作で可能にする
-   - [x] 列幅の設定を保存・復元する仕組みを構築する
-
-2. **設定の永続化**
-   - [x] TableManagerクラスに列幅設定を保存する機能を追加する
-   - [x] アプリケーション終了時に列幅設定を保存する
-   - [x] アプリケーション起動時に列幅設定を読み込む
-
-3. **実装対象ファイル**
-   - [x] `src/sgpo_editor/gui/table_manager.py`の`_setup_table`メソッドを修正する
-   - [x] 現在の固定列幅設定（QHeaderView.ResizeMode.Fixed）を可変に変更
-   - [x] 列幅保存用の設定ファイル形式と保存場所を決定する
-
-4. **テスト**
-   - [x] 列幅変更が正しく動作するかテストする
-   - [x] アプリケーション再起動後も列幅設定が保持されるかテストする
-
-## 2. エントリリストに表示する列を変更可能にする
-
-### 実装計画
-1. **設定UI実装**
-   - [x] 列表示設定ダイアログを作成する
-   - [x] チェックボックスでの列表示/非表示切り替え機能を実装
-   - [x] 列の表示順変更機能を実装（上下移動ボタンなど）
-
-2. **列管理機能実装**
-   - [x] TableManagerクラスに表示列設定を管理する機能を追加
-   - [x] エントリから取得可能な全列の定義一覧を作成
-   - [x] 表示列設定に基づいてテーブル構造を動的に変更する機能を実装
-
-3. **設定の永続化**
-   - [x] 表示列設定をJSON形式で保存する機能を実装
-   - [x] アプリケーション起動時に設定を読み込む機能を実装
-
-4. **メニュー統合**
-   - [x] メインウィンドウのメニューに「列表示設定」メニュー項目を追加
-   - [x] メニュー選択で列表示設定ダイアログを表示する機能を実装
-
-5. **実装対象ファイル**
-   - [x] `src/sgpo_editor/gui/table_manager.py`を修正
-   - [x] 列表示設定ダイアログ用の新規クラスを作成
-   - [x] `src/sgpo_editor/gui/main_window.py`にメニュー項目を追加
-
-## 3. エントリリストにScore列を追加可能にする
-
-### 実装計画
-1. **UI拡張**
-   - [x] テーブルのヘッダー定義にScore列を追加する
-   - [x] Score列の表示形式は数値とする
-
-2. **テーブル管理機能拡張**
-   - [x] TableManagerクラスにScore列のデータ管理機能を追加
-   - [x] Score値に基づいた行の色分け表示機能を実装（オプション）
-   - [x] Scoreによるソート機能を実装
-
-3. **実装対象ファイル**
-   - [x] `src/sgpo_editor/gui/table_manager.py`のカラム定義を修正
-   - [x] Score列の表示・ソート処理を実装
-
-4. **項目4と連携**
-   - [x] 内部データモデルのScore実装と連携させる
-
-## 4. 内部データのモデルにもScoreを追加する
-
-### 実装計画
-1. **モデル拡張**
-   - [x] EntryModelクラスにscore属性を追加
-   - [x] scoreの初期値、範囲、型定義を決定（数値型）
-
-2. **APIインターフェース**
-   - [x] スコア設定・取得用のAPIメソッドを実装
-   - [x] スコア変更時のイベント通知仕組みを実装
-
-3. **実装対象ファイル**
-   - [x] `src/sgpo_editor/models/entry.py`のEntryModelクラスを修正
-   - [x] POファイル操作関連クラスを修正
-
-## 5. エントリには任意のメタデータを追加できるようにする(ユーザ定義)
-
-### 実装計画
-1. **モデル拡張**
-   - [x] EntryModelクラスに汎用メタデータ辞書フィールドを追加
-   - [x] メタデータの型定義（キー・値ペアの設計）を決定
-   - [x] メタデータ操作APIを設計・実装
-
-2. **メタデータUI**
-   - [x] メタデータ編集ダイアログを設計・実装
-   - [x] キー・値のカスタム入力機能を実装
-   - [x] メタデータテンプレート機能を実装（オプション）
-
-3. **永続化**
-   - [x] POファイル内でのメタデータ保存方法を設計（コメント活用など）
-   - [x] ファイル保存時にメタデータも保存する機能を実装
-   - [x] ファイル読み込み時にメタデータを復元する機能を実装
-
-4. **実装対象ファイル**
-   - [x] `src/sgpo_editor/models/entry.py`のEntryModelクラスを修正
-   - [x] `src/sgpo_editor/utils/metadata_utils.py`を新規作成し、メタデータ操作ユーティリティを実装
-   - [x] メタデータ編集用のダイアログクラスを新規作成 (`src/sgpo_editor/gui/metadata_dialog.py`)
-   - [x] POファイル操作関連クラスの修正（EntryModelのto_po_entryメソッドの実装）
-
-## 6. エントリのメタデータを表示するための専用ウィンドウを追加する
-
-### 実装計画
-1. **UI設計と実装**
-   - [x] メタデータ表示用パネルを設計・実装
-   - [x] カスタム表示フォーマットを実装（ツリー形式）
-   - [x] 表示・非表示の切り替え機能を実装
-
-2. **トリガー機能実装**
-   - [x] エントリ選択時のメタデータ表示更新機能を実装
-   - [x] ショートカットキーでのメタデータパネル表示機能を実装（オプション）
-   - [x] メインウィンドウにメタデータメニューを追加
-
-3. **メタデータ表示ロジック**
-   - [x] 現在選択中のエントリのメタデータを取得する機能を実装
-   - [x] メタデータのツリー表示形式を実装
-   - [x] メタデータの印刷・エクスポート機能を実装（オプション）
-
-4. **実装対象ファイル**
-   - [x] メタデータ表示用パネルクラスを作成 (`src/sgpo_editor/gui/metadata_panel.py`)
-   - [x] `src/sgpo_editor/gui/main_window.py`に統合する
-   - [x] エントリ選択時のメタデータ表示更新機能を実装
-
-## 7. LLMを利用した翻訳品質評価機能を追加する
-
-### 実装計画
-1. **データモデル設計**
-   - [x] 翻訳評価状態を管理する列挙型（未評価/評価中/評価済）を定義
-   - [x] 総合スコアフィールドを追加（エントリリストのGUIと整合）
-   - [x] 評価指標ごとのスコアを格納する辞書フィールドを追加
-   - [x] 複数言語のレビューコメントを格納するデータ構造を設計・実装
-   - [x] EntryModelクラスに上記フィールドを追加
-
-2. **インターフェース設計**
-   - [x] エントリ単位でアクセスするためのインターフェースを実装
-   - [x] エントリの評価状態を管理するインターフェースを実装
-   - [x] スコア・レビューコメント設定のためのインターフェースを実装
-   - [x] 全エントリにアクセスするための一括取得インターフェースを実装
-
-3. **UI設計**
-   - [x] 「ツール」メニューに「翻訳の品質評価」メニュー項目を追加
-   - [x] 翻訳評価実行ダイアログを設計・実装
-   - [x] 評価状態の視覚的表示機能を実装
-   - [x] 評価結果表示用UIを設計・実装
-   - [x] 多言語レビューコメント表示・切り替え機能を実装
-
-4. **LLM連携機能実装**
-   - [x] LLMサービスとの連携インターフェースを実装
-   - [x] 翻訳評価プロンプトテンプレートを設計
-   - [x] 様々な評価指標に基づく品質評価方法の実装
-   - [x] 評価結果のパース処理を実装
-   - [x] 評価結果から総合スコアと指標別スコアを算出する機能を実装
-
-5. **データベース設計と実装**
-   - [x] SQLiteデータベースのスキーマを設計
-     - [x] エントリ識別用テーブル（msgctxtとmsgidの組み合わせをキー）
-     - [x] 評価状態管理テーブル
-     - [x] 総合スコアテーブル
-     - [x] 評価指標別スコアテーブル
-     - [x] 多言語レビューコメントテーブル
-   - [x] POファイルのサイドカーとしてのDBファイル管理機能を実装
-   - [x] msgctxtとmsgidの組み合わせをキーとした関連付け機能を実装
-
-6. **データ永続化**
-   - [x] 評価結果をSQLiteに保存する機能を実装
-   - [x] POファイルを開く際にサイドカーDBを読み込む機能を実装
-   - [x] DBが存在しない場合のスキップ処理を実装
-   - [x] 評価状態の変更を即座にDBに反映する機能を実装
-
-7. **スコア連携**
-   - [x] 評価結果からスコアを算出する機能を実装
-   - [x] スコアをEntryModelに反映する機能を実装
-   - [x] テーブル表示のScore列と連携させる
-   - [x] スコアに基づくエントリのフィルタリング・ソート機能を実装
-
-8. **実装対象ファイル**
-   - [x] `src/sgpo_editor/models/entry.py`に評価関連フィールドを追加
-   - [x] 評価状態管理用の列挙型を定義する新規ファイルを作成
-   - [x] 評価インターフェースを実装する新規ファイルを作成
-   - [x] `src/sgpo_editor/gui/main_window.py`にメニュー項目を追加
-   - [x] 翻訳評価ダイアログ用の新規クラスを作成
-   - [x] LLM連携用の新規モジュールを作成
-   - [x] データベース操作用の新規モジュールを作成
-
-## 実装順序と優先度
-
-1. **第1段階（基盤整備）**:
-   - [x] 内部データモデルにScoreを追加（項目4）
-   - [x] LLMを利用した翻訳品質評価機能の基盤実装（項目7のデータモデル・インターフェース設計部分）
-   - [x] エントリに任意のメタデータを追加できるようにする（項目5）
-   - [x] エントリのメタデータを表示するための専用パネルを追加する（項目6）
-
-2. **第2段階（UI拡張）**:
-   - [x] エントリリストの列幅を可変にする（項目1）
-   - [x] エントリリストに表示する列を変更可能にする（項目2）
-   - [x] LLM翻訳評価のUI実装（項目7のUI設計部分）
-
-3. **第3段階（機能統合）**:
-   - [x] エントリリストにScore列を追加（項目3）
-   - [x] メタデータ表示用パネルの追加（項目6）
-   - [x] 翻訳品質評価機能の完成（項目7のLLM連携・DB実装部分）
-
-## テスト計画
-
-各機能実装後に以下のテストを実施:
-
-1. **ユニットテスト**
-   - [x] 評価状態の列挙型のテストを作成
-   - [x] EntryModelの評価関連フィールドのテストを作成
-   - [x] メタデータ操作APIのテストケースを作成 (`test_entry_metadata.py`)
-   - [x] メタデータのUIテストを作成 (`test_metadata_ui.py`)
-   - [x] 列の表示・非表示機能のテストを作成 (`test_table_manager_column_visibility.py`, `test_column_visibility_gui.py`)
-   - [x] Score列の表示機能のテストを作成 (`test_table_manager.py`)
-   - [x] テーブルのステータス表示機能のテストを作成 (`test_table_status_display.py`)
-   - [x] エントリステータス機能のテストを作成 (`test_entry_status.py`)
-   - [x] LLM翻訳評価機能のテストを作成
-   - [x] データベース操作のテストケースを作成
-   - [x] LLM連携機能のモックテストを作成
-   - [x] 翻訳評価インターフェースのテストを作成
-   - [x] 多言語レビューコメント機能のテストを作成
-
-2. **機能テスト**
-   - [x] 列幅変更と設定保存・読み込みのテスト
-   - [x] 表示列の変更と設定保存・読み込みのテスト
-   - [x] Score表示・ソート機能のテスト
-   - [x] メタデータ追加・表示・保存機能のテスト
-   - [x] 翻訳品質評価機能の実行テスト
-   - [x] サイドカーDBの保存・読み込みテスト
-   - [x] エントリの評価状態管理機能のテスト
-   - [x] 多言語レビューコメントの表示・切り替えテスト
-
-3. **実行コマンド**
-   ```
-   # すべてのテストを実行
-   uv run pytest
-   
-   # 特定のテストファイルを実行
-   uv run pytest tests/test_entry_metadata.py
-   
-   # テストケースの詳細を表示して実行
-   uv run pytest tests/test_metadata_ui.py -v
-   
-   # 関連するテストファイルをまとめて実行
-   uv run pytest tests/test_main_window_*.py -v
-   ```
-
-## 次に取り組む要件
-
-1. **バグ修正: Applyボタン機能の修正**
-   - [x] EntryEditorクラスにデータベースを設定する処理を追加
-   - [x] MainWindowクラスの_on_entry_updatedメソッドを修正
-   - [x] TableManagerとEntryListFacadeのテーブル更新処理を強化
-   - [x] デバッグログを追加して処理の流れを追跡しやすくする
-
-2. **項目7: LLM翻訳品質評価機能のUI実装**
-   - [x] 翻訳評価ダイアログクラスを新規作成する
-   - [x] メインウィンドウに翻訳評価発行用のメニュー項目とボタンを追加する
-   - [x] 評価結果の表示・管理機能を実装する
-   - [x] テストコードを作成し、500行程度を上限として適切に分割する
-   - [x] 実装対象ファイル：
-     - `src/sgpo_editor/gui/translation_evaluate_dialog.py` (新規)
-     - `src/sgpo_editor/gui/main_window.py`
-     - `src/sgpo_editor/gui/ui_setup.py`
-     - `tests/test_translation_evaluation.py` (新規)
-
-3. **作業順序**
-   1. [x] Applyボタン機能の修正を完了
-   2. 次にLLM翻訳品質評価機能のUI部分を実装
-   3. 各機能の実装後にはテストを作成し、`uv run pytest` でテストを実行
-   4. 最後に全体的な統合テストを実施
-
-## コードレビュー結果に基づく改善計画 (2025-03-31)
-
-### 実施背景
-
-全体的なコードレビューを行い、プロジェクトの品質向上のために以下の課題が発見されました。これらの課題を解決するために、優先度に基づいたタスクリストを作成します。
-
-### 優先度の定義
-
-- **P1**: 最優先（バグ修正、安定性に関わる問題）
-- **P2**: 高優先度（設計改善、主要機能の品質向上）
-- **P3**: 中優先度（コード品質、保守性の向上）
-- **P4**: 低優先度（将来的な検討事項）
-
-### タスクリスト
-
-#### P1: 最優先タスク
-
-1. **キャッシュ無効化ロジックの修正と検証**
-   - [x] ViewerPOFile.update_entryで_force_filter_update = Trueを確実に設定するよう修正
-   - [x] ViewerPOFile.get_filtered_entriesでキャッシュ無効化フラグをチェックし、フラグをFalseに戻すロジックを実装
-   - [x] POFormatEditor._on_apply_clicked後にMainWindow._update_table()を確実に呼び出す実装
-   - [x] 関連するユニットテスト・統合テストの追加・修正
-   - 見積もり: 1-2日
-
-#### P2: 高優先度タスク
-
-2. **ViewerPOFileの責務分割（キャッシュ管理）**
-   - [x] EntryCacheManagerクラスを新規作成し、キャッシュ関連ロジックを移譲
-   - [x] ViewerPOFileをリファクタリングしてEntryCacheManagerを利用するよう修正
-   - [x] 関連テストの修正・追加
-   - 見積もり: 2-3日
-
-3. **LLM評価の非同期処理化**
-   - [x] LLM評価用のワーカースレッド/タスククラスを作成（シグナル含む）
-   - [x] EvaluationDialog._evaluateをリファクタリングして非同期化
-   - [x] UI更新用のスロットを実装
-   - [x] 非同期処理のテストを追加
-   - 見積もり: 2-4日
-
-4. **POFormatEditorのパース処理改善**
-   - [x] POFormatEditor._parse_po_formatをpolibまたはsgpoを利用するよう改善
-   - [x] 関連テストを修正・確認
-   - 見積もり: 0.5-1日
-
-5. **ViewerPOFileの責務分割（DBアクセス）**
-   - [x] DatabaseAccessorクラスを作成し、DB操作ロジックを移譲
-   - [x] ViewerPOFileをリファクタリングしてDatabaseAccessorを利用するよう修正
-   - [x] 関連テストを修正・追加
-   - 見積もり: 1-2日（キャッシュ分割後に実施）
-
-#### P3: 中優先度タスク
-
-6. **DB戦略の明確化**
-   - [x] DatabaseクラスをInMemoryEntryStoreなどの名前に変更し、役割を明確化
-   - [x] クラスのdocstringと関連ドキュメント（_doc/3_data_model_design.md）を更新
-   - [x] データフロー図の作成・更新
-   - 見積もり: 0.5日
-
-7. **PreviewWidgetのエスケープ処理改善**
-   - [x] PreviewWidget._process_escape_sequencesをリファクタリング
-   - [x] 標準ライブラリやQtの機能を活用した実装に変更
-   - [x] 関連テストの確認・修正
-   - 見積もり: 0.5-1日
-
-8. **src/sgpo_editor/po.pyの役割見直し**
-   - [x] 利用箇所の調査と役割分析
-   - [x] ViewerPOFileとの機能重複を解消するためのリファクタリングまたはドキュメント更新
-   - [x] 関連テストの修正/削除
-   - 見積もり: 0.5-1日
-
-9. **型ヒントの改善（TypeAlias）**
-   - [x] 複雑な型ヒントを特定し、TypeAliasを定義・適用
-   - [x] src/sgpo_editor/types.pyの作成または各モジュールでの型エイリアス定義
-   - 見積もり: 0.5日
-
-10. **SQLクエリの安全性向上**
-    - [x] Database.get_entriesのORDER BY句の列名検証ロジック追加
-    - [x] SQLインジェクションテストの追加
-    - 見積もり: 0.5日
-
-#### P4: 低優先度タスク
-
-11. **ファイル読み込みの非同期処理化**
-    - [x] ViewerPOFile.loadの非同期化を検討・実装
-    - [x] 進捗表示UIの実装
-    - 見積もり: 1-2日
-
-### 重点的に改善すべき設計上の課題
-
-1. **ViewerPOFileの単一責任原則違反**
-   - 現状: ファイル読み込み、DB操作、フィルタリング、キャッシュ管理など多数の責務を持つ
-   - 解決策: キャッシュ管理と DB アクセスを別クラスに分割し、ViewerPOFileは UI と基本データの連携に集中
-
-2. **Database戦略の不明確さ**
-   - 現状: インメモリDatabaseと永続化EvaluationDatabaseの役割分担が不明確
-   - 解決策: クラス名の変更とドキュメントの充実化によって役割を明確化
-
-3. **キャッシュ無効化ロジックの脆弱性**
-   - 現状: 更新後のキャッシュ無効化が確実でない可能性がある
-   - 解決策: 更新操作と無効化フラグのセット・リセット処理を確実に行う実装に修正
-
-4. **同期処理によるUI応答性の低下**
-   - 現状: LLM評価やファイル読み込みが同期的に実行されUIがフリーズする可能性
-   - 解決策: QThreadを使用した非同期処理の実装
+# SGPOエディタ ToDoリスト
+
+このドキュメントは、SGPOエディタプロジェクトの今後の開発タスクを管理します。
+
+## P1: 最優先タスク (バグ修正・安定性)
+
+*   **`src/sgpo_editor/gui/widgets/po_format_editor.py`**
+    *   [x] `_on_apply_clicked` メソッドで発生するエラー（`_doc/issue/po_format_window/適用に失敗する.md`参照）の修正。
+        *   原因調査: `ViewerPOFile.get_entry_by_key` でエントリが見つからない、または `ViewerPOFile.update_entry` の呼び出しに問題がある可能性。`get_filtered_entries` を使用した代替検索ロジックの検証。
+        *   `ViewerPOFile.update_entry` の呼び出し前に、EntryModelオブジェクトが正しく構築・更新されているか確認。
+        *   データベース更新 (`Database.update_entry`) がトランザクション内で正しく実行され、コミットされているか確認。
+    *   [x] `_parse_po_format` の実装が、複数行のmsgid/msgstrや特殊文字を正しく処理できるか検証・修正。可能であれば `polib` や `sgpo` ライブラリの解析機能を利用する。
+
+*   **`src/sgpo_editor/core/viewer_po_file.py`**
+    *   [x] キャッシュ無効化ロジック (`_force_filter_update`) が `update_entry` 後に確実に機能し、`get_filtered_entries` で適切にリセットされるように修正・検証。
+    *   [x] `update_entry` 実行後、MainWindowの `_update_table` が呼び出され、キャッシュフラグがリセットされた状態で `get_filtered_entries` が実行されることを保証する仕組みの確認・修正。
+    *   [ ] 修正によって影響を受けた単体テストの修正。特に以下のテストに注目：
+        * `tests/integration/test_viewer_po_file.py::test_get_entries`
+        * `tests/integration/test_viewer_po_file.py::test_search_entries`
+        * `tests/integration/test_viewer_po_file_filtered_entries.py` のテスト
+        * `tests/integration/test_viewer_po_file_stats.py` のテスト
+        * `tests/gui/keyword_filter/test_keyword_filter.py::TestKeywordFilter::test_filter_text_and_keyword_together`
+
+*   **`src/sgpo_editor/gui/main_window.py`**
+    *   [ ] `_on_entry_updated` メソッド内でテーブル更新 (`entry_list_facade.update_table()`) を呼び出す際に、`ViewerPOFile` のキャッシュ状態 (`_force_filter_update`) が適切に考慮されているか確認・修正。テーブル更新後に選択状態が正しく維持されるかも確認。
+
+## P2: 高優先度タスク (設計改善・主要機能)
+
+*   **`src/sgpo_editor/core/viewer_po_file.py`**
+    *   [ ] **責務分割**: キャッシュ管理ロジックを新しいクラス (`EntryCacheManager` など) に分離するリファクタリング。
+    *   [ ] **責務分割**: データベースアクセスロジック (`db.get_entries` など) を新しいクラス (`DatabaseAccessor` など) に分離するリファクタリング。
+    *   [ ] ファイル読み込み (`load`) 処理の非同期化を検討し、UIの応答性を改善する。進捗表示も実装する。
+
+*   **`src/sgpo_editor/gui/evaluation_dialog.py` & `src/sgpo_editor/utils/llm_utils.py`**
+    *   [ ] LLM評価実行 (`_evaluate`) を非同期処理（例: `QThread`, `QRunnable`）に変更し、UIのフリーズを防止する。
+    *   [ ] APIキーが設定されていない場合のUIフィードバックを改善する。
+    *   [ ] `_load_api_keys`/`_save_api_keys` でのエラーハンドリングを強化する。
+
+*   **`src/sgpo_editor/gui/table_manager.py`**
+    *   [ ] 列の表示/非表示機能 (`toggle_column_visibility`) が確実に動作し、状態がUI (メニュー) と同期するように修正・検証。
+    *   [ ] Score列の表示・ソート機能の実装。`_sort_entries_by_score` の実装と `update_table_contents` でのスコア表示。
+
+*   **`src/sgpo_editor/models/entry.py`**
+    *   [ ] `score` プロパティの実装。LLM評価結果 (`overall_quality_score`) や手動設定スコアとの連携方法を定義する。
+
+*   **`src/sgpo_editor/models/database.py`**
+    *   [ ] クラス名を `Database` から `InMemoryEntryStore` など、役割が明確になる名前に変更する。
+    *   [ ] `get_entries` メソッドの `filter_text` 引数を削除し、`translation_status` と `flag_conditions` に完全に移行する (後方互換性を考慮しつつ)。
+    *   [ ] `get_entries` のORDER BY句で、ユーザーが指定した列名 (`sort_column`) の安全性を検証するロジックを追加（SQLインジェクション対策）。
+
+## P3: 中優先度タスク (コード品質・保守性)
+
+*   **全体**
+    *   [ ] TypeAlias を活用して、複雑な型ヒント (`Dict[str, Any]` など) を分かりやすく定義する (`src/sgpo_editor/types.py` を作成または各モジュールで定義)。
+    *   [ ] logging のレベルとメッセージを見直し、デバッグや運用時の情報収集に役立つように調整する。
+    *   [ ] docstring の記述を充実させ、各クラス・メソッドの役割、引数、戻り値を明確にする。
+
+*   **`src/sgpo_editor/gui/widgets/preview_widget.py`**
+    *   [ ] `_process_escape_sequences` の実装を見直し、標準ライブラリ (`html.unescape` など) やQtの機能 (`QTextDocument.toHtml` / `setHtml`) を活用して簡潔化・堅牢化する。
+
+*   **`src/sgpo_editor/gui/event_handler.py`**
+    *   [ ] ファサードパターン導入後の `EventHandler` の役割を見直し、重複する処理があれば削除またはリファクタリングする。現状は互換性のために残されている可能性がある。
+
+*   **`src/sgpo_editor/po.py`**
+    *   [ ] `PoFile` クラスの役割と `ViewerPOFile` との関係性を見直し、不要であれば削除またはリファクタリングする。現状ではCLI用、または初期の実装の名残の可能性がある。
+
+*   **`src/sgpo_editor/gui/facades/`**
+    *   [ ] 各ファサードクラスの責務が適切か再評価し、必要であればリファクタリングする。
+
+*   **`src/sgpo_editor/models/database.py` & `src/sgpo_editor/models/evaluation_db.py`**
+    *   [ ] データベーススキーマ（特に `evaluation_db.py`）が `EntryModel` のフィールドと整合性が取れているか確認する。
+    *   [ ] トランザクション管理が適切に行われているか確認する。
+
+## P4: 低優先度タスク (将来的な改善)
+
+*   **`src/sgpo_editor/gui/main_window.py`**
+    *   [ ] `_show_translation_evaluate_dialog` で `EvaluationDatabase` が利用できない場合のフォールバック処理（従来の `TranslationEvaluateDialog` を使う部分）の必要性を再検討する。
+    *   [ ] ツールバーアクションの表示/非表示ロジックを、機能の有効/無効状態と連動させるように改善する。
+
+*   **`src/sgpo_editor/gui/metadata_dialog.py` & `src/sgpo_editor/gui/metadata_panel.py`**
+    *   [ ] メタデータの編集/表示機能のUI/UXを改善する（例: 型に応じた入力ウィジェットの変更、リスト/辞書のインライン編集など）。
+
+*   **`_doc/`**
+    *   [ ] 今回のレビューとToDoリスト作成に合わせて、設計ドキュメント (`1_system_overview.md` 〜 `6_glossary.md`) の内容を最新化する。特にアーキテクチャ図やデータフロー図。
+    *   [ ] テスト計画 (`5_test_plan.md`) に、LLM評価機能やメタデータ機能に関するテスト項目を追加する。
+
+*   **テスト**
+    *   [ ] `pytest-qt` を活用したGUI操作のテストを追加し、手動テストへの依存を減らす。
+    *   [ ] パフォーマンステスト（大規模ファイル読み込み、フィルタリング速度）を定期的に実行する仕組みを検討する。
+
+## テスト修正
+
+*   **テーブル関連のテスト修正**
+    *   [ ] `tests/gui/table/test_table_score_display.py` のテスト
+    *   [ ] `tests/gui/table/test_table_status_display.py::test_table_status_column_display`
+    *   [ ] `tests/gui/table/test_table_update_issue.py` のテスト
+*   **EntryEditorのテスト修正**
+    *   [ ] `tests/gui/test_entry_editor/test_entry_editor_state.py::test_entry_editor_state_apply_changes`
+*   **キーワードフィルター関連のテスト修正**
+    *   [ ] `tests/gui/test_keyword_filter/test_filter_reset.py` のテスト
+    *   [ ] `tests/gui/test_keyword_filter/test_filter_reset_basic.py` のテスト
+    *   [ ] `tests/gui/test_keyword_filter/test_main_window_filter.py` のテスト
+*   **Entryモデル関連のテスト修正**
+    *   [ ] `tests/models/entry/test_entry_list_integration.py::test_entry_list_status_display`
+    *   [ ] `tests/models/entry/test_entry_structure.py::TestEntryStructure` のテスト

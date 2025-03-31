@@ -403,26 +403,44 @@ class POFormatEditor(QDialog):
                 # エントリを検索
                 entry = po_file.get_entry_by_key(entry_key)
                 if not entry:
-                    # キーが見つからない場合は別の方法で検索
-                    # ViewerPOFileにはmsgidで直接検索するメソッドがないため、
-                    # 全エントリを取得して手動で検索する
-                    all_entries = po_file.get_filtered_entries()
-                    for e in all_entries:
+                    # キーが見つからない場合はmsgidに基づいて絞り込み検索を行う
+                    # フィルタを使って効率的に検索
+                    filtered_entries = po_file.get_filtered_entries(filter_keyword=msgid)
+                    for e in filtered_entries:
+                        # msgidが完全一致かつmsgctxtも一致（またはともにNone）する場合
                         if e.msgid == msgid and e.msgctxt == msgctxt:
                             entry = e
+                            logger.debug(f"エントリを絞り込み検索で発見: key={e.key}, msgid={msgid}")
                             break
 
                 if entry:
                     # エントリが見つかった場合は更新
                     if entry.msgstr != msgstr:
                         # エントリのmsgstrを更新
+                        old_msgstr = entry.msgstr
                         entry.msgstr = msgstr
-                        # 更新されたエントリを保存
-                        po_file.update_entry(entry)
-                        updated_count += 1
-                        # 更新シグナルを発行
-                        self.entry_updated.emit(entry.key, msgstr)
+                        logger.debug(f"エントリ更新開始: key={entry.key}, msgid={entry.msgid}")
+                        # トランザクション内で更新を行う
+                        try:
+                            # 更新されたエントリを保存
+                            update_success = po_file.update_entry(entry)
+                            if update_success:
+                                updated_count += 1
+                                # 更新シグナルを発行
+                                self.entry_updated.emit(entry.key, msgstr)
+                                logger.debug(f"エントリ更新成功: key={entry.key}")
+                            else:
+                                # 更新に失敗した場合は元の値に戻す
+                                entry.msgstr = old_msgstr
+                                logger.error(f"エントリ更新失敗: key={entry.key}")
+                                not_found_count += 1
+                        except Exception as update_error:
+                            # 例外発生時も元の値に戻す
+                            entry.msgstr = old_msgstr
+                            logger.exception(f"エントリ更新中に例外発生: {update_error}")
+                            not_found_count += 1
                 else:
+                    logger.warning(f"エントリが見つかりませんでした: msgid={msgid}, msgctxt={msgctxt}")
                     not_found_count += 1
 
             # 結果を表示
@@ -462,24 +480,78 @@ class POFormatEditor(QDialog):
             if not entry_text.strip():
                 continue
 
-            # msgid, msgstr, msgctxtを抽出
-            msgid_match = re.search(r'msgid\s+"(.*?)"', entry_text, re.DOTALL)
-            msgstr_match = re.search(r'msgstr\s+"(.*?)"', entry_text, re.DOTALL)
-            msgctxt_match = re.search(r'msgctxt\s+"(.*?)"', entry_text, re.DOTALL)
+            # 現在のエントリのコンテキスト
+            current_context = {
+                "msgid": "",
+                "msgstr": "",
+                "msgctxt": None
+            }
 
-            if not msgid_match or not msgstr_match:
-                continue
+            # 行ごとに処理
+            lines = entry_text.split("\n")
+            current_key = None
+            
+            for i, line in enumerate(lines):
+                line = line.strip()
+                
+                # コメント行はスキップ
+                if line.startswith("#"):
+                    continue
+                
+                # msgid、msgstr、msgctxtの行を処理
+                if line.startswith("msgid "):
+                    current_key = "msgid"
+                    value = self._extract_quoted_string(line[6:])
+                    current_context[current_key] = value
+                elif line.startswith("msgstr "):
+                    current_key = "msgstr"
+                    value = self._extract_quoted_string(line[7:])
+                    current_context[current_key] = value
+                elif line.startswith("msgctxt "):
+                    current_key = "msgctxt"
+                    value = self._extract_quoted_string(line[8:])
+                    current_context[current_key] = value
+                # 継続行（引用符で始まる行）を処理
+                elif line.startswith('"') and current_key:
+                    value = self._extract_quoted_string(line)
+                    current_context[current_key] += value
 
-            msgid = msgid_match.group(1)
-            msgstr = msgstr_match.group(1)
-            msgctxt = msgctxt_match.group(1) if msgctxt_match else None
+            # msgidとmsgstrが存在する場合のみエントリとして追加
+            if current_context["msgid"] and "msgstr" in current_context:
+                msgid = current_context["msgid"]
+                msgstr = current_context["msgstr"]
+                msgctxt = current_context["msgctxt"]
 
-            # キーの生成
-            if msgctxt:
-                key = f"{msgctxt}\x04{msgid}"
-            else:
-                key = f"|{msgid}"
+                # キーの生成
+                if msgctxt:
+                    key = f"{msgctxt}\x04{msgid}"
+                else:
+                    key = f"|{msgid}"
 
-            entries.append((key, msgid, msgstr, msgctxt))
+                entries.append((key, msgid, msgstr, msgctxt))
 
         return entries
+
+    def _extract_quoted_string(self, text: str) -> str:
+        """引用符で囲まれた文字列を抽出し、エスケープシーケンスを処理する
+
+        Args:
+            text: 引用符を含む文字列
+
+        Returns:
+            str: 引用符内の文字列（エスケープシーケンス処理済み）
+        """
+        # 最初と最後の引用符を取り除く
+        match = re.match(r'"(.*?)"', text)
+        if not match:
+            return ""
+            
+        content = match.group(1)
+        
+        # POファイル形式のエスケープシーケンスを処理
+        content = content.replace('\\"', '"')  # ダブルクォートのエスケープを解除
+        content = content.replace('\\n', '\n')  # 改行のエスケープを解除
+        content = content.replace('\\t', '\t')  # タブのエスケープを解除
+        content = content.replace('\\\\', '\\')  # バックスラッシュのエスケープを解除
+        
+        return content
