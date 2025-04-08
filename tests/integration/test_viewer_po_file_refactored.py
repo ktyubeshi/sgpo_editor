@@ -1,14 +1,16 @@
 """ViewerPOFileRefactoredのテスト"""
 
 import os
+import asyncio
 
 import pytest
+import pytest_asyncio
 
 from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 
 
-@pytest.fixture
-def test_po_file(tmp_path):
+@pytest_asyncio.fixture
+async def test_po_file(tmp_path):
     """テスト用のPOファイルを作成する"""
     po_file = ViewerPOFileRefactored()
     file_path = tmp_path / "test.po"
@@ -38,21 +40,23 @@ msgid "test3"
 msgstr ""
 """
         )
-    po_file.load(file_path)
+    await po_file.load(file_path)
     return po_file
 
 
-def test_load_po_file(tmp_path):
+@pytest.mark.asyncio
+async def test_load_po_file(tmp_path):
     """POファイルを読み込めることを確認する"""
     po_file = ViewerPOFileRefactored()
     file_path = tmp_path / "test.po"
     with open(file_path, "w", encoding="utf-8") as f:
         f.write('msgid "test"\nmsgstr "テスト"')
-    po_file.load(file_path)
+    await po_file.load(file_path)
     assert po_file._is_loaded is True
 
 
-def test_get_entries(test_po_file):
+@pytest.mark.asyncio
+async def test_get_entries(test_po_file):
     """エントリを取得できることを確認する"""
     # キーを指定してエントリを取得
     entry = test_po_file.get_entry_by_key("0")
@@ -74,7 +78,8 @@ def test_get_entries(test_po_file):
     assert entry.msgstr == ""
 
 
-def test_update_entry(test_po_file):
+@pytest.mark.asyncio
+async def test_update_entry(test_po_file):
     """エントリを更新できることを確認する"""
     # エントリを取得
     entry = test_po_file.get_entry_by_key("0")
@@ -94,7 +99,8 @@ def test_update_entry(test_po_file):
     assert updated_entry.msgstr == "更新されたテスト1"
 
 
-def test_search_entries(test_po_file):
+@pytest.mark.asyncio
+async def test_search_entries(test_po_file):
     """エントリを検索できることを確認する"""
     # フィルタリングされたエントリを取得
     entries = test_po_file.get_filtered_entries(filter_keyword="test")
@@ -110,7 +116,8 @@ def test_search_entries(test_po_file):
     assert entries[0].msgid == "test1"
 
 
-def test_get_stats(test_po_file):
+@pytest.mark.asyncio
+async def test_get_stats(test_po_file):
     """統計情報を取得できることを確認する"""
     stats = test_po_file.get_stats()
     assert stats.total == 3
@@ -119,7 +126,8 @@ def test_get_stats(test_po_file):
     assert stats.untranslated == 1
 
 
-def test_save_po_file(test_po_file, tmp_path):
+@pytest.mark.asyncio
+async def test_save_po_file(test_po_file, tmp_path):
     """POファイルを保存できることを確認する"""
     # エントリを更新
     entry = test_po_file.get_entry_by_key("0")
@@ -134,7 +142,7 @@ def test_save_po_file(test_po_file, tmp_path):
 
     # 保存したファイルを読み込んで確認
     new_po_file = ViewerPOFileRefactored()
-    new_po_file.load(save_path)
+    await new_po_file.load(save_path)
     saved_entry = new_po_file.get_entry_by_key("0")
     assert saved_entry is not None
     assert saved_entry.msgstr == "更新されたテスト1"

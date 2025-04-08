@@ -7,6 +7,7 @@ ViewerPOFileクラスをリファクタリングし、キャッシュ管理と�
 """
 
 import logging
+import asyncio
 from typing import Optional, Union
 from pathlib import Path
 
@@ -50,12 +51,12 @@ class ViewerPOFileRefactored(ViewerPOFileStats):
         
         logger.debug("ViewerPOFileRefactored: 初期化完了")
 
-    def load(self, path: Union[str, Path]) -> None:
-        """POファイルを読み込む
+    async def load(self, path: Union[str, Path]) -> None:
+        """POファイルを非同期で読み込む
 
         Args:
             path: 読み込むPOファイルのパス
         """
-        # 親クラスのload()メソッドを呼び出す
-        super().load(path)
+        # 親クラスのload()メソッドを非同期で呼び出す
+        await super().load(path)
         logger.debug(f"ViewerPOFileRefactored.load: {path} の読み込みが完了しました")

@@ -24,6 +24,50 @@ class TestEntryModelEvaluation(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             entry.score = 120
+            
+    def test_score_priority(self):
+        """スコアの優先順位のテスト
+        
+        scoreプロパティは以下の優先順位で値を返すことを確認する：
+        1. 明示的に設定されたスコア (_score)
+        2. LLM評価による総合スコア (overall_quality_score)
+        3. 指標スコアの平均値 (metric_scoresの平均)
+        """
+        # テスト用エントリを作成
+        entry = EntryModel(msgid="test", msgstr="テスト")
+        
+        # 初期状態ではスコアがNoneであることを確認
+        self.assertIsNone(entry.score)
+        
+        # 1. 指標スコアを設定
+        entry.metric_scores = {"accuracy": 80, "fluency": 90}
+        # 指標スコアの平均値が返されることを確認
+        self.assertEqual(entry.score, 85)  # (80 + 90) // 2 = 85
+        
+        # 2. LLM評価スコアを設定
+        entry.overall_quality_score = 70
+        # LLM評価スコアが優先されることを確認
+        self.assertEqual(entry.score, 70)
+        
+        # 3. 明示的にスコアを設定
+        entry.score = 60
+        # 明示的に設定されたスコアが最優先されることを確認
+        self.assertEqual(entry.score, 60)
+        
+        # 明示的なスコアをクリア
+        entry.score = None
+        # LLM評価スコアに戻ることを確認
+        self.assertEqual(entry.score, 70)
+        
+        # LLM評価スコアをクリア
+        entry.clear_quality_scores()
+        # 指標スコアの平均値に戻ることを確認
+        self.assertEqual(entry.score, 85)
+        
+        # 指標スコアをクリア
+        entry.metric_scores.clear()
+        # すべてのスコアがクリアされた場合はNoneが返されることを確認
+        self.assertIsNone(entry.score)
 
     def test_evaluation_state(self):
         """評価状態のテスト"""

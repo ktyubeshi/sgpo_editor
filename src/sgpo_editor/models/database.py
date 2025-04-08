@@ -6,6 +6,7 @@
 
 import logging
 import sqlite3
+import threading
 from contextlib import contextmanager
 from typing import Any, Dict, Iterator, List, Optional, Union
 
@@ -31,12 +32,18 @@ class InMemoryEntryStore:
 
         メモリ上にSQLiteデータベースを作成し、POエントリを格納するためのテーブル構造を初期化します。
         このデータベースはアプリケーションの実行中のみ存在し、終了時にはデータは失われます。
+        
+        非同期処理をサポートするために、check_same_thread=Falseオプションを使用し、
+        スレッドセーフティを確保するためのロック機構を実装します。
         """
         # データベースをin-memory化（一時データとして扱う）
         logger.debug("インメモリデータベース初期化")
-        self._conn = sqlite3.connect(":memory:")
+        # スレッド間で接続を共有できるようにする
+        self._conn = sqlite3.connect(":memory:", check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
+        # スレッドセーフティを確保するためのロック機構
+        self._lock = threading.RLock()
         self._create_tables()
         logger.debug("データベース初期化完了")
 
@@ -186,17 +193,22 @@ class InMemoryEntryStore:
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Cursor]:
-        """トランザクションを開始"""
-        cur = self._conn.cursor()
-        try:
-            yield cur
-            self._conn.commit()
-        except Exception as e:
-            logger.error("トランザクションエラー: %s", e, exc_info=True)
-            self._conn.rollback()
-            raise
-        finally:
-            cur.close()
+        """トランザクションを開始
+        
+        スレッドセーフティを確保するため、ロック機構を使用してデータベース操作を保護します。
+        非同期処理からの呼び出しでも安全に動作します。
+        """
+        with self._lock:
+            cur = self._conn.cursor()
+            try:
+                yield cur
+                self._conn.commit()
+            except Exception as e:
+                logger.error("トランザクションエラー: %s", e, exc_info=True)
+                self._conn.rollback()
+                raise
+            finally:
+                cur.close()
 
     def add_entries_bulk(self, entries: List[Dict[str, Any]]) -> None:
         """バルクインサートでエントリを追加"""

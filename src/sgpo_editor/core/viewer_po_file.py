@@ -5,6 +5,7 @@
 
 import logging
 import time
+import asyncio
 from collections import namedtuple
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -61,8 +62,8 @@ class ViewerPOFile:
         # フィルタ更新フラグ（Trueの場合はフィルタ結果を強制的に再計算）
         self._force_filter_update = False
 
-    def load(self, path: Union[str, Path]) -> None:
-        """POファイルを読み込む"""
+    async def load(self, path: Union[str, Path]) -> None:
+        """POファイルを非同期で読み込む"""
         try:
             start_time = time.time()
             logger.debug(f"POファイル読み込み開始: {path}")
@@ -76,8 +77,8 @@ class ViewerPOFile:
             # POファイルファクトリを取得
             factory = get_po_factory(self.library_type)
 
-            # POファイルを読み込む
-            pofile = factory.load_file(path)
+            # POファイルを読み込む（CPU負荷の高い処理を非同期実行）
+            pofile = await asyncio.to_thread(factory.load_file, path)
 
             # メタデータを保存
             self.metadata = dict(pofile.metadata)
@@ -91,11 +92,11 @@ class ViewerPOFile:
                 entry_data = self._convert_entry_to_dict(entry, i)
                 entries.append(entry_data)
 
-            # バルクインサートを使用（最適化）
-            self.db.add_entries_bulk(entries)
+            # バルクインサートを使用（最適化）（CPU負荷の高い処理を非同期実行）
+            await asyncio.to_thread(self.db.add_entries_bulk, entries)
 
-            # 基本情報のキャッシュを一括ロード
-            self._load_all_basic_info()
+            # 基本情報のキャッシュを一括ロード（CPU負荷の高い処理を非同期実行）
+            await asyncio.to_thread(self._load_all_basic_info)
 
             # 完全ロード終了フラグを設定
             self._is_loaded = True
@@ -341,7 +342,12 @@ class ViewerPOFile:
         )
         # フィルタ条件の更新
         if update_filter or filter_keyword is not None:
-            self.search_text = filter_keyword or ""
+            # filter_keywordが指定された場合はそれを使用、そうでない場合は現在のsearch_textを維持
+            if filter_keyword is not None:
+                self.search_text = filter_keyword
+            # 強制更新フラグを設定
+            self._force_filter_update = True
+            logger.debug(f"ViewerPOFile.get_filtered_entries: フィルタ条件を更新: search_text={self.search_text}")
 
         # フィルタ条件をログ出力
         logger.debug(

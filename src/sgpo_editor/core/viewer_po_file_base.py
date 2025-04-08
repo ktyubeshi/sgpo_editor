@@ -6,6 +6,7 @@ ViewerPOFileクラスをリファクタリングし、キャッシュ管理と�
 
 import logging
 import time
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -68,8 +69,8 @@ class ViewerPOFileBase:
 
         logger.debug("ViewerPOFileBase: 初期化完了")
 
-    def load(self, path: Union[str, Path]) -> None:
-        """POファイルを読み込む
+    async def load(self, path: Union[str, Path]) -> None:
+        """POファイルを非同期で読み込む
 
         Args:
             path: 読み込むPOファイルのパス
@@ -87,8 +88,8 @@ class ViewerPOFileBase:
             # POファイルファクトリを取得
             factory = get_po_factory(self.library_type)
 
-            # POファイルを読み込む
-            pofile = factory.load_file(path)
+            # POファイルを読み込む（CPU負荷の高い処理を非同期実行）
+            pofile = await asyncio.to_thread(factory.load_file, path)
 
             # メタデータを保存
             self.metadata = dict(pofile.metadata)
@@ -96,15 +97,16 @@ class ViewerPOFileBase:
             # データベースをクリア
             self.db_accessor.clear_database()
 
-            # すべてのエントリをデータベースに追加
+            # すべてのエントリをデータベースに追加（CPU負荷の高い処理を非同期実行）
             entries_to_add = []
             for i, entry in enumerate(pofile):
                 entry_dict = self._convert_entry_to_dict(entry, i)
                 entries_to_add.append(entry_dict)
-            self.db_accessor.add_entries_bulk(entries_to_add)
+            
+            await asyncio.to_thread(self.db_accessor.add_entries_bulk, entries_to_add)
 
-            # 基本情報をキャッシュにロード
-            self._load_all_basic_info()
+            # 基本情報をキャッシュにロード（CPU負荷の高い処理を非同期実行）
+            await asyncio.to_thread(self._load_all_basic_info)
 
             # 読み込み完了フラグを設定
             self._is_loaded = True
