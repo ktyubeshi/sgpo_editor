@@ -164,6 +164,19 @@ class TableManager:
 
         Returns:
             List of entries displayed
+            
+        キャッシュ管理:
+            このメソッドは TableManager のUI表示専用キャッシュである _entry_cache を
+            更新します。このキャッシュは以下の目的で使用されます:
+            
+            1. テーブル表示時のパフォーマンス向上（エントリの検索やソート処理を効率化）
+            2. テーブル操作時に頻繁にアクセスされるエントリデータの保持
+            
+            注意点:
+            - このキャッシュは ViewerPOFile の持つキャッシュとは独立している
+            - EntryListFacade.update_table() によって ViewerPOFile のキャッシュと同期される
+            - 更新には比較的コストがかかるため、必要な場合のみ呼び出すべき
+            - このキャッシュは表示用途のみであり、エントリの永続化には関与しない
         """
         logger.debug("TableManager.update_table: 開始")
 

@@ -54,7 +54,23 @@ class EntryListFacade(QObject):
         self._search_widget.filter_changed.connect(self.update_filter)
         
     def update_table(self) -> None:
-        """テーブルを最新の状態に更新する"""
+        """テーブルを最新の状態に更新する
+        
+        このメソッドは、POファイルからフィルタリングされたエントリを取得し、
+        テーブルを更新します。
+        
+        キャッシュ管理:
+            1. POファイルの get_filtered_entries を update_filter=True で呼び出すことで、
+               ViewerPOFile 内の _force_filter_update フラグがセットされていてもキャッシュが更新される
+            2. TableManager.update_table にエントリリストを渡し、TableManager内の
+               _entry_cache が更新される（これはGUIコンポーネント用の一時的なキャッシュ）
+            3. 最終的にこのメソッドは ViewerPOFile のキャッシュと TableManager のキャッシュを
+               同期させることで、表示の一貫性を保つ役割を果たす
+            
+        Note:
+            このメソッドはテーブル更新関連のキャッシュを強制的に更新するため、
+            パフォーマンスを考慮して必要な時のみ呼び出すこと
+        """
         logger.debug("EntryListFacade.update_table: 開始")
         current_po = self._get_current_po()
         if not current_po:

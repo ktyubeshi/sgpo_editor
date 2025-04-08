@@ -375,7 +375,21 @@ class POFormatEditor(QDialog):
         self._update_preview()
 
     def _on_apply_clicked(self):
-        """適用ボタンがクリックされたときの処理"""
+        """適用ボタンがクリックされたときの処理
+        
+        このメソッドは、エディタ上のPO形式テキストを解析し、対応するエントリのmsgstrを更新します。
+        
+        キャッシュ管理:
+            ViewerPOFile.update_entry呼び出し時に、以下のキャッシュ更新処理が行われます:
+            1. ViewerPOFileがエントリをデータベースに保存
+            2. ViewerPOFile内で以下のキャッシュが更新される:
+               - _complete_entry_cache: 完全なエントリオブジェクトのキャッシュ
+               - _entry_basic_info_cache: 基本的なエントリ情報のキャッシュ
+            3. _force_filter_update フラグが設定され、次回のget_filtered_entries呼び出し時に
+               キャッシュが強制的に更新される
+            4. UI側では、entry_updated シグナルが発行され、MainWindowの_on_entry_updated
+               メソッドが呼び出されて、テーブル表示の更新とエントリ選択状態の維持が行われる
+        """
         if not self._get_current_po:
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return

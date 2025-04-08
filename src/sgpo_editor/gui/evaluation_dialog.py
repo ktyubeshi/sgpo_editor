@@ -280,6 +280,10 @@ class EvaluationDialog(QDialog):
         self.tab_widget.addTab(self._create_history_tab(), "履歴")
         layout.addWidget(self.tab_widget)
 
+        # 状態表示ラベル
+        self.status_label = QLabel("")
+        layout.addWidget(self.status_label)
+
         # ボタン
         button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Close
@@ -787,8 +791,8 @@ class EvaluationDialog(QDialog):
         # 評価ボタンを無効化
         self.evaluate_button.setEnabled(False)
         
-        # ステータス表示
-        self.statusBar().showMessage("評価中...")
+        # 状態表示を更新
+        self.status_label.setText("評価中...")
         
         # ワーカースレッドを作成
         self.worker = EvaluationWorker(
@@ -831,7 +835,7 @@ class EvaluationDialog(QDialog):
         # UI状態を復元
         self.progress_bar.setVisible(False)
         self.evaluate_button.setEnabled(True)
-        self.statusBar().showMessage("評価が完了しました", 3000)
+        self.status_label.setText("評価が完了しました")
         
         # 完了メッセージ
         QMessageBox.information(self, "評価完了", "翻訳の評価が完了しました。")
@@ -858,7 +862,7 @@ class EvaluationDialog(QDialog):
         # UI状態を復元
         self.progress_bar.setVisible(False)
         self.evaluate_button.setEnabled(True)
-        self.statusBar().showMessage("評価に失敗しました", 3000)
+        self.status_label.setText("評価に失敗しました")
         
         # エントリの評価状態を更新
         self.entry.evaluation_state = EvaluationState.ERROR
