@@ -66,7 +66,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             str: キャッシュキー
         """
         # フィルタ条件の各要素を文字列化
-        filter_text_str = str(self.filter_text) if self.filter_text else "None"
+        translation_status_str = str(self.translation_status) if self.translation_status else "None"
         search_text_str = str(self.search_text) if self.search_text else "None"
         sort_column_str = str(self.sort_column) if self.sort_column else "None"
         sort_order_str = str(self.sort_order) if self.sort_order else "None"
@@ -74,7 +74,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
 
         # キャッシュキーを生成（フィルタ条件の組み合わせ）
         cache_key = (
-            f"filter_{filter_text_str}_{search_text_str}_{sort_column_str}_"
+            f"filter_{translation_status_str}_{search_text_str}_{sort_column_str}_"
             f"{sort_order_str}_{flag_conditions_str}"
         )
         return cache_key
@@ -82,14 +82,14 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
     def get_filtered_entries(
         self,
         update_filter: bool = False,
-        filter_text: Optional[str] = None,
+        translation_status: Optional[str] = None,
         filter_keyword: Optional[str] = None,
     ) -> List[EntryModel]:
         """フィルタ条件に合ったエントリーを取得する
 
         Args:
             update_filter: フィルター条件を強制的に更新するフラグ
-            filter_text: フィルターステータス（TranslationStatus定数を使用）
+            translation_status: 翻訳ステータス（TranslationStatus定数を使用）
             filter_keyword: 検索キーワード
 
         Returns:
@@ -97,14 +97,14 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         """
         logger.debug(
             f"ViewerPOFileFilter.get_filtered_entries: 開始 update_filter={update_filter}, "
-            f"filter_text={filter_text}, filter_keyword={filter_keyword}, "
+            f"translation_status={translation_status}, filter_keyword={filter_keyword}, "
             f"_force_filter_update={self._force_filter_update}"
         )
         # フィルタ条件の更新
-        if update_filter or filter_text is not None:
-            if filter_text is not None:
-                self.filter_text = filter_text
-                self._set_flag_conditions_from_status(filter_text)
+        if update_filter or translation_status is not None:
+            if translation_status is not None:
+                self.translation_status = translation_status
+                self._set_flag_conditions_from_status(translation_status)
             self._force_filter_update = True
 
         # 検索キーワードの更新
@@ -141,6 +141,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             flag_conditions=db_filter_conditions,
             sort_column=sort_column,
             sort_order=sort_order,
+            translation_status=self.translation_status,
         )
 
         # リストからEntryModelオブジェクトのリストに変換
@@ -158,7 +159,6 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
 
     def set_filter(
         self,
-        filter_text: Optional[str] = None,
         search_text: Optional[str] = None,
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
@@ -168,7 +168,6 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         """フィルタを設定する
 
         Args:
-            filter_text: フィルターステータス（TranslationStatus定数を使用）
             search_text: 検索キーワード
             sort_column: ソート列
             sort_order: ソート順序
@@ -176,19 +175,15 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             translation_status: 翻訳ステータス
         """
         logger.debug(
-            f"ViewerPOFileFilter.set_filter: filter_text={filter_text}, search_text={search_text}, "
+            f"ViewerPOFileFilter.set_filter: translation_status={translation_status}, search_text={search_text}, "
             f"sort_column={sort_column}, sort_order={sort_order}"
         )
 
         # 変更があるかどうかをチェック
         update_needed = False
 
-        # フィルターテキスト（翻訳ステータス）
-        if filter_text is not None and filter_text != self.filter_text:
-            self.filter_text = filter_text
-            self._set_flag_conditions_from_status(filter_text)
-            update_needed = True
-        elif translation_status is not None and translation_status != self.translation_status:
+        # 翻訳ステータス
+        if translation_status is not None and translation_status != self.translation_status:
             self._set_flag_conditions_from_status(translation_status)
             update_needed = True
 
