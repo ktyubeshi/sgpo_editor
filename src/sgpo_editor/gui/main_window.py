@@ -417,13 +417,14 @@ class MainWindow(QMainWindow):
             logger.error(f"MainWindow._on_entry_selected: エラー発生 {e}", exc_info=True)
             # エラーが発生しても処理を継続するため、例外は再送出しない
 
-    def _on_entry_updated(self, entry_number: int) -> None:
+    def _on_entry_updated(self, key: str, msgstr: str) -> None:
         """エントリが更新されたときの処理
 
         Args:
-            entry_number: エントリ番号
+            key: エントリのキー
+            msgstr: 更新された翻訳文
         """
-        logger.debug(f"MainWindow._on_entry_updated: 開始 entry_number={entry_number}")
+        logger.debug(f"MainWindow._on_entry_updated: 開始 key={key}")
 
         # 現在のPOファイルを取得
         current_po = self._get_current_po()
@@ -436,18 +437,9 @@ class MainWindow(QMainWindow):
             current_key = self.entry_list_facade.get_selected_entry_key()
             logger.debug(f"MainWindow._on_entry_updated: 更新前の選択キー: {current_key}")
 
-            # 更新されたエントリを取得
-            # ViewerPOFileにはget_entry_by_positionメソッドがないため、
-            # 現在選択されているエントリのキーを使用してget_entry_by_keyメソッドで取得する
-            logger.debug(f"MainWindow._on_entry_updated: 更新されたエントリを取得 position={entry_number}, key={current_key}")
-
-            if current_key:
-                updated_entry = current_po.get_entry_by_key(current_key)
-                updated_key = getattr(updated_entry, "key", None) if updated_entry else None
-                logger.debug(f"MainWindow._on_entry_updated: 更新されたエントリ key={updated_key}")
-            else:
-                logger.debug(f"MainWindow._on_entry_updated: 現在のキーが取得できないため、更新されたエントリを取得できません")
-                updated_key = None
+            # 更新されたキー
+            updated_key = key
+            logger.debug(f"MainWindow._on_entry_updated: 更新されたエントリ key={updated_key}")
 
             # 統計情報の更新
             logger.debug(f"MainWindow._on_entry_updated: 統計情報の更新")
@@ -467,7 +459,13 @@ class MainWindow(QMainWindow):
             if updated_key:
                 # 更新されたエントリを選択
                 logger.debug(f"MainWindow._on_entry_updated: 更新されたエントリを選択 key={updated_key}")
-                self.entry_list_facade.select_entry_by_key(updated_key)
+                selection_success = self.entry_list_facade.select_entry_by_key(updated_key)
+                logger.debug(f"MainWindow._on_entry_updated: 選択結果 success={selection_success}")
+                
+                if not selection_success and current_key and current_key != updated_key:
+                    # 更新されたキーでの選択に失敗したら元のキーで試す
+                    logger.debug(f"MainWindow._on_entry_updated: 更新キーでの選択に失敗したため元のキーで再試行 key={current_key}")
+                    self.entry_list_facade.select_entry_by_key(current_key)
             elif current_key:
                 # 元の選択状態を復元
                 logger.debug(f"MainWindow._on_entry_updated: 元の選択状態を復元 key={current_key}")
