@@ -13,9 +13,10 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Union
+from typing import Optional, Union
 
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.types import EntryModelMap, EntryModelList
 
 logger = logging.getLogger(__name__)
 
@@ -55,15 +56,15 @@ class EntryCacheManager:
         """
         # 完全なEntryModelオブジェクトのキャッシュ（key→EntryModelのマップ）
         # 用途: エントリの詳細表示や編集時に使用
-        self._complete_entry_cache: Dict[str, EntryModel] = {}
+        self._complete_entry_cache: EntryModelMap = {}
         
         # 基本情報のみのキャッシュ（key→基本情報EntryModelのマップ）
         # 用途: エントリリスト表示など、基本情報のみが必要な場合に使用
-        self._entry_basic_info_cache: Dict[str, EntryModel] = {}
+        self._entry_basic_info_cache: EntryModelMap = {}
         
         # フィルタ結果のキャッシュ（フィルタ条件に合致するエントリのリスト）
         # 用途: 同じフィルタ条件での再検索を高速化
-        self._filtered_entries_cache: List[EntryModel] = []
+        self._filtered_entries_cache: EntryModelList = []
         
         # フィルタキャッシュのキー（フィルタ条件を表す文字列）
         # 用途: 現在のフィルタ条件を識別し、キャッシュヒットを判定
@@ -246,7 +247,7 @@ class EntryCacheManager:
         # フィルタ結果キャッシュを無効化
         self.set_force_filter_update(True)
     
-    def cache_filtered_entries(self, entries: List[EntryModel], cache_key: str) -> None:
+    def cache_filtered_entries(self, entries: EntryModelList, cache_key: str) -> None:
         """フィルタリング結果をキャッシュに保存する
         
         Args:
@@ -260,7 +261,7 @@ class EntryCacheManager:
         self._filtered_entries_cache = entries
         self._filtered_entries_cache_key = cache_key
     
-    def get_filtered_entries_cache(self, cache_key: str) -> Optional[List[EntryModel]]:
+    def get_filtered_entries_cache(self, cache_key: str) -> Optional[EntryModelList]:
         """フィルタリング結果をキャッシュから取得する
         
         Args:

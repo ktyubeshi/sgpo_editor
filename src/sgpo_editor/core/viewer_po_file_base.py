@@ -8,7 +8,9 @@ import logging
 import time
 import asyncio
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
+
+from sgpo_editor.types import EntryDict, EntryDictList, FlagConditions, MetadataDict
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.constants import TranslationStatus
@@ -60,7 +62,7 @@ class ViewerPOFileBase:
         # POファイル関連の状態
         self.path = None
         self.modified = False
-        self.metadata = {}  # POファイルのメタデータを保存するための変数
+        self.metadata: MetadataDict = {}  # POファイルのメタデータを保存するための変数
         self.library_type = library_type
 
         # フィルタリング関連の状態
@@ -69,7 +71,7 @@ class ViewerPOFileBase:
         self.search_text = ""
         self.sort_column = None
         self.sort_order = None
-        self.flag_conditions = {}
+        self.flag_conditions: FlagConditions = {}
         self.translation_status = None
 
         # ファイル読み込み完了フラグ
@@ -162,7 +164,7 @@ class ViewerPOFileBase:
             entry_model = EntryModel.from_dict(entry_dict)
             self.cache_manager.cache_basic_info_entry(key, entry_model)
 
-    def _convert_entry_to_dict(self, entry: POEntry, position: int) -> Dict[str, Any]:
+    def _convert_entry_to_dict(self, entry: POEntry, position: int) -> EntryDict:
         """POエントリをディクショナリに変換する
 
         Args:

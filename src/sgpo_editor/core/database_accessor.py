@@ -15,10 +15,11 @@ ViewerPOFileクラスからデータベース操作の責務を分離します�
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Optional, Union
 
 from sgpo_editor.models.database import InMemoryEntryStore
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.types import EntryDict, EntryDictList, EntryInput, EntryInputMap, FlagConditions
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class DatabaseAccessor:
         )
         self.db.add_entries_bulk(entries)
 
-    def get_entry_by_key(self, key: str) -> Optional[Dict[str, Any]]:
+    def get_entry_by_key(self, key: str) -> Optional[EntryDict]:
         """キーでエントリを取得する
 
         このメソッドは、指定されたキーに対応するエントリをデータベースから取得します。
@@ -82,7 +83,7 @@ class DatabaseAccessor:
         logger.debug(f"DatabaseAccessor.get_entry_by_key: キー={key}のエントリを取得")
         return self.db.get_entry_by_key(key)
 
-    def get_entries_by_keys(self, keys: List[str]) -> Dict[str, Dict[str, Any]]:
+    def get_entries_by_keys(self, keys: List[str]) -> Dict[str, EntryDict]:
         """複数のキーに対応するエントリを一度に取得する
 
         Args:
@@ -96,7 +97,7 @@ class DatabaseAccessor:
         )
         return self.db.get_entries_by_keys(keys)
 
-    def get_all_entries_basic_info(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_entries_basic_info(self) -> Dict[str, EntryDict]:
         """すべてのエントリの基本情報を取得する
 
         Returns:
@@ -128,7 +129,7 @@ class DatabaseAccessor:
 
         return entries
 
-    def get_entry_basic_info(self, key: str) -> Optional[Dict[str, Any]]:
+    def get_entry_basic_info(self, key: str) -> Optional[EntryDict]:
         """エントリの基本情報のみを取得する
 
         Args:
@@ -147,9 +148,9 @@ class DatabaseAccessor:
         search_text: Optional[str] = None,
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
-        flag_conditions: Optional[Dict[str, Any]] = None,
+        flag_conditions: Optional[FlagConditions] = None,
         translation_status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> EntryDictList:
         """フィルタ条件に合ったエントリを取得する
 
         このメソッドは、指定されたフィルタ条件に基づいてデータベースからエントリを検索します。
@@ -178,7 +179,7 @@ class DatabaseAccessor:
             translation_status=translation_status,
         )
 
-    def update_entry(self, entry: Union[Dict[str, Any], EntryModel]) -> bool:
+    def update_entry(self, entry: EntryInput) -> bool:
         """エントリを更新する
 
         このメソッドは、指定されたエントリでデータベースを更新します。
@@ -230,7 +231,7 @@ class DatabaseAccessor:
         return result
 
     def update_entries(
-        self, entries: Dict[str, Union[Dict[str, Any], EntryModel]]
+        self, entries: EntryInputMap
     ) -> bool:
         """複数のエントリを一括更新する
 
@@ -280,7 +281,7 @@ class DatabaseAccessor:
         return result
 
     def import_entries(
-        self, entries: Dict[str, Union[Dict[str, Any], EntryModel]]
+        self, entries: EntryInputMap
     ) -> bool:
         """エントリをインポートする（既存エントリの上書き）
 

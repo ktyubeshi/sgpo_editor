@@ -10,6 +10,8 @@ import threading
 from contextlib import contextmanager
 from typing import Any, Dict, Iterator, List, Optional, Union
 
+from sgpo_editor.types import EntryDict, EntryDictList, FlagConditions
+
 from sgpo_editor.core.constants import TranslationStatus
 
 logger = logging.getLogger(__name__)
@@ -210,7 +212,7 @@ class InMemoryEntryStore:
             finally:
                 cur.close()
 
-    def add_entries_bulk(self, entries: List[Dict[str, Any]]) -> None:
+    def add_entries_bulk(self, entries: EntryDictList) -> None:
         """バルクインサートでエントリを追加"""
         logger.debug("バルクインサート開始（%d件）", len(entries))
         with self.transaction() as cur:
@@ -302,7 +304,7 @@ class InMemoryEntryStore:
 
         logger.debug("バルクインサート完了（%d件）", len(entries))
 
-    def add_entry(self, entry: Dict[str, Any]) -> None:
+    def add_entry(self, entry: EntryDict) -> None:
         """エントリを追加"""
         logger.debug("エントリ追加開始: %s", entry["key"])
         with self.transaction() as cur:
@@ -360,7 +362,7 @@ class InMemoryEntryStore:
             cur.execute("DELETE FROM display_order")
             cur.execute("DELETE FROM entries")
 
-    def get_entry(self, entry_id: int) -> Optional[Dict[str, Any]]:
+    def get_entry(self, entry_id: int) -> Optional[EntryDict]:
         """エントリを取得"""
         with self.transaction() as cur:
             # エントリを取得
@@ -396,7 +398,7 @@ class InMemoryEntryStore:
 
             return entry
 
-    def get_entry_by_key(self, key: str) -> Optional[Dict[str, Any]]:
+    def get_entry_by_key(self, key: str) -> Optional[EntryDict]:
         """キーでエントリを取得"""
         with self.transaction() as cur:
             # エントリを取得
@@ -437,8 +439,8 @@ class InMemoryEntryStore:
 
     def update_entry(
         self,
-        key_or_entry: Union[str, Dict[str, Any]],
-        entry: Optional[Dict[str, Any]] = None,
+        key_or_entry: Union[str, EntryDict],
+        entry: Optional[EntryDict] = None,
     ) -> bool:
         """エントリを更新する
 
@@ -569,9 +571,9 @@ class InMemoryEntryStore:
         search_text: Optional[str] = None,
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
-        flag_conditions: Optional[Dict[str, Any]] = None,
+        flag_conditions: Optional[FlagConditions] = None,
         translation_status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> EntryDictList:
         """エントリの一覧を取得
 
         Args:
