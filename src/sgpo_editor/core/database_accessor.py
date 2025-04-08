@@ -2,6 +2,16 @@
 
 このモジュールは、インメモリデータベースへのアクセスを抽象化し、
 ViewerPOFileクラスからデータベース操作の責務を分離します。
+
+データベースアクセサの主な役割:
+1. データベース操作の抽象化: InMemoryEntryStoreへの直接アクセスをラップし、高レベルなAPIを提供
+2. エントリの取得・更新: キーやフィルタ条件に基づくエントリの取得や更新を行う
+3. キャッシュシステムとの連携: EntryCacheManagerと連携し、キャッシュの一貫性を維持
+
+キャッシュシステムとの連携方法:
+- ViewerPOFileクラスは、まずEntryCacheManagerからエントリを取得を試み、キャッシュミスの場合にDatabaseAccessorを使用
+- エントリ更新時は、DatabaseAccessorがデータベースを更新した後、ViewerPOFileがEntryCacheManagerのキャッシュも更新
+- フィルタリング操作は、まずキャッシュを確認し、キャッシュミスまたは強制更新フラグがある場合にDatabaseAccessorを使用
 """
 
 import logging
@@ -18,6 +28,16 @@ class DatabaseAccessor:
 
     このクラスは、InMemoryEntryStoreへのアクセスを抽象化し、
     データベース操作に関連する責務を一元管理します。
+    
+    このクラスは主に以下の機能を提供します：
+    1. データベースの基本操作: クリア、エントリの追加、取得、更新
+    2. フィルタリング: 検索テキスト、フラグ条件、翻訳ステータスに基づくエントリの絞り込み
+    3. 一括操作: 複数エントリの一括取得、一括更新、インポート
+    
+    EntryCacheManagerとの連携:
+    - EntryCacheManagerはキャッシュミス時にこのクラスのメソッドを呼び出し、データベースからエントリを取得
+    - エントリ更新時は、まずこのクラスを使ってデータベースを更新し、その後キャッシュも更新
+    - フィルタリング時は、キャッシュミスの場合にget_filtered_entriesメソッドが呼び出され、結果がキャッシュに保存
     """
 
     def __init__(self, db: InMemoryEntryStore):
@@ -48,8 +68,13 @@ class DatabaseAccessor:
     def get_entry_by_key(self, key: str) -> Optional[Dict[str, Any]]:
         """キーでエントリを取得する
 
+        このメソッドは、指定されたキーに対応するエントリをデータベースから取得します。
+        通常、EntryCacheManagerのget_complete_entryメソッドでキャッシュを確認した後、
+        キャッシュミスの場合にこのメソッドが呼び出されます。取得したエントリは
+        EntryCacheManagerのcache_complete_entryメソッドでキャッシュに保存されます。
+
         Args:
-            key: 取得するエントリのキー
+            key: 取得するエントリのキー（通常は位置を表す文字列）
 
         Returns:
             エントリの辞書、存在しない場合はNone
@@ -119,7 +144,6 @@ class DatabaseAccessor:
 
     def get_filtered_entries(
         self,
-        filter_text: Optional[str] = None,
         search_text: Optional[str] = None,
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
@@ -128,22 +152,25 @@ class DatabaseAccessor:
     ) -> List[Dict[str, Any]]:
         """フィルタ条件に合ったエントリを取得する
 
+        このメソッドは、指定されたフィルタ条件に基づいてデータベースからエントリを検索します。
+        ViewerPOFileFilterクラスから呼び出され、EntryCacheManagerのフィルタキャッシュと連携します。
+        通常、EntryCacheManagerのget_filtered_entries_cacheメソッドで最初にキャッシュを確認し、
+        キャッシュミスの場合や強制更新フラグがある場合にこのメソッドが呼び出されます。
+
         Args:
-            filter_text: フィルタテキスト
-            search_text: 検索テキスト
-            sort_column: ソート列
-            sort_order: ソート順序
-            flag_conditions: フラグ条件
-            translation_status: 翻訳ステータス
+            search_text: 検索テキスト（msgid、msgstrに含まれる文字列）
+            sort_column: ソート列（"position"、"msgid"、"msgstr"など）
+            sort_order: ソート順序（"asc"または"desc"）
+            flag_conditions: フラグ条件（"fuzzy": True/Falseなど）
+            translation_status: 翻訳ステータス（"all"、"translated"、"untranslated"、"fuzzy"など）
 
         Returns:
-            フィルタ条件に一致するエントリのリスト
+            フィルタ条件に一致するエントリの辞書のリスト
         """
         logger.debug(
-            f"DatabaseAccessor.get_filtered_entries: filter_text={filter_text}, search_text={search_text}"
+            f"DatabaseAccessor.get_filtered_entries: search_text={search_text}"
         )
         return self.db.get_entries(
-            filter_text=filter_text,
             search_text=search_text,
             sort_column=sort_column,
             sort_order=sort_order,
@@ -154,11 +181,16 @@ class DatabaseAccessor:
     def update_entry(self, entry: Union[Dict[str, Any], EntryModel]) -> bool:
         """エントリを更新する
 
+        このメソッドは、指定されたエントリでデータベースを更新します。
+        ViewerPOFileクラスからの更新操作で呼び出され、データベースの更新後、
+        EntryCacheManagerのupdate_entry_in_cacheメソッドを使ってキャッシュも更新されます。
+
         Args:
             entry: 更新するエントリ（辞書またはEntryModelオブジェクト）
+                  EntryModelの場合は内部でPOEntryに変換してから更新
 
         Returns:
-            更新が成功したかどうか
+            更新が成功した場合はTrue、失敗した場合はFalse
         """
         # EntryModelオブジェクトを辞書に変換（必要な場合）
         if isinstance(entry, EntryModel):

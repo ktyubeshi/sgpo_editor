@@ -2,6 +2,14 @@
 
 このモジュールは、POエントリのキャッシュを管理するためのクラスを提供します。
 キャッシュの保存、取得、無効化などの機能を一元管理し、ViewerPOFileクラスの責務を軽減します。
+
+キャッシュシステムの概要:
+1. 完全なエントリキャッシュ: データベースから取得した完全なEntryModelオブジェクトを保持
+2. 基本情報キャッシュ: 表示に必要な最小限の情報のみを持つEntryModelオブジェクトを保持
+3. フィルタ結果キャッシュ: 特定のフィルタ条件に対する結果リストを保持
+
+これらのキャッシュは、ViewerPOFileクラスとDatabaseAccessorクラスと連携して動作し、
+データベースアクセスを最小限に抑えることでパフォーマンスを向上させます。
 """
 
 import logging
@@ -19,28 +27,54 @@ class EntryCacheManager:
     機能を提供します。主に以下の3種類のキャッシュを管理します：
     
     1. complete_entry_cache: 完全なEntryModelオブジェクトのキャッシュ
+       - 用途: エントリの詳細情報が必要な場合（編集時など）に使用
+       - キー: エントリのキー（通常は位置を表す文字列）
+       - 値: 完全なEntryModelオブジェクト（すべてのフィールドを含む）
+    
     2. entry_basic_info_cache: 基本情報のみのEntryModelオブジェクトのキャッシュ
+       - 用途: エントリのリスト表示など、基本情報のみが必要な場合に使用
+       - キー: エントリのキー
+       - 値: 基本情報のみを含むEntryModelオブジェクト（msgid, msgstr, fuzzy, obsoleteなど）
+    
     3. filtered_entries_cache: フィルタリング結果のキャッシュ
+       - 用途: 同じフィルタ条件での再検索を高速化
+       - キー: フィルタ条件を表す文字列（_filtered_entries_cache_key）
+       - 値: フィルタ条件に一致するEntryModelオブジェクトのリスト
+    
+    キャッシュの連携方法:
+    - ViewerPOFileクラスはget_entry_by_keyなどのメソッドでキャッシュを参照
+    - エントリが更新されると、update_entry_in_cacheメソッドで関連するすべてのキャッシュを更新
+    - フィルタ条件が変更されると、set_force_filter_updateメソッドでフィルタキャッシュを無効化
+    - ファイル読み込み時などは、clear_all_cacheメソッドですべてのキャッシュをクリア
     """
     
     def __init__(self):
-        """キャッシュマネージャの初期化"""
+        """キャッシュマネージャの初期化
+        
+        3種類のキャッシュとそれらの状態を管理するフラグを初期化します。
+        """
         # 完全なEntryModelオブジェクトのキャッシュ（key→EntryModelのマップ）
+        # 用途: エントリの詳細表示や編集時に使用
         self._complete_entry_cache: Dict[str, EntryModel] = {}
         
         # 基本情報のみのキャッシュ（key→基本情報EntryModelのマップ）
+        # 用途: エントリリスト表示など、基本情報のみが必要な場合に使用
         self._entry_basic_info_cache: Dict[str, EntryModel] = {}
         
         # フィルタ結果のキャッシュ（フィルタ条件に合致するエントリのリスト）
+        # 用途: 同じフィルタ条件での再検索を高速化
         self._filtered_entries_cache: List[EntryModel] = []
         
         # フィルタキャッシュのキー（フィルタ条件を表す文字列）
+        # 用途: 現在のフィルタ条件を識別し、キャッシュヒットを判定
         self._filtered_entries_cache_key: str = ""
         
         # キャッシュ有効フラグ（Falseの場合は常にデータベースから取得）
+        # 用途: デバッグ時やメモリ使用量を抑えたい場合にキャッシュを無効化
         self._cache_enabled: bool = True
         
         # フィルタ更新フラグ（Trueの場合はフィルタ結果を強制的に再計算）
+        # 用途: エントリ更新後など、キャッシュが古くなった場合に強制更新
         self._force_filter_update: bool = False
         
         logger.debug("EntryCacheManager: 初期化完了")

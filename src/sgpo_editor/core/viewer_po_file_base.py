@@ -26,6 +26,17 @@ class ViewerPOFileBase:
 
     このクラスは、キャッシュ管理とデータベースアクセスの責務を分離し、
     EntryCacheManagerとDatabaseAccessorを利用して実装されています。
+    
+    主な機能:
+    1. POファイルの非同期読み込み: asyncioを使用してUIの応答性を向上
+    2. エントリの取得と管理: キャッシュとデータベースを連携してエントリを効率的に管理
+    3. フィルタリングとソート: 検索条件や翻訳ステータスに基づくエントリの絞り込み
+    
+    キャッシュとデータベースの連携方法:
+    - ファイル読み込み時: キャッシュをクリアし、データベースに新しいエントリを格納
+    - エントリ取得時: まずキャッシュを確認し、キャッシュミス時にデータベースから取得
+    - エントリ更新時: データベースとキャッシュの両方を更新し、フィルタキャッシュを無効化
+    - フィルタリング時: キャッシュを確認し、キャッシュミスまたは強制更新時に再計算
     """
 
     def __init__(
@@ -71,6 +82,14 @@ class ViewerPOFileBase:
 
     async def load(self, path: Union[str, Path]) -> None:
         """POファイルを非同期で読み込む
+
+        このメソッドは、POファイルを非同期で読み込み、データベースに格納します。
+        ファイル読み込みやデータベース操作などのCPU負荷の高い処理をasyncio.to_threadを
+        使用して別スレッドで実行し、UIの応答性を向上させています。
+        
+        キャッシュとの連携:
+        - 読み込み開始時に、EntryCacheManagerのclear_all_cacheメソッドですべてのキャッシュをクリア
+        - 読み込み完了後、_load_all_basic_infoメソッドで基本情報キャッシュを初期化
 
         Args:
             path: 読み込むPOファイルのパス
@@ -126,6 +145,13 @@ class ViewerPOFileBase:
 
         データベースからすべてのエントリの基本情報を取得し、基本情報キャッシュに格納します。
         これにより、詳細情報が必要ない場合の高速なアクセスが可能になります。
+        
+        キャッシュとの連携:
+        - DatabaseAccessorのget_all_entries_basic_infoメソッドで基本情報を取得
+        - 取得した基本情報をEntryModelオブジェクトに変換
+        - EntryCacheManagerのcache_basic_info_entryメソッドでキャッシュに格納
+        
+        このメソッドはファイル読み込み時に呼び出され、リスト表示などの高速化に対応します。
         """
         # データベースからすべてのエントリの基本情報を取得
         entries = self.db_accessor.get_all_entries_basic_info()
@@ -187,9 +213,13 @@ class ViewerPOFileBase:
 
     def enable_cache(self, enabled: bool = True) -> None:
         """キャッシュを有効/無効にする
+        
+        キャッシュの有効/無効を切り替えます。無効にすると、すべてのキャッシュがクリアされ、
+        以降の操作はすべてデータベースから直接取得されます。これはデバッグ時や
+        メモリ使用量を抑えたい場合に便利です。
 
         Args:
-            enabled: キャッシュを有効にするかどうか
+            enabled: キャッシュを有効にする場合はTrue、無効にする場合はFalse
         """
         self.cache_manager.enable_cache(enabled)
         if not enabled:
