@@ -6,6 +6,7 @@
 
 import logging
 import re
+import html
 from typing import Optional, Any
 
 from PySide6.QtCore import Qt
@@ -91,6 +92,8 @@ class PreviewWidget(QWidget):
     def _process_escape_sequences(self, text: str) -> str:
         """エスケープシーケンスを処理する
 
+        標準的なPython文字列のエスケープシーケンスとHTML実体参照を解決します。
+
         Args:
             text: 処理対象のテキスト
 
@@ -103,96 +106,50 @@ class PreviewWidget(QWidget):
         # デバッグ用に入力テキストをログ出力
         logger.debug(f"Processing escape sequences in: {repr(text)}")
 
-        # HTMLタグを一時的に置き換える（処理から保護するため）
-        html_tags = {}
-        tag_pattern = r"<[^>]+>"
-
-        def save_tag(match):
-            tag = match.group(0)
-            key = f"__HTML_TAG_{len(html_tags)}__"
-            html_tags[key] = tag
-            return key
-
-        # HTMLタグを一時的に置き換え
-        text_without_tags = re.sub(tag_pattern, save_tag, text)
-        logger.debug(f"Text with HTML tags replaced: {repr(text_without_tags)}")
-
-        # 基本的なエスケープシーケンスを処理
-        basic_escapes = {
-            "\\n": "\n",  # 改行
-            "\\r": "\r",  # キャリッジリターン
-            "\\t": "\t",  # タブ
-            '\\"': '"',  # ダブルクォート
-            "\\'": "'",  # シングルクォート
-        }
-
-        # HTMLエンティティを処理
-        html_entities = {
-            "&lt;": "<",  # 小なり
-            "&gt;": ">",  # 大なり
-            "&amp;": "&",  # アンパサンド
-            "&quot;": '"',  # ダブルクォート
-            "&apos;": "'",  # シングルクォート
-            "&nbsp;": " ",  # 空白
-        }
-
-        processed = text_without_tags
-
-        # まず二重バックスラッシュを処理（\\）
-        processed = processed.replace("\\\\", "\\")
-        logger.debug(f"After processing double backslashes: {repr(processed)}")
-
-        # 次に基本的なエスケープシーケンスを処理
-        for escape_seq, replacement in basic_escapes.items():
-            if escape_seq in processed:
-                logger.debug(f"Replacing {repr(escape_seq)} with {repr(replacement)}")
-                processed = processed.replace(escape_seq, replacement)
-
-        # 正規表現のエスケープシーケンスを処理
-        # これらは実際の文字に変換する（表示用途なので）
-        regex_escapes = {
-            "\\d": "d",  # 数字
-            "\\w": "w",  # 単語文字
-            "\\s": "s",  # 空白文字
-            "\\+": "+",  # 1回以上の繰り返し
-            "\\*": "*",  # 0回以上の繰り返し
-            "\\.": ".",  # 任意の1文字
-            "\\?": "?",  # 0回または1回の繰り返し
-            "\\(": "(",  # 開き括弧
-            "\\)": ")",  # 閉じ括弧
-            "\\[": "[",  # 文字クラスの開始
-            "\\]": "]",  # 文字クラスの終了
-            "\\{": "{",  # 繰り返し回数の開始
-            "\\}": "}",  # 繰り返し回数の終了
-            "\\|": "|",  # 選択
-            "\\^": "^",  # 行の先頭
-            "\\$": "$",  # 行の末尾
-        }
-
-        for escape_seq, replacement in regex_escapes.items():
-            if escape_seq in processed:
-                logger.debug(
-                    f"Replacing regex escape {repr(escape_seq)} with {
-                        repr(replacement)
-                    }"
-                )
-                processed = processed.replace(escape_seq, replacement)
-
-        # HTMLエンティティを処理
-        for entity, replacement in html_entities.items():
-            if entity in processed:
-                logger.debug(
-                    f"Replacing HTML entity {repr(entity)} with {repr(replacement)}"
-                )
-                processed = processed.replace(entity, replacement)
-
-        # HTMLタグを元に戻す
-        for key, tag in html_tags.items():
-            processed = processed.replace(key, tag)
-
-        logger.debug(f"After processing escapes: {repr(processed)}")
-
-        return processed
+        # HTMLエンティティをデコード
+        text = html.unescape(text)
+        logger.debug(f"After HTML unescape: {repr(text)}")
+        
+        # Pythonのエスケープシーケンスを処理するための関数
+        def replace_escapes(match):
+            escape_seq = match.group(0)
+            # 一般的なエスケープシーケンスを処理
+            escape_map = {
+                "\\n": "\n",   # 改行
+                "\\r": "\r",   # キャリッジリターン
+                "\\t": "\t",   # タブ
+                '\\"': '"',    # ダブルクォート
+                "\\'": "'",    # シングルクォート
+                "\\\\": "\\",  # バックスラッシュ
+                "\\a": "\a",   # ベル
+                "\\b": "\b",   # バックスペース
+                "\\f": "\f",   # フォームフィード
+                "\\v": "\v"    # 垂直タブ
+            }
+            
+            # 正規表現のエスケープシーケンスを処理
+            regex_escape_chars = "dwsDS+*?.()[]{}|^$"
+            if len(escape_seq) == 2 and escape_seq[0] == "\\" and escape_seq[1] in regex_escape_chars:
+                return escape_seq[1]
+                
+            # マップに定義されたエスケープシーケンスを置換
+            return escape_map.get(escape_seq, escape_seq)
+            
+        # 正規表現でエスケープシーケンスを検出して置換
+        processed_text = re.sub(r'\\[nrtabfv"\'\\]|\\[dwsDS+*?.()\[\]{}|^$]', replace_escapes, text)
+        
+        # 16進数エスケープシーケンス (\xHH) の処理
+        processed_text = re.sub(r'\\x([0-9a-fA-F]{2})', 
+                              lambda m: chr(int(m.group(1), 16)), 
+                              processed_text)
+        
+        # Unicodeエスケープシーケンス (\uHHHH) の処理
+        processed_text = re.sub(r'\\u([0-9a-fA-F]{4})', 
+                              lambda m: chr(int(m.group(1), 16)), 
+                              processed_text)
+        
+        logger.debug(f"After processing escapes: {repr(processed_text)}")
+        return processed_text
 
     def _process_html_tags(self, text: str) -> str:
         """HTMLタグを処理する

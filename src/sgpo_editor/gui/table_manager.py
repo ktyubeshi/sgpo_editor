@@ -340,6 +340,9 @@ class TableManager:
     def toggle_column_visibility(self, column_index: int) -> None:
         """列の表示/非表示を切り替える
 
+        引数の列インデックスに対応する列の表示/非表示状態を反転させます。
+        変更は設定ファイルに保存され、アプリケーション再起動後も維持されます。
+
         Args:
             column_index: 列インデックス
         """
@@ -368,22 +371,29 @@ class TableManager:
             # すべての列の表示/非表示状態を再確認して適用（同期を確保）
             self._apply_column_visibility()
 
-            # 小さな遅延を入れてテーブルの描画を確実にする
-            import time
-
-            time.sleep(0.01)
-
-            # テーブルの更新を促す
-            self.table.horizontalHeader().updateGeometry()
+            # テーブルの更新を最適化
             self.table.setUpdatesEnabled(False)
-            self.table.setUpdatesEnabled(True)
-            self.table.horizontalHeader().viewport().update()
-            self.table.repaint()
+            try:
+                # テーブルの視覚的更新を確実に行う
+                self.table.horizontalHeader().updateGeometry()
+                self.table.viewport().update()
+                self.table.updateGeometry()
+                self.table.repaint()
+            finally:
+                # 必ず更新を再開
+                self.table.setUpdatesEnabled(True)
 
             # デバッグ情報
-            print(
+            logger.debug(
                 f"列 {column_index} ({self.get_column_name(column_index)}) の表示状態を切り替えました: {'非表示' if new_hidden_state else '表示'}"
             )
+            
+            # 実際に適用されたかを検証
+            actual_state = self.table.isColumnHidden(column_index)
+            if actual_state != new_hidden_state:
+                logger.warning(
+                    f"列 {column_index} の表示状態が期待通りに設定されていません。期待値: {new_hidden_state}, 実際: {actual_state}"
+                )
 
     def is_column_visible(self, column_index: int) -> bool:
         """列が表示されているか確認する
@@ -578,31 +588,41 @@ class TableManager:
     ) -> List[EntryModel]:
         """スコアでエントリをソートする
 
+        EntryModel.scoreプロパティに基づいてエントリをソートします。
+        このプロパティは以下の優先順位で値を取得します:
+        1. 明示的に設定されたスコア
+        2. LLM評価による総合スコア
+        3. 評価指標スコアの平均値
+        4. None (スコアなし)
+
         Args:
             entries: ソートするエントリのリスト
-            order: ソート順序
+            order: ソート順序 (Qt.SortOrder.AscendingOrder または Qt.SortOrder.DescendingOrder)
 
         Returns:
             ソートされたエントリリスト
         """
+        logger.debug(f"スコアによるソート: {len(entries)}件, 順序={order}")
 
         def score_key(entry: EntryModel) -> tuple:
             # スコアがNoneの場合は常に最後に来るようにする
-            if entry.score is None:
+            entry_score = entry.score
+            if entry_score is None:
                 # 第1要素が1ならNoneのエントリ（後ろに配置）
+                logger.debug(f"Entry {entry.key} のスコアがありません")
                 return (1, 0)
             else:
                 # 第1要素が0なら通常のエントリ（前に配置）
-                # 第2要素は実際のスコア値
-                return (
-                    0,
-                    entry.score
-                    if order == Qt.SortOrder.AscendingOrder
-                    else -entry.score,
-                )
+                # 第2要素は実際のスコア値（昇順/降順に応じて符号を反転）
+                score_value = entry_score if order == Qt.SortOrder.AscendingOrder else -entry_score
+                logger.debug(f"Entry {entry.key} のスコア: {entry_score}")
+                return (0, score_value)
 
         # タプルによるソート: 第1要素でまず比較し、同じ場合は第2要素で比較
-        return sorted(entries, key=score_key)
+        sorted_entries = sorted(entries, key=score_key)
+        logger.debug(f"スコアソート完了: {len(sorted_entries)}件")
+        
+        return sorted_entries
 
     def _update_table_contents(self, entries: List[EntryModel]) -> None:
         """テーブルの内容を更新する
