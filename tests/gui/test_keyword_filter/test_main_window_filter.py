@@ -67,7 +67,7 @@ class TestMainWindowFilter:
 
         # get_filtered_entriesが正しいパラメータで呼び出されたことを確認
         mock_po_file.get_filtered_entries.assert_called_once_with(
-            update_filter=True, filter_text="すべて", filter_keyword=None
+            update_filter=True, filter_text="all", filter_keyword=None
         )
 
     def test_on_search_changed_with_empty_keyword(self, setup_main_window):
@@ -92,7 +92,7 @@ class TestMainWindowFilter:
         # get_filtered_entriesが正しいパラメータで呼び出されたことを確認
         # MainWindowの_on_search_changedメソッドで空文字列はNoneに変換される
         mock_po_file.get_filtered_entries.assert_called_once_with(
-            update_filter=True, filter_text="すべて", filter_keyword=None
+            update_filter=True, filter_text="all", filter_keyword=None
         )
 
     def test_on_search_changed_with_whitespace_keyword(self, setup_main_window):
@@ -117,7 +117,7 @@ class TestMainWindowFilter:
         # get_filtered_entriesが正しいパラメータで呼び出されたことを確認
         # MainWindowの_on_search_changedメソッドで空白文字はstripされ、空になるとNoneに変換される
         mock_po_file.get_filtered_entries.assert_called_once_with(
-            update_filter=True, filter_text="すべて", filter_keyword=None
+            update_filter=True, filter_text="all", filter_keyword=None
         )
 
     def test_on_search_changed_with_valid_keyword(self, setup_main_window):
@@ -141,7 +141,7 @@ class TestMainWindowFilter:
 
         # get_filtered_entriesが正しいパラメータで呼び出されたことを確認
         mock_po_file.get_filtered_entries.assert_called_once_with(
-            update_filter=True, filter_text="すべて", filter_keyword="test"
+            update_filter=True, filter_text="all", filter_keyword="test"
         )
 
         # テーブルが更新されたことを確認

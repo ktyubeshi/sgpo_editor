@@ -4,7 +4,7 @@ import unittest
 import uuid
 from datetime import datetime
 
-from sgpo_editor.models.database import Database
+from sgpo_editor.models.database import InMemoryEntryStore
 
 
 class TestDatabaseReviewFeatures(unittest.TestCase):
@@ -12,7 +12,7 @@ class TestDatabaseReviewFeatures(unittest.TestCase):
 
     def setUp(self):
         """テスト前の準備"""
-        self.db = Database()
+        self.db = InMemoryEntryStore()
         self._prepare_test_data()
 
     def _prepare_test_data(self):

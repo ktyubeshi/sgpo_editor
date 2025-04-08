@@ -6,7 +6,7 @@ import pytest
 
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.models import EntryModel
-from sgpo_editor.models.database import Database
+from sgpo_editor.models.database import InMemoryEntryStore
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def mock_entry():
 @pytest.fixture
 def mock_database():
     """モックデータベース"""
-    database = Mock(spec=Database)
+    database = Mock(spec=InMemoryEntryStore)
     return database
 
 

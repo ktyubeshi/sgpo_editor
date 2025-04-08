@@ -11,7 +11,7 @@ from sgpo_editor.core.viewer_po_file import ViewerPOFile
 
 # テスト対象のモジュールをインポート
 from sgpo_editor.gui.main_window import MainWindow
-from sgpo_editor.models.database import Database
+from sgpo_editor.models.database import InMemoryEntryStore
 
 # テスト用のログ設定
 logging.basicConfig(level=logging.DEBUG)
@@ -332,7 +332,7 @@ class TestKeywordFilter:
     def test_database_get_entries_with_keyword(self):
         """データベースがキーワードで正しくフィルタリングできるかテスト"""
         # テスト用のデータベースを作成
-        Database()
+        InMemoryEntryStore()
 
         # デバッグ用ログ出力
         print("\n[TEST] データベースキーワードフィルタテスト開始")
@@ -342,7 +342,7 @@ class TestKeywordFilter:
     def test_database_get_entries_with_empty_keyword(self):
         """空のキーワードでデータベースから全件取得できるかテスト"""
         # テスト用のデータベースを作成
-        db = Database()
+        db = InMemoryEntryStore()
 
         # デバッグ用ログ出力
         print("\n[TEST] データベース空キーワードフィルタテスト開始")
@@ -415,10 +415,10 @@ class TestKeywordFilter:
                 # キーワードが正しく渡されているか確認
                 assert "search_text" in kwargs, "search_textが引数に存在しません"
 
-        # 実際のDatabaseクラスのget_entriesメソッドをテスト
+        # 実際のInMemoryEntryStoreクラスのget_entriesメソッドをテスト
         try:
-            # 実際のDatabaseクラスを使用してテスト
-            real_db = Database()
+            # 実際のInMemoryEntryStoreクラスを使用してテスト
+            real_db = InMemoryEntryStore()
 
             # テスト用のエントリを追加
             try:

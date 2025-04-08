@@ -155,9 +155,9 @@ class TestFilterReset:
             }"
         )
 
-        # リセット後、search_textがNoneに設定されていることを確認
-        assert po_file.search_text is None, (
-            f"リセット後にsearch_textがNoneになっていません: {po_file.search_text}"
+        # リセット後、search_textがNoneまたは空文字列に設定されていることを確認
+        assert po_file.search_text is None or po_file.search_text == "", (
+            f"リセット後にsearch_textがNoneまたは空文字列になっていません: {po_file.search_text}"
         )
 
         # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず

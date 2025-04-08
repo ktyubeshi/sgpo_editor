@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from sgpo_editor.models.database import Database
+from sgpo_editor.models.database import InMemoryEntryStore
 from sgpo_editor.models.entry import EntryModel
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ class TranslatorCommentWidget(QWidget):
         # tcommentを表示
         self.comment_edit.setPlainText(entry.tcomment or "")
 
-    def set_database(self, db: Database) -> None:
+    def set_database(self, db: InMemoryEntryStore) -> None:
         """データベース参照を設定"""
         self._db = db
 
@@ -195,7 +195,7 @@ class ReviewCommentWidget(QWidget):
             item.setData(Qt.ItemDataRole.UserRole, comment)
             self.comment_list.addItem(item)
 
-    def set_database(self, db: Database) -> None:
+    def set_database(self, db: InMemoryEntryStore) -> None:
         """データベース参照を設定"""
         self._db = db
 
@@ -393,7 +393,7 @@ class QualityScoreWidget(QWidget):
                 self.category_scores_table.setItem(row, 0, QTableWidgetItem(category))
                 self.category_scores_table.setItem(row, 1, QTableWidgetItem(str(score)))
 
-    def set_database(self, db: Database) -> None:
+    def set_database(self, db: InMemoryEntryStore) -> None:
         """データベース参照を設定"""
         self._db = db
 

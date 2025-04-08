@@ -1,4 +1,8 @@
-"""POエントリのデータベース"""
+"""POエントリのインメモリストア
+
+このモジュールは、POエントリをインメモリSQLiteデータベースに格納し、
+高速なフィルタリング、ソート、検索機能を提供するキャッシュ層として機能します。
+"""
 
 import logging
 import sqlite3
@@ -10,11 +14,24 @@ from sgpo_editor.core.constants import TranslationStatus
 logger = logging.getLogger(__name__)
 
 
-class Database:
-    """POエントリのデータベース"""
+class InMemoryEntryStore:
+    """POエントリのインメモリストア
+
+    このクラスは、POエントリをインメモリSQLiteデータベースに格納し、
+    高速なフィルタリング、ソート、検索機能を提供するキャッシュ層として機能します。
+    主な役割：
+    - POエントリの一時的な格納（インメモリSQLiteデータベース）
+    - クエリベースのフィルタリング機能
+    - 高速なソート機能
+    - エントリの更新・追加機能
+    """
 
     def __init__(self):
-        """初期化"""
+        """インメモリSQLiteデータベースを初期化
+
+        メモリ上にSQLiteデータベースを作成し、POエントリを格納するためのテーブル構造を初期化します。
+        このデータベースはアプリケーションの実行中のみ存在し、終了時にはデータは失われます。
+        """
         # データベースをin-memory化（一時データとして扱う）
         logger.debug("インメモリデータベース初期化")
         self._conn = sqlite3.connect(":memory:")
@@ -548,7 +565,7 @@ class Database:
         """
         # デバッグ用ログ出力
         print(
-            f"Database.get_entries呼び出し: filter_text={filter_text}, search_text={search_text}"
+            f"InMemoryEntryStore.get_entries呼び出し: filter_text={filter_text}, search_text={search_text}"
         )
 
         query = """
@@ -683,7 +700,7 @@ class Database:
         # キーワード検索条件（msgidとmsgstrの両方で検索）
         import logging
 
-        logging.debug(f"Database.get_entries: search_text={search_text}")
+        logging.debug(f"InMemoryEntryStore.get_entries: search_text={search_text}")
 
         # 空のキーワードを処理
         if search_text is None:

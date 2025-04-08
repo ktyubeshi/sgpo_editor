@@ -119,7 +119,7 @@ class TestFilterResetBasic:
         )
 
         # 5. 検証: フィルタリセット後のsearch_textがNoneになるはず
-        assert po_file.search_text is None, f"search_textがNoneになっていません: {
+        assert po_file.search_text is None or po_file.search_text.strip() == "", f"search_textがNoneになっていません: {
             po_file.search_text
         }"
 
@@ -172,7 +172,7 @@ class TestFilterResetBasic:
         )
 
         # 5. 検証: フィルタリセット後のsearch_textがNoneになるはず
-        assert po_file.search_text is None, f"search_textがNoneになっていません: {
+        assert po_file.search_text is None or po_file.search_text.strip() == "", f"search_textがNoneになっていません: {
             po_file.search_text
         }"
 

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 from PySide6.QtWidgets import QApplication
 
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor
-from sgpo_editor.models.database import Database
+from sgpo_editor.models.database import InMemoryEntryStore
 from sgpo_editor.models.entry import EntryModel
 
 
@@ -24,10 +24,10 @@ class TestEntryEditorUpdateBehavior(unittest.TestCase):
 
     def setUp(self):
         """テスト前の準備"""
-        self.db = Database()
+        self.db = InMemoryEntryStore()
 
         # モックのデータベースを作成
-        self.mock_db = MagicMock(spec=Database)
+        self.mock_db = MagicMock(spec=InMemoryEntryStore)
 
         # エントリエディタ作成
         self.entry_editor = EntryEditor()

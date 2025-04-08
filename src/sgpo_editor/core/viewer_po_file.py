@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from sgpo_editor.core.po_factory import get_po_factory, POLibraryType
 from sgpo_editor.core.po_interface import POEntry
-from sgpo_editor.models.database import Database
+from sgpo_editor.models.database import InMemoryEntryStore
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.core.constants import TranslationStatus
 
@@ -32,7 +32,7 @@ class ViewerPOFile:
         Args:
             library_type: 使用するPOライブラリの種類
         """
-        self.db = Database()
+        self.db = InMemoryEntryStore()
         self.path = None
         self.filtered_entries = []
         self.filter_text = TranslationStatus.ALL
@@ -45,13 +45,21 @@ class ViewerPOFile:
         self.metadata = {}  # POファイルのメタデータを保存するための変数を追加
         self.library_type = library_type
 
-        # エントリキャッシュを初期化
-        self._entry_cache = {}
-        self._basic_info_cache = {}
+        # キャッシュ関連の変数を初期化
+        # 完全なEntryModelオブジェクトのキャッシュ（key→EntryModelのマップ）
+        self._complete_entry_cache = {}
+        # 基本情報のみのキャッシュ（key→基本情報dictのマップ）
+        self._entry_basic_info_cache = {}
+        # フィルタ結果のキャッシュ（フィルタ条件に合致するエントリのリスト）
+        self._filtered_entries_cache = []
+        # フィルタキャッシュのキー（フィルタ条件を表す文字列）
+        self._filtered_entries_cache_key = ""
+        # キャッシュ有効フラグ（Falseの場合は常にデータベースから取得）
         self._cache_enabled = True
+        # ファイル読み込み完了フラグ
         self._is_loaded = False
 
-        # 更新フラグ
+        # フィルタ更新フラグ（Trueの場合はフィルタ結果を強制的に再計算）
         self._force_filter_update = False
 
     def load(self, path: Union[str, Path]) -> None:
@@ -102,7 +110,11 @@ class ViewerPOFile:
             raise
 
     def _load_all_basic_info(self) -> None:
-        """すべてのエントリの基本情報を一括ロード"""
+        """すべてのエントリの基本情報を一括ロード
+
+        データベースからすべてのエントリの基本情報を取得し、基本情報キャッシュに格納します。
+        これにより、詳細情報が必要ない場合の高速なアクセスが可能になります。
+        """
         try:
             # get_all_entries_basic_infoが存在しないため、get_entriesを使用
             entries_basic_info = self.db.get_entries()
@@ -110,32 +122,43 @@ class ViewerPOFile:
                 if "key" in entry:
                     # 基本情報としてマーク
                     entry["is_basic_info"] = True
-                    self._basic_info_cache[entry["key"]] = entry
+                    self._entry_basic_info_cache[entry["key"]] = entry
         except Exception as e:
             logger.error(f"基本情報キャッシュロードエラー: {e}")
 
     def get_entry_by_key(self, key: str) -> Optional[EntryModel]:
-        """キーでエントリを取得する（キャッシュ対応）"""
+        """キーでエントリを取得する（キャッシュ対応）
+
+        指定されたキーに対応するエントリを取得します。キャッシュが有効な場合、
+        まず完全なエントリキャッシュを確認し、次に基本情報キャッシュを確認し、
+        最後にデータベースから取得します。
+
+        Args:
+            key: 取得するエントリのキー
+
+        Returns:
+            EntryModel: エントリモデルオブジェクト、存在しない場合はNone
+        """
         # キャッシュが無効化されている場合は直接DBから取得
         if not self._cache_enabled:
             entry_dict = self.db.get_entry_by_key(key)
             return EntryModel.from_dict(entry_dict) if entry_dict else None
 
         # 完全なエントリがすでにキャッシュにある場合
-        if key in self._entry_cache:
+        if key in self._complete_entry_cache:
             # キャッシュがEntryModelオブジェクトかどうか確認
-            cached_entry = self._entry_cache[key]
+            cached_entry = self._complete_entry_cache[key]
             if isinstance(cached_entry, EntryModel):
                 return cached_entry
             else:
                 # 辞書の場合はEntryModelオブジェクトに変換してキャッシュを更新
                 entry_obj = EntryModel.from_dict(cached_entry)
-                self._entry_cache[key] = entry_obj
+                self._complete_entry_cache[key] = entry_obj
                 return entry_obj
 
         # 基本情報のみがキャッシュにある場合
-        if key in self._basic_info_cache:
-            basic_info = self._basic_info_cache[key]
+        if key in self._entry_basic_info_cache:
+            basic_info = self._entry_basic_info_cache[key]
             # 基本情報がEntryModelオブジェクトかどうか確認
             if isinstance(basic_info, EntryModel):
                 # is_basic_infoフラグがある場合は詳細情報を取得
@@ -145,7 +168,7 @@ class ViewerPOFile:
                     if full_entry_dict:
                         # 完全なエントリをEntryModelオブジェクトに変換してキャッシュに保存
                         full_entry = EntryModel.from_dict(full_entry_dict)
-                        self._entry_cache[key] = full_entry
+                        self._complete_entry_cache[key] = full_entry
                         return full_entry
                     return basic_info  # 完全な情報がない場合は基本情報を返す
                 return basic_info
@@ -160,15 +183,15 @@ class ViewerPOFile:
                     if full_entry_dict:
                         # 完全なエントリをEntryModelオブジェクトに変換してキャッシュに保存
                         full_entry = EntryModel.from_dict(full_entry_dict)
-                        self._entry_cache[key] = full_entry
+                        self._complete_entry_cache[key] = full_entry
                         return full_entry
 
                     # 基本情報をキャッシュに保存
-                    self._basic_info_cache[key] = entry_obj
+                    self._entry_basic_info_cache[key] = entry_obj
                     return entry_obj
 
                 # 基本情報をキャッシュに保存
-                self._basic_info_cache[key] = entry_obj
+                self._entry_basic_info_cache[key] = entry_obj
                 return entry_obj
 
         # キャッシュにない場合はDBから取得
@@ -177,12 +200,22 @@ class ViewerPOFile:
             # 辞書をEntryModelオブジェクトに変換
             entry_obj = EntryModel.from_dict(entry_dict)
             # 完全なエントリをキャッシュに保存
-            self._entry_cache[key] = entry_obj
+            self._complete_entry_cache[key] = entry_obj
             return entry_obj
         return None
 
     def get_entries_by_keys(self, keys: List[str]) -> Dict[str, EntryModel]:
-        """複数のキーに対応するエントリを一度に取得"""
+        """複数のキーに対応するエントリを一度に取得
+
+        指定された複数のキーに対応するエントリを取得します。
+        キャッシュから取得できるエントリはキャッシュから、それ以外はデータベースから一括取得します。
+
+        Args:
+            keys: 取得するエントリのキーのリスト
+
+        Returns:
+            Dict[str, EntryModel]: キーとエントリモデルの辞書
+        """
         if not keys:
             return {}
 
@@ -191,14 +224,15 @@ class ViewerPOFile:
         missing_keys = []
 
         for key in keys:
-            if key in self._entry_cache:
+            if key in self._complete_entry_cache:
                 # 完全なエントリがキャッシュにある場合
-                result[key] = self._entry_cache[key]
-            elif key in self._basic_info_cache and not self._basic_info_cache[key].get(
-                "is_basic_info", False
+                result[key] = self._complete_entry_cache[key]
+            elif (
+                key in self._entry_basic_info_cache
+                and not self._entry_basic_info_cache[key].get("is_basic_info", False)
             ):
                 # 基本情報のみがキャッシュにある場合
-                result[key] = self._basic_info_cache[key]
+                result[key] = self._entry_basic_info_cache[key]
             else:
                 # キャッシュにない場合は後でDBから取得するためリストに追加
                 missing_keys.append(key)
@@ -209,19 +243,29 @@ class ViewerPOFile:
             for key, entry in missing_entries.items():
                 result[key] = EntryModel.from_dict(entry)
                 # 完全な情報をキャッシュに保存
-                self._entry_cache[key] = result[key]
+                self._complete_entry_cache[key] = result[key]
 
         return result
 
     def get_entry_basic_info(self, key: str) -> Optional[EntryModel]:
-        """エントリの基本情報のみを取得する（高速）"""
+        """エントリの基本情報のみを取得する（高速）
+
+        指定されたキーに対応するエントリの基本情報のみを取得します。
+        完全なエントリ情報よりも少ないデータで高速に処理するために使用します。
+
+        Args:
+            key: 取得するエントリのキー
+
+        Returns:
+            EntryModel: 基本情報のみを含むエントリモデル、存在しない場合はNone
+        """
         # 基本情報がキャッシュにある場合
-        if key in self._basic_info_cache:
-            return self._basic_info_cache[key]
+        if key in self._entry_basic_info_cache:
+            return self._entry_basic_info_cache[key]
 
         # 完全なエントリがキャッシュにある場合
-        if key in self._entry_cache:
-            entry = self._entry_cache[key]
+        if key in self._complete_entry_cache:
+            entry = self._complete_entry_cache[key]
             # 基本情報のみを返す
             basic_info = EntryModel(
                 key=entry.key,
@@ -232,14 +276,14 @@ class ViewerPOFile:
                 position=entry.position,
                 flags=entry.flags,
             )
-            self._basic_info_cache[key] = basic_info
+            self._entry_basic_info_cache[key] = basic_info
             return basic_info
 
         # キャッシュにない場合はDBから取得
         basic_info_dict = self.db.get_entry_basic_info(key)
         if basic_info_dict:
-            self._basic_info_cache[key] = EntryModel(**basic_info_dict)
-        return self._basic_info_cache.get(key)
+            self._entry_basic_info_cache[key] = EntryModel(**basic_info_dict)
+        return self._entry_basic_info_cache.get(key)
 
     def _convert_entry_to_dict(self, entry: POEntry, position: int) -> Dict[str, Any]:
         """POエントリをディクショナリに変換する"""
@@ -320,26 +364,20 @@ class ViewerPOFile:
             self._force_filter_update = False
             update_filter = True
 
-            # キャッシュ属性が存在する場合は削除
-            if hasattr(self, "_filtered_entries_cache"):
-                delattr(self, "_filtered_entries_cache")
-            if hasattr(self, "_filtered_entries_cache_key"):
-                delattr(self, "_filtered_entries_cache_key")
+            # フィルタキャッシュをリセット
+            self._filtered_entries_cache = []
+            self._filtered_entries_cache_key = ""
 
         # キャッシュチェック - 強制更新でなければキャッシュから返す
-        cache_key_attr = "_filtered_entries_cache_key"
-        cache_attr = "_filtered_entries_cache"
-
         if (
             not update_filter
-            and hasattr(self, cache_attr)
-            and hasattr(self, cache_key_attr)
-            and getattr(self, cache_key_attr) == cache_key
+            and self._filtered_entries_cache
+            and self._filtered_entries_cache_key == cache_key
         ):
             logger.debug(
                 "ViewerPOFile.get_filtered_entries: キャッシュからフィルタリング済みエントリを返します"
             )
-            return getattr(self, cache_attr)
+            return self._filtered_entries_cache
 
         try:
             # 翻訳ステータスに基づいてフラグ条件を設定
@@ -368,9 +406,9 @@ class ViewerPOFile:
             for entry_dict in entries_dict:
                 key = entry_dict.get("key", "")
                 # キーが存在し、キャッシュにある場合はキャッシュから取得
-                if key and key in self._entry_cache:
+                if key and key in self._complete_entry_cache:
                     # 既存のEntryModelオブジェクトを更新（必要な場合）
-                    entry_obj = self._entry_cache[key]
+                    entry_obj = self._complete_entry_cache[key]
                     # 重要なフィールドが変更されている場合のみ更新
                     if (
                         entry_obj.msgid != entry_dict.get("msgid", "")
@@ -379,18 +417,18 @@ class ViewerPOFile:
                     ):
                         # 新しいオブジェクトを作成してキャッシュを更新
                         entry_obj = EntryModel.from_dict(entry_dict)
-                        self._entry_cache[key] = entry_obj
+                        self._complete_entry_cache[key] = entry_obj
                 else:
                     # 新しいEntryModelオブジェクトを作成してキャッシュに追加
                     entry_obj = EntryModel.from_dict(entry_dict)
                     if key:
-                        self._entry_cache[key] = entry_obj
+                        self._complete_entry_cache[key] = entry_obj
 
                 result.append(entry_obj)
 
             # 結果をキャッシュに保存
-            setattr(self, cache_attr, result)
-            setattr(self, cache_key_attr, cache_key)
+            self._filtered_entries_cache = result
+            self._filtered_entries_cache_key = cache_key
 
             self.filtered_entries = result
             logger.debug(
@@ -550,11 +588,11 @@ class ViewerPOFile:
                 )
 
                 # 完全なエントリキャッシュを更新
-                if key in self._entry_cache:
-                    self._entry_cache[key] = entry_obj
+                if key in self._complete_entry_cache:
+                    self._complete_entry_cache[key] = entry_obj
 
                 # 基本情報キャッシュも更新
-                if key in self._basic_info_cache:
+                if key in self._entry_basic_info_cache:
                     basic_info = EntryModel(
                         key=entry_obj.key,
                         msgid=entry_obj.msgid,
@@ -563,7 +601,7 @@ class ViewerPOFile:
                         obsolete=entry_obj.obsolete,
                         position=entry_obj.position,
                     )
-                    self._basic_info_cache[key] = basic_info
+                    self._entry_basic_info_cache[key] = basic_info
 
                 # フィルタされたエントリリストのキャッシュを無効化するためのフラグを設定
                 # これにより次回get_filtered_entriesが呼ばれたときにキャッシュが更新される
@@ -572,14 +610,12 @@ class ViewerPOFile:
                     "ViewerPOFile.update_entry: キャッシュ強制更新フラグを設定しました"
                 )
 
-                # 既存のフィルタキャッシュ属性がある場合はクリア
-                if hasattr(self, "_filtered_entries_cache"):
-                    logger.debug(
-                        "ViewerPOFile.update_entry: フィルタキャッシュをクリアします"
-                    )
-                    delattr(self, "_filtered_entries_cache")
-                if hasattr(self, "_filtered_entries_cache_key"):
-                    delattr(self, "_filtered_entries_cache_key")
+                # フィルタキャッシュをリセット
+                logger.debug(
+                    "ViewerPOFile.update_entry: フィルタキャッシュをクリアします"
+                )
+                self._filtered_entries_cache = []
+                self._filtered_entries_cache_key = ""
 
             # 変更フラグを設定
             self.modified = True
@@ -637,10 +673,10 @@ class ViewerPOFile:
                     )
 
                     # 完全なエントリキャッシュを更新
-                    self._entry_cache[key] = entry_obj
+                    self._complete_entry_cache[key] = entry_obj
 
                     # 基本情報キャッシュも更新
-                    if key in self._basic_info_cache:
+                    if key in self._entry_basic_info_cache:
                         basic_info = EntryModel(
                             key=entry_obj.key,
                             msgid=entry_obj.msgid,
@@ -649,7 +685,7 @@ class ViewerPOFile:
                             obsolete=entry_obj.obsolete,
                             position=entry_obj.position,
                         )
-                        self._basic_info_cache[key] = basic_info
+                        self._entry_basic_info_cache[key] = basic_info
 
                 # フィルタされたエントリリストのキャッシュを無効化するためのフラグを設定
                 # 複数エントリが更新された場合は、フィルタリングの結果も変わる可能性があるため
@@ -688,10 +724,10 @@ class ViewerPOFile:
                     )
 
                     # 完全なエントリキャッシュを更新
-                    self._entry_cache[key] = entry_obj
+                    self._complete_entry_cache[key] = entry_obj
 
                     # 基本情報も更新
-                    if key in self._basic_info_cache:
+                    if key in self._entry_basic_info_cache:
                         basic_info_dict = {
                             "key": entry_obj.key,
                             "msgid": entry_obj.msgid,
@@ -702,7 +738,9 @@ class ViewerPOFile:
                             "flags": entry_obj.flags,
                             "is_basic_info": True,
                         }
-                        self._basic_info_cache[key] = EntryModel(**basic_info_dict)
+                        self._entry_basic_info_cache[key] = EntryModel(
+                            **basic_info_dict
+                        )
 
             # 変更フラグを設定
             self.modified = True
@@ -833,9 +871,13 @@ class ViewerPOFile:
             return False
 
     def _clear_cache(self) -> None:
-        """キャッシュをクリアする"""
-        self._entry_cache.clear()
-        self._basic_info_cache.clear()
+        """キャッシュをクリアする
+
+        すべてのキャッシュを無効化し、フィルタ結果もクリアします。
+        ファイルの再読み込みや大きな変更があった場合に呼び出されます。
+        """
+        self._complete_entry_cache.clear()
+        self._entry_basic_info_cache.clear()
         self.filtered_entries = []
         self._force_filter_update = True  # 次回のフィルタ処理で強制的に更新
 
@@ -851,7 +893,7 @@ class ViewerPOFile:
             return
 
         # キャッシュにないキーを特定
-        missing_keys = [key for key in keys if key not in self._entry_cache]
+        missing_keys = [key for key in keys if key not in self._complete_entry_cache]
         if not missing_keys:
             return
 
@@ -860,10 +902,10 @@ class ViewerPOFile:
 
         # キャッシュに保存
         for key, entry in entries.items():
-            self._entry_cache[key] = EntryModel.from_dict(entry)
+            self._complete_entry_cache[key] = EntryModel.from_dict(entry)
 
             # 基本情報も更新
-            if key in self._basic_info_cache:
+            if key in self._entry_basic_info_cache:
                 basic_info = {
                     "id": entry.get("id"),
                     "key": entry.get("key"),
@@ -875,7 +917,7 @@ class ViewerPOFile:
                     "flags": entry.get("flags", []),
                     "is_basic_info": True,
                 }
-                self._basic_info_cache[key] = EntryModel(**basic_info)
+                self._entry_basic_info_cache[key] = EntryModel(**basic_info)
 
     def get_entry_at(self, position: int) -> Optional[EntryModel]:
         """位置（インデックス）からエントリを取得する

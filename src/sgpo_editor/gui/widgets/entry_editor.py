@@ -24,7 +24,7 @@ from sgpo_editor.gui.widgets.review_widgets import (
     TranslatorCommentWidget,
 )
 from sgpo_editor.models import EntryModel
-from sgpo_editor.models.database import Database
+from sgpo_editor.models.database import InMemoryEntryStore
 
 logger = logging.getLogger(__name__)
 
@@ -271,52 +271,62 @@ class EntryEditor(QWidget):
     def _on_apply_clicked(self) -> None:
         """適用ボタンクリック時の処理"""
         logger.debug("EntryEditor._on_apply_clicked: 開始")
-        logger.debug(f"EntryEditor._on_apply_clicked: current_entry={self.current_entry is not None}, _database={self._database is not None}")
+        logger.debug(
+            f"EntryEditor._on_apply_clicked: current_entry={self.current_entry is not None}, _database={self._database is not None}"
+        )
         if self.current_entry:
-            logger.debug(f"EntryEditor._on_apply_clicked: current_entry.key={self.current_entry.key}, position={self.current_entry.position}")
+            logger.debug(
+                f"EntryEditor._on_apply_clicked: current_entry.key={self.current_entry.key}, position={self.current_entry.position}"
+            )
         else:
             logger.debug("EntryEditor._on_apply_clicked: current_entry is None")
-            
+
         if self._database:
-            logger.debug(f"EntryEditor._on_apply_clicked: _database is set")
+            logger.debug("EntryEditor._on_apply_clicked: _database is set")
         else:
             logger.debug("EntryEditor._on_apply_clicked: _database is None")
-            
+
         if not self.current_entry or not self._database:
-            logger.debug("EntryEditor._on_apply_clicked: エントリまたはデータベースがNoneのため終了")
+            logger.debug(
+                "EntryEditor._on_apply_clicked: エントリまたはデータベースがNoneのため終了"
+            )
             return
 
         # エントリを更新
         entry = self.current_entry
-        logger.debug(f"EntryEditor._on_apply_clicked: 更新するエントリ key={entry.key}, position={entry.position}")
+        logger.debug(
+            f"EntryEditor._on_apply_clicked: 更新するエントリ key={entry.key}, position={entry.position}"
+        )
 
         # データベースの更新
-        logger.debug(f"EntryEditor._on_apply_clicked: データベース更新開始")
+        logger.debug("EntryEditor._on_apply_clicked: データベース更新開始")
         self._database.update_entry(entry.key, entry.to_dict())
-        logger.debug(f"EntryEditor._on_apply_clicked: データベース更新完了")
+        logger.debug("EntryEditor._on_apply_clicked: データベース更新完了")
 
         # 重要: ViewerPOFileのfiltered_entriesを強制的に更新するためのフラグを設定
         # MainWindowを取得
-        logger.debug(f"EntryEditor._on_apply_clicked: MainWindowを検索")
+        logger.debug("EntryEditor._on_apply_clicked: MainWindowを検索")
         main_window = self.parent()
         while main_window and not hasattr(main_window, "_get_current_po"):
             main_window = main_window.parent()
 
         if main_window and hasattr(main_window, "_get_current_po"):
-            logger.debug(f"EntryEditor._on_apply_clicked: MainWindowを取得成功")
+            logger.debug("EntryEditor._on_apply_clicked: MainWindowを取得成功")
             current_po = main_window._get_current_po()
             if current_po:
-                logger.debug(f"EntryEditor._on_apply_clicked: ViewerPOFileの_force_filter_updateフラグを設定")
+                logger.debug(
+                    "EntryEditor._on_apply_clicked: ViewerPOFileの_force_filter_updateフラグを設定"
+                )
                 # 次回のget_filtered_entriesで強制更新されるようにフラグを設定
                 current_po._force_filter_update = True
         else:
-            logger.debug(f"EntryEditor._on_apply_clicked: MainWindowの取得に失敗")
+            logger.debug("EntryEditor._on_apply_clicked: MainWindowの取得に失敗")
 
-        logger.debug(f"EntryEditor._on_apply_clicked: text_changedシグナル発行")
+        logger.debug("EntryEditor._on_apply_clicked: text_changedシグナル発行")
         self.text_changed.emit()
-        logger.debug(f"EntryEditor._on_apply_clicked: apply_clickedシグナル発行")
+        logger.debug("EntryEditor._on_apply_clicked: apply_clickedシグナル発行")
         self.apply_clicked.emit()
-        logger.debug(f"EntryEditor._on_apply_clicked: 完了")
+        logger.debug("EntryEditor._on_apply_clicked: 完了")
 
     def _on_text_changed(self) -> None:
         """テキストが変更されたときの処理"""
@@ -414,21 +424,23 @@ class EntryEditor(QWidget):
         self.entry_changed.emit(self.current_entry_number or -1)
 
     @property
-    def database(self) -> Optional[Database]:
+    def database(self) -> Optional[InMemoryEntryStore]:
         """データベース参照を取得"""
         return self._database
 
     @database.setter
-    def database(self, db: Database) -> None:
+    def database(self, db: InMemoryEntryStore) -> None:
         """データベース参照を設定"""
-        logger.debug(f"EntryEditor.database.setter: データベース参照を設定 db={db is not None}")
+        logger.debug(
+            f"EntryEditor.database.setter: データベース参照を設定 db={db is not None}"
+        )
         self._database = db
 
         # 開いているダイアログがある場合は、それらにもデータベース参照を設定
         for dialog_type, dialog in self._review_dialogs.items():
             if hasattr(dialog.widget, "set_database"):
                 dialog.widget.set_database(db)
-        logger.debug(f"EntryEditor.database.setter: データベース参照の設定完了")
+        logger.debug("EntryEditor.database.setter: データベース参照の設定完了")
 
     def get_layout_type(self) -> LayoutType:
         """現在のレイアウトタイプを取得"""

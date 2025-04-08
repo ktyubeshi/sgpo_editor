@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
-from sgpo_editor.models.database import Database
+from sgpo_editor.models.database import InMemoryEntryStore
 
 
 class TestKeywordFilter(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestKeywordFilter(unittest.TestCase):
     def setUp(self):
         """各テストの前処理"""
         # データベースのモック
-        self.mock_db = MagicMock(spec=Database)
+        self.mock_db = MagicMock(spec=InMemoryEntryStore)
 
         # ViewerPOFileのインスタンス作成とdbをモックに置き換え
         self.po_file = ViewerPOFile()
@@ -53,17 +53,17 @@ class TestKeywordFilter(unittest.TestCase):
         args, kwargs = self.mock_db.get_entries.call_args
 
         # フィルタテキストとキーワードが正しく渡されていることを確認
-        self.assertEqual(kwargs.get("filter_text"), "translated")
+        self.assertEqual(kwargs.get("translation_status"), "translated")
         self.assertEqual(kwargs.get("search_text"), "keyword")
 
-    @patch("sgpo_editor.models.database.Database.get_entries")
+    @patch("sgpo_editor.models.database.InMemoryEntryStore.get_entries")
     def test_database_query_with_keyword(self, mock_get_entries):
         """データベースクエリがキーワードで正しく検索することを確認するテスト"""
         # モックの戻り値を設定
         mock_get_entries.return_value = self.mock_entries
 
         # 実際のデータベースインスタンスを使用
-        db = Database()
+        db = InMemoryEntryStore()
 
         # get_entriesを呼び出し
         db.get_entries(search_text="keyword")
