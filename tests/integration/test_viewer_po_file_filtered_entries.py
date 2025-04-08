@@ -18,17 +18,15 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
     def test_get_filtered_entries_with_direct_parameters(self):
         """get_filtered_entriesメソッドが直接パラメータを受け取れることを確認"""
         # テスト用のパラメータ
-        filter_text = "test"
         filter_keyword = "keyword"
 
         # get_filtered_entriesを呼び出し
         self.viewer.get_filtered_entries(
-            filter_text=filter_text, filter_keyword=filter_keyword
+            filter_keyword=filter_keyword
         )
 
         # データベースのget_entriesが正しいパラメータで呼ばれることを確認
         self.viewer.db.get_entries.assert_called_with(
-            filter_text=filter_text,
             search_text=filter_keyword,  # filter_keywordはsearch_textとして渡される
             sort_column=self.viewer.sort_column,
             sort_order=self.viewer.sort_order,
@@ -39,7 +37,6 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
     def test_get_filtered_entries_with_instance_variables(self):
         """get_filtered_entriesメソッドがインスタンス変数を使用することを確認"""
         # インスタンス変数を設定
-        self.viewer.filter_text = "test"
         self.viewer.search_text = "search"
 
         # get_filtered_entriesを呼び出し（パラメータなし）
@@ -47,7 +44,6 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
 
         # データベースのget_entriesが正しいパラメータで呼ばれることを確認
         self.viewer.db.get_entries.assert_called_with(
-            filter_text=self.viewer.filter_text,
             search_text=self.viewer.search_text,
             sort_column=self.viewer.sort_column,
             sort_order=self.viewer.sort_order,

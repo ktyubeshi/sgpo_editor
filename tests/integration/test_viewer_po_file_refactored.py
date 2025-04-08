@@ -103,9 +103,9 @@ def test_search_entries(test_po_file):
     # 翻訳済みのエントリを取得
     from sgpo_editor.core.constants import TranslationStatus
 
-    entries = test_po_file.get_filtered_entries(
-        filter_text=TranslationStatus.TRANSLATED
-    )
+    # translation_statusを使用して翻訳済みエントリをフィルタリング
+    test_po_file.translation_status = TranslationStatus.TRANSLATED
+    entries = test_po_file.get_filtered_entries(update_filter=True)
     assert len(entries) == 1
     assert entries[0].msgid == "test1"
 

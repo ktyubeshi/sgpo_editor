@@ -17,11 +17,14 @@ class TestViewerPOFileStats(unittest.TestCase):
 
     def test_get_stats_has_progress_attribute(self):
         """get_statsメソッドが返すオブジェクトにprogress属性があることを確認"""
-        # モックエントリを設定
+        # EntryModelクラスをインポート
+        from sgpo_editor.models.entry import EntryModel
+        
+        # モックエントリをEntryModelインスタンスとして設定
         mock_entries = [
-            {"key": "1", "msgid": "test1", "msgstr": "テスト1", "flags": []},
-            {"key": "2", "msgid": "test2", "msgstr": "", "flags": ["fuzzy"]},
-            {"key": "3", "msgid": "test3", "msgstr": "", "flags": []},
+            EntryModel(key="1", msgid="test1", msgstr="テスト1", fuzzy=False),
+            EntryModel(key="2", msgid="test2", msgstr="", fuzzy=True),
+            EntryModel(key="3", msgid="test3", msgstr="", fuzzy=False),
         ]
 
         # get_filtered_entriesをモック化
@@ -37,11 +40,14 @@ class TestViewerPOFileStats(unittest.TestCase):
 
     def test_get_stats_calculates_progress_correctly(self):
         """get_statsメソッドがprogress属性を正しく計算することを確認"""
+        # EntryModelクラスをインポート
+        from sgpo_editor.models.entry import EntryModel
+        
         # ケース1: 翻訳済み1件、Fuzzy1件、未翻訳1件の場合
         mock_entries1 = [
-            {"key": "1", "msgid": "test1", "msgstr": "テスト1", "flags": []},
-            {"key": "2", "msgid": "test2", "msgstr": "", "flags": ["fuzzy"]},
-            {"key": "3", "msgid": "test3", "msgstr": "", "flags": []},
+            EntryModel(key="1", msgid="test1", msgstr="テスト1", fuzzy=False),
+            EntryModel(key="2", msgid="test2", msgstr="", fuzzy=True),
+            EntryModel(key="3", msgid="test3", msgstr="", fuzzy=False),
         ]
         self.viewer.get_filtered_entries = MagicMock(return_value=mock_entries1)
         stats1 = self.viewer.get_stats()
@@ -50,8 +56,8 @@ class TestViewerPOFileStats(unittest.TestCase):
 
         # ケース2: すべて翻訳済みの場合
         mock_entries2 = [
-            {"key": "1", "msgid": "test1", "msgstr": "テスト1", "flags": []},
-            {"key": "2", "msgid": "test2", "msgstr": "テスト2", "flags": []},
+            EntryModel(key="1", msgid="test1", msgstr="テスト1", fuzzy=False),
+            EntryModel(key="2", msgid="test2", msgstr="テスト2", fuzzy=False),
         ]
         self.viewer.get_filtered_entries = MagicMock(return_value=mock_entries2)
         stats2 = self.viewer.get_stats()

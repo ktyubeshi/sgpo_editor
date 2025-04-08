@@ -54,15 +54,16 @@ def test_load_po_file(tmp_path):
 
 def test_get_entries(test_po_file):
     """エントリを取得できることを確認する"""
-    # get_entriesメソッドが削除されたため、get_filtered_entriesを使用
+    # get_filtered_entriesを使用してエントリを取得
     entries = test_po_file.get_filtered_entries()
     assert len(entries) == 3
     # Entryオブジェクトを返すことを確認
-    from sgpo_editor.models.entry_model import Entry
-    assert all(isinstance(entry, Entry) for entry in entries)
+    from sgpo_editor.models.entry import EntryModel
+    assert all(isinstance(entry, EntryModel) for entry in entries)
 
     # フィルタリングのテスト
-    test_po_file.filter_text = "test1"
+    # 検索テキストを使用したフィルタリング
+    test_po_file.search_text = "test1"
     filtered = test_po_file.get_filtered_entries(update_filter=True)
     assert len(filtered) == 1
     assert filtered[0].msgid == "test1"
@@ -87,15 +88,21 @@ def test_update_entry(test_po_file):
 
 def test_search_entries(test_po_file):
     """エントリを検索できることを確認する"""
-    # search_entriesメソッドが存在する場合は使用し、存在しない場合はフィルタリングで代用
-    if hasattr(test_po_file, "search_entries"):
-        results = test_po_file.search_entries("test1")
-    else:
-        test_po_file.search_text = "test1"
-        results = test_po_file.get_filtered_entries(update_filter=True)
+    # 初期状態を確認
+    initial_entries = test_po_file.get_filtered_entries()
+    assert len(initial_entries) == 3
+    
+    # search_textを使用した検索フィルタリング
+    test_po_file.search_text = "test1"
+    results = test_po_file.get_filtered_entries(update_filter=True)
 
     assert len(results) == 1
     assert results[0].msgid == "test1"
+    
+    # 検索テキストをクリアして元に戻す
+    test_po_file.search_text = ""
+    results = test_po_file.get_filtered_entries(update_filter=True)
+    assert len(results) == 3
 
 
 def test_get_stats(test_po_file):

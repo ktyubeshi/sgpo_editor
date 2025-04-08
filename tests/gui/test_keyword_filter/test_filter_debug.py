@@ -61,7 +61,7 @@ class TestFilterDebug:
         initial_count = len(initial_entries)
         print(f"[DEBUG] 初期状態のエントリ数: {initial_count}件")
         print(
-            f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, filter_text={po_file.filter_text}"
+            f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
         )
 
         # 2. データベースから直接取得して比較
@@ -82,7 +82,7 @@ class TestFilterDebug:
         filtered_count = len(filtered_entries)
         print(f"[DEBUG] 'test'フィルタ適用後のエントリ数: {filtered_count}件")
         print(
-            f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, filter_text={po_file.filter_text}"
+            f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
         )
 
         # 4. フィルタをリセット（Noneを使用）
@@ -95,10 +95,9 @@ class TestFilterDebug:
         # リセット前の内部状態を詳細に出力
         print("[DEBUG] リセット前のViewerPOFile状態:")
         print(f"  - search_text: {po_file.search_text}")
-        print(f"  - filter_text: {po_file.filter_text}")
+        print(f"  - translation_status: {po_file.translation_status}")
         print(f"  - filtered_entries: {len(po_file.filtered_entries)}件")
         print(f"  - flag_conditions: {po_file.flag_conditions}")
-        print(f"  - translation_status: {po_file.translation_status}")
 
         # キャッシュとsearch_textを手動でリセット
         if hasattr(po_file, "_entry_obj_cache"):
@@ -114,7 +113,7 @@ class TestFilterDebug:
         reset_count = len(reset_entries)
         print(f"[DEBUG] リセット後のエントリ数: {reset_count}件")
         print(
-            f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, filter_text={po_file.filter_text}"
+            f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
         )
 
         # リセット後のキャッシュサイズを確認
@@ -170,28 +169,28 @@ class TestFilterDebug:
         count_test = len(entries_test)
         print(f"[DEBUG] search_text='test'のエントリ数: {count_test}件")
 
-        # 5. filter_text="すべて"でエントリを取得
-        entries_all = db.get_entries(filter_text="すべて")
+        # 5. translation_status="all"でエントリを取得
+        entries_all = db.get_entries(translation_status="all")
         count_all = len(entries_all)
-        print(f"[DEBUG] filter_text='すべて'のエントリ数: {count_all}件")
+        print(f"[DEBUG] translation_status='all'のエントリ数: {count_all}件")
 
-        # 6. filter_text="translated"でエントリを取得
-        entries_translated = db.get_entries(filter_text="translated")
+        # 6. translation_status="translated"でエントリを取得
+        entries_translated = db.get_entries(translation_status="translated")
         count_translated = len(entries_translated)
-        print(f"[DEBUG] filter_text='translated'のエントリ数: {count_translated}件")
+        print(f"[DEBUG] translation_status='translated'のエントリ数: {count_translated}件")
 
         # 7. 両方の条件を指定してエントリを取得
-        entries_both = db.get_entries(filter_text="すべて", search_text="test")
+        entries_both = db.get_entries(translation_status="all", search_text="test")
         count_both = len(entries_both)
         print(
-            f"[DEBUG] filter_text='すべて', search_text='test'のエントリ数: {count_both}件"
+            f"[DEBUG] translation_status='all', search_text='test'のエントリ数: {count_both}件"
         )
 
         # 8. フィルタ適用後にリセットした場合
-        entries_reset = db.get_entries(filter_text="すべて", search_text=None)
+        entries_reset = db.get_entries(translation_status="all", search_text=None)
         count_reset = len(entries_reset)
         print(
-            f"[DEBUG] filter_text='すべて', search_text=Noneのエントリ数: {count_reset}件"
+            f"[DEBUG] translation_status='all', search_text=Noneのエントリ数: {count_reset}件"
         )
 
         # 検証

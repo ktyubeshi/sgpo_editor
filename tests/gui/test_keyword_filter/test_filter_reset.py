@@ -58,7 +58,7 @@ class TestFilterReset:
         print(
             f"\n[TEST] ViewerPOFile初期状態: search_text={
                 po_file.search_text
-            }, filter_text={po_file.filter_text}"
+            }, translation_status={po_file.translation_status}"
         )
 
         # 2. 初期状態で全エントリを取得
@@ -98,7 +98,7 @@ class TestFilterReset:
         print(
             f"\n[TEST] ViewerPOFile初期状態: search_text={
                 po_file.search_text
-            }, filter_text={po_file.filter_text}"
+            }, translation_status={po_file.translation_status}"
         )
 
         # 2. 初期状態で全エントリを取得
@@ -118,7 +118,7 @@ class TestFilterReset:
         print(
             f"[TEST] フィルタ後のViewerPOFile状態: search_text={
                 po_file.search_text
-            }, filter_text={po_file.filter_text}"
+            }, translation_status={po_file.translation_status}"
         )
         print(
             f"[TEST] ViewerPOFile内部キャッシュ: _entry_obj_cache件数={
@@ -145,7 +145,7 @@ class TestFilterReset:
         print(
             f"[TEST] リセット後のViewerPOFile状態: search_text={
                 po_file.search_text
-            }, filter_text={po_file.filter_text}"
+            }, translation_status={po_file.translation_status}"
         )
         print(
             f"[TEST] リセット後の内部キャッシュ: _entry_obj_cache件数={

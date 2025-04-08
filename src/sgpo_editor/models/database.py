@@ -535,7 +535,6 @@ class InMemoryEntryStore:
 
     def get_entries(
         self,
-        filter_text: Optional[str] = None,
         search_text: Optional[str] = None,
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
@@ -545,7 +544,6 @@ class InMemoryEntryStore:
         """エントリの一覧を取得
 
         Args:
-            filter_text: フィルタテキスト (非推奨、代わりにflag_conditionsとtranslation_statusを使用)
             search_text: 検索テキスト
             sort_column: ソートするカラム
             sort_order: ソート順序
@@ -565,7 +563,7 @@ class InMemoryEntryStore:
         """
         # デバッグ用ログ出力
         print(
-            f"InMemoryEntryStore.get_entries呼び出し: filter_text={filter_text}, search_text={search_text}"
+            f"InMemoryEntryStore.get_entries呼び出し: search_text={search_text}"
         )
 
         query = """
@@ -649,53 +647,7 @@ class InMemoryEntryStore:
                 """
                 )
 
-        # フィルタテキスト条件（翻訳状態のフィルタリング） - 後方互換性のため残す
-        if filter_text:
-            # 「すべて」または「all」の場合は条件を追加しない
-            if filter_text.lower() == "すべて" or filter_text.lower() == "all" or filter_text.lower() == TranslationStatus.ALL:
-                print(
-                    f"フィルタテキスト '{filter_text}' はすべてのエントリを表示するため、条件を追加しません"
-                )
-                # 条件を追加しない
-                pass
-            elif filter_text.lower() == "translated" or filter_text.lower() == TranslationStatus.TRANSLATED:
-                conditions.append(
-                    """
-                    e.msgstr != '' AND
-                    e.id NOT IN (
-                        SELECT entry_id
-                        FROM entry_flags
-                        WHERE flag = 'fuzzy'
-                    )
-                """
-                )
-            elif filter_text.lower() == "untranslated" or filter_text.lower() == TranslationStatus.UNTRANSLATED:
-                conditions.append(
-                    """
-                    (e.msgstr = '' OR
-                    e.id IN (
-                        SELECT entry_id
-                        FROM entry_flags
-                        WHERE flag = 'fuzzy'
-                    ))
-                """
-                )
-            elif filter_text.lower() == "fuzzy" or filter_text.lower() == TranslationStatus.FUZZY:
-                conditions.append(
-                    """
-                    e.id IN (
-                        SELECT entry_id
-                        FROM entry_flags
-                        WHERE flag = 'fuzzy'
-                    )
-                """
-                )
-            elif filter_text.lower() == "obsolete" or filter_text.lower() == TranslationStatus.OBSOLETE:
-                conditions.append("e.obsolete = 1")
-            else:
-                # その他のフィルタテキストは通常の検索として扱う
-                conditions.append("(e.msgid LIKE ? OR e.msgstr LIKE ?)")
-                params.extend([f"%{filter_text}%", f"%{filter_text}%"])
+        # 翻訳状態によるフィルタリングは上記の条件で処理済み
 
         # キーワード検索条件（msgidとmsgstrの両方で検索）
         import logging
@@ -728,9 +680,21 @@ class InMemoryEntryStore:
         # GROUP BY句の追加
         query += " GROUP BY e.id"
 
-        # ORDER BY句の追加
+        # ORDER BY句の追加（SQLインジェクション対策）
+        allowed_sort_columns = [
+            "position", "msgid", "msgstr", "fuzzy", "obsolete", 
+            "created_at", "updated_at", "e.position", "e.msgid", 
+            "e.msgstr", "e.fuzzy", "e.obsolete", "e.created_at", "e.updated_at"
+        ]
+        allowed_sort_orders = ["ASC", "DESC", "asc", "desc"]
+        
         if sort_column and sort_order:
-            query += f" ORDER BY {sort_column} {sort_order}"
+            # カラム名とソート順序を検証
+            if sort_column in allowed_sort_columns and sort_order.upper() in allowed_sort_orders:
+                query += f" ORDER BY {sort_column} {sort_order}"
+            else:
+                logger.warning(f"不正なソート条件: {sort_column} {sort_order}")
+                query += " ORDER BY COALESCE(d.position, 0)"
         else:
             query += " ORDER BY COALESCE(d.position, 0)"
 

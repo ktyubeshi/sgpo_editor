@@ -35,12 +35,11 @@ class ViewerPOFile:
         self.db = InMemoryEntryStore()
         self.path = None
         self.filtered_entries = []
-        self.filter_text = TranslationStatus.ALL
         self.search_text = ""
         self.sort_column = None
         self.sort_order = None
         self.flag_conditions = {}
-        self.translation_status = None
+        self.translation_status = TranslationStatus.ALL
         self.modified = False
         self.metadata = {}  # POファイルのメタデータを保存するための変数を追加
         self.library_type = library_type
@@ -326,31 +325,27 @@ class ViewerPOFile:
     def get_filtered_entries(
         self,
         update_filter: bool = False,
-        filter_text: Optional[str] = None,
         filter_keyword: Optional[str] = None,
     ) -> List[EntryModel]:
         """フィルタ条件に合ったエントリーを取得する
 
         Args:
             update_filter: フィルター条件を強制的に更新するフラグ
-            filter_text: フィルターステータス（TranslationStatus定数を使用）
             filter_keyword: 検索キーワード
 
         Returns:
             フィルター条件に一致するEntryModelのリスト
         """
         logger.debug(
-            f"ViewerPOFile.get_filtered_entries: 開始 update_filter={update_filter}, filter_text={filter_text}, filter_keyword={filter_keyword}, _force_filter_update={self._force_filter_update}"
+            f"ViewerPOFile.get_filtered_entries: 開始 update_filter={update_filter}, filter_keyword={filter_keyword}, _force_filter_update={self._force_filter_update}"
         )
         # フィルタ条件の更新
-        if update_filter or filter_text is not None:
-            self.filter_text = filter_text or TranslationStatus.ALL
         if update_filter or filter_keyword is not None:
             self.search_text = filter_keyword or ""
 
         # フィルタ条件をログ出力
         logger.debug(
-            f"ViewerPOFile.get_filtered_entries: フィルタ条件: filter_text={self.filter_text}, search_text={self.search_text}"
+            f"ViewerPOFile.get_filtered_entries: フィルタ条件: search_text={self.search_text}, translation_status={self.translation_status}"
         )
 
         # キャッシュキーの生成
@@ -382,14 +377,13 @@ class ViewerPOFile:
         try:
             # 翻訳ステータスに基づいてフラグ条件を設定
             logger.debug("ViewerPOFile.get_filtered_entries: フラグ条件を設定")
-            self._set_flag_conditions_from_status(self.filter_text)
+            self._set_flag_conditions_from_status(self.translation_status)
 
             # データベースからエントリを取得
             logger.debug(
                 "ViewerPOFile.get_filtered_entries: データベースからエントリを取得"
             )
             entries_dict = self.db.get_entries(
-                filter_text=None,  # ステータスベースのフィルタリングはflag_conditionsに移動
                 search_text=self.search_text,
                 flag_conditions=self.flag_conditions,
                 translation_status=self.translation_status,
@@ -443,36 +437,39 @@ class ViewerPOFile:
             logger.exception(e)
             return []
 
-    def _set_flag_conditions_from_status(self, status: str) -> None:
+    def _set_flag_conditions_from_status(self, translation_status: str) -> None:
         """翻訳ステータスからフラグ条件を設定する
 
+        指定された翻訳ステータスに基づいて、適切なフラグ条件と翻訳ステータスを設定します。
+        これにより、データベースクエリで適切なフィルタリングが行われます。
+
         Args:
-            status: TranslationStatus定数
+            translation_status: 翻訳ステータス（TranslationStatus定数）
         """
         # フラグ条件を初期化
         self.flag_conditions = {}
-        self.translation_status = None
+        self.translation_status = translation_status
 
         # ステータスによって条件を設定
-        if status == TranslationStatus.ALL:
+        if translation_status == TranslationStatus.ALL:
             # すべてのエントリを表示する場合は条件を設定しない
             pass
-        elif status == TranslationStatus.TRANSLATED:
+        elif translation_status == TranslationStatus.TRANSLATED:
             # 翻訳済みエントリの条件：msgstrがあり、fuzzyフラグがない
             self.flag_conditions = {
                 "exclude_flags": ["fuzzy"],
             }
             self.translation_status = "translated"
-        elif status == TranslationStatus.UNTRANSLATED:
+        elif translation_status == TranslationStatus.UNTRANSLATED:
             # 未翻訳エントリの条件：msgstrが空か、fuzzyフラグがある
             # Databaseのtranslation_status="untranslated"条件と一致させる
             self.translation_status = "untranslated"
-        elif status == TranslationStatus.FUZZY:
+        elif translation_status == TranslationStatus.FUZZY:
             # ファジーエントリの条件：fuzzyフラグがある
             self.flag_conditions = {
                 "include_flags": ["fuzzy"],
             }
-        elif status == TranslationStatus.OBSOLETE:
+        elif translation_status == TranslationStatus.OBSOLETE:
             # 廃止済みエントリの条件：obsoleteフラグがある
             self.flag_conditions = {
                 "obsolete_only": True,
@@ -480,7 +477,6 @@ class ViewerPOFile:
 
     def set_filter(
         self,
-        filter_text: Optional[str] = None,
         search_text: Optional[str] = None,
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
@@ -490,7 +486,6 @@ class ViewerPOFile:
         """フィルタを設定する
 
         Args:
-            filter_text: フィルターステータス（TranslationStatus定数を使用）
             search_text: 検索キーワード
             sort_column: ソート列
             sort_order: ソート順序
@@ -498,10 +493,6 @@ class ViewerPOFile:
             translation_status: 翻訳ステータス
         """
         update_needed = False
-
-        if filter_text is not None and filter_text != self.filter_text:
-            self.filter_text = filter_text
-            update_needed = True
 
         if search_text is not None and search_text != self.search_text:
             self.search_text = search_text
@@ -524,6 +515,8 @@ class ViewerPOFile:
             and translation_status != self.translation_status
         ):
             self.translation_status = translation_status
+            # translation_statusが変更された場合は、対応するflag_conditionsを設定
+            self._set_flag_conditions_from_status(translation_status)
             update_needed = True
 
         if update_needed:
@@ -968,8 +961,8 @@ class ViewerPOFile:
 
         # キャッシュキーを生成
         cache_key = (
-            f"{self.filter_text}|{self.search_text}|"
-            f"{flag_conditions_str}|{self.translation_status}|"
+            f"{self.translation_status}|{self.search_text}|"
+            f"{flag_conditions_str}|"
             f"{self.sort_column}|{self.sort_order}"
         )
 

@@ -42,17 +42,19 @@ class TestKeywordFilter(unittest.TestCase):
         self.assertEqual(kwargs.get("search_text"), "keyword")
 
     def test_filter_text_and_keyword_together(self):
-        """フィルタテキストとキーワードの両方が正しく渡されることを確認するテスト"""
+        """翻訳ステータスとキーワードの両方が正しく渡されることを確認するテスト"""
+        # 翻訳ステータスを設定
+        self.po_file.translation_status = "translated"
         # get_filtered_entriesを呼び出し
         self.po_file.get_filtered_entries(
-            filter_text="translated", filter_keyword="keyword"
+            filter_keyword="keyword", update_filter=True
         )
 
         # get_entriesが正しいパラメータで呼び出されたことを確認
         self.mock_db.get_entries.assert_called_once()
         args, kwargs = self.mock_db.get_entries.call_args
 
-        # フィルタテキストとキーワードが正しく渡されていることを確認
+        # 翻訳ステータスとキーワードが正しく渡されていることを確認
         self.assertEqual(kwargs.get("translation_status"), "translated")
         self.assertEqual(kwargs.get("search_text"), "keyword")
 
