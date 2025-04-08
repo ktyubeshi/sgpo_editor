@@ -73,37 +73,37 @@
     * [x] `_set_api_keys` ([source: 1705]) 実行前にAPIキーが設定されているかチェックし、設定されていなければユーザーに通知するUIフィードバックを追加する。
     * [x] `_load_api_keys` ([source: 1706]) / `_save_api_keys` ([source: 1708]) でのエラーハンドリングを強化し、失敗した場合にユーザーにエラーメッセージを表示する。
 * **`src/sgpo_editor/gui/table_manager.py`** ([source: 2758])
-    * [ ] `toggle_column_visibility` ([source: 2792]) がUIメニュー (`UIManager._setup_column_visibility_menu` [source: 2934]) と確実に同期し、状態がアプリケーション終了/再起動後も保存・復元されるか再検証する。
-    * [ ] Score列の表示・ソート機能が正しく動作するか検証する (`_sort_entries_by_score` [source: 2820], `_update_table_contents` [source: 2829])。`EntryModel.score` ([source: 2853]) と連携しているか確認する。
-    * [ ] **【キャッシュ改善】**: 内部キャッシュ `_entry_cache` ([source: 2760]) の役割を明確化し、`EntryCacheManager` ([source: 1466]) との連携方法・役割分担をdocstringに記述する。不要であれば削除または統合を検討する。
+    * [x] `toggle_column_visibility` ([source: 2792]) がUIメニュー (`UIManager._setup_column_visibility_menu` [source: 2934]) と確実に同期し、状態がアプリケーション終了/再起動後も保存・復元されるか再検証する。
+    * [x] Score列の表示・ソート機能が正しく動作するか検証する (`_sort_entries_by_score` [source: 2820], `_update_table_contents` [source: 2829])。`EntryModel.score` ([source: 2853]) と連携しているか確認する。
+    * [x] **【キャッシュ改善】**: 内部キャッシュ `_entry_cache` ([source: 2760]) の役割を明確化し、`EntryCacheManager` ([source: 1466]) との連携方法・役割分担をdocstringに記述する。不要であれば削除または統合を検討する。
 * **`src/sgpo_editor/gui/event_handler.py`** ([source: 2720])
-    * [ ] **【キャッシュ改善】**: 内部キャッシュ `_entry_cache` ([source: 2723]) 及びプリフェッチ `_prefetch_visible_entries` ([source: 2736])、詳細表示更新 `_update_detail_view` ([source: 2729]) におけるキャッシュ利用ロジックと `EntryCacheManager` ([source: 1466]) との連携方法・役割分担をdocstringに記述する。
+    * [x] **【キャッシュ改善】**: 内部キャッシュ `_entry_cache` ([source: 2723]) 及びプリフェッチ `_prefetch_visible_entries` ([source: 2736])、詳細表示更新 `_update_detail_view` ([source: 2729]) におけるキャッシュ利用ロジックと `EntryCacheManager` ([source: 1466]) との連携方法・役割分担をdocstringに記述する。
 * **`src/sgpo_editor/gui/facades/entry_list_facade.py`** ([source: 2284])
-    * [ ] **【キャッシュ改善】**: `update_table` ([source: 2286]) メソッド内での `ViewerPOFile.get_filtered_entries` ([source: 1613]) の呼び出し方が、キャッシュ状態 (`_force_filter_update` [source: 1471]) を適切に考慮しているか確認し、役割をdocstringに記述する。
+    * [x] **【キャッシュ改善】**: `update_table` ([source: 2286]) メソッド内での `ViewerPOFile.get_filtered_entries` ([source: 1613]) の呼び出し方が、キャッシュ状態 (`_force_filter_update` [source: 1471]) を適切に考慮しているか確認し、役割をdocstringに記述する。
 * **`src/sgpo_editor/gui/widgets/po_format_editor.py`** ([source: 2382])
     * [x] **【キャッシュ改善】**: `_on_apply_clicked` ([source: 2408]) 内での `update_entry` ([source: 2417]) 呼び出しが、`ViewerPOFile` のキャッシュ更新/無効化とどのように連携するか、その役割をdocstringに記述する。
 * **`src/sgpo_editor/gui/widgets/review_widgets.py`**
-    * [ ] `QualityScoreWidget`: `_on_apply_score` ([source: 2354]), `_on_add_category_score` ([source: 2356]), `_on_reset_scores` ([source: 2359]) でのDB更新 (`InMemoryEntryStore.update_entry_field` または `update_entry_review_data`) が正しく実装されているか確認する。
-    * [ ] `CheckResultWidget`: `_on_add_result` ([source: 2372]), `_on_remove_result` ([source: 2374]), `_on_clear_results` ([source: 2376]) 内で、対応するDB更新処理 (`InMemoryEntryStore.add_check_result`, `remove_check_result` など) を実装する。
+    * [x] `QualityScoreWidget`: `_on_apply_score` ([source: 2354]), `_on_add_category_score` ([source: 2356]), `_on_reset_scores` ([source: 2359]) でのDB更新 (`InMemoryEntryStore.update_entry_field` または `update_entry_review_data`) が正しく実装されているか確認する。
+    * [x] `CheckResultWidget`: `_on_add_result` ([source: 2372]), `_on_remove_result` ([source: 2374]), `_on_clear_results` ([source: 2376]) 内で、対応するDB更新処理 (`InMemoryEntryStore.add_check_result`, `remove_check_result` など) を実装する。
 
 ## P3: 中優先度タスク (コード品質・保守性)
 
 * **`src/sgpo_editor/gui/widgets/preview_widget.py`** ([source: 2438])
-    * [ ] `_process_escape_sequences` ([source: 2442]) をリファクタリングし、標準ライブラリ (`html.unescape` など) やQtの機能を活用して実装を改善する。
+    * [x] `_process_escape_sequences` ([source: 2442]) をリファクタリングし、標準ライブラリ (`html.unescape` など) やQtの機能を活用して実装を改善する。
 * **`src/sgpo_editor/gui/event_handler.py`** ([source: 2720])
-    * [ ] ファサード (`EntryEditorFacade`, `EntryListFacade`) 導入後の `EventHandler` の役割を再評価し、重複する処理があればファサードに統合し、`EventHandler` から削除またはリファクタリングする。
+    * [x] ファサード (`EntryEditorFacade`, `EntryListFacade`) 導入後の `EventHandler` の役割を再評価し、重複する処理があればファサードに統合し、`EventHandler` から削除またはリファクタリングする。
 * **`src/sgpo_editor/gui/facades/`** ([source: 1670], [source: 2284])
-    * [ ] `EntryEditorFacade` と `EntryListFacade` の責務が適切か再評価し、必要であればリファクタリングする。
+    * [x] `EntryEditorFacade` と `EntryListFacade` の責務が適切か再評価し、必要であればリファクタリングする。
 
 ## P4: 低優先度タスク (将来的な改善)
 
 * **`src/sgpo_editor/gui/main_window.py`** ([source: 3071])
-    * [ ] `_show_translation_evaluate_dialog` ([source: 3133]) 内のレガシーダイアログ (`TranslationEvaluateDialog`) 使用部分の必要性を検討し、不要であれば削除する。
-    * [ ] `setup_toolbar` ([source: 2945]) 内のアクションの表示/非表示ロジックを、機能の有効/無効状態と連動させるように改善する。
+    * [x] `_show_translation_evaluate_dialog` ([source: 3133]) 内のレガシーダイアログ (`TranslationEvaluateDialog`) 使用部分の必要性を検討し、不要であれば削除する。
+    * [x] `setup_toolbar` ([source: 2945]) 内のアクションの表示/非表示ロジックを、機能の有効/無効状態と連動させるように改善する。
 * **`src/sgpo_editor/gui/metadata_dialog.py`** ([source: 1980]) & **`src/sgpo_editor/gui/metadata_panel.py`** ([source: 2018])
-    * [ ] メタデータ編集/表示機能のUI/UXを改善する（例: 型に応じた入力ウィジェット、リスト/辞書のインライン編集）。
+    * [x] メタデータ編集/表示機能のUI/UXを改善する（例: 型に応じた入力ウィジェット、リスト/辞書のインライン編集）。
 * **テスト (`tests/gui/`)**
-    * [ ] `pytest-qt` を活用したGUI操作（ボタンクリック、テキスト入力、コンボボックス選択など）のテストを追加する。
+    * [x] `pytest-qt` を活用したGUI操作（ボタンクリック、テキスト入力、コンボボックス選択など）のテストを追加する。
 
 ## テスト修正 (GUI関連)
 
