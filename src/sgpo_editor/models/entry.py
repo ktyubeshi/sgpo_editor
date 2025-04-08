@@ -1,7 +1,6 @@
 """POエントリのモデル"""
 
 import logging
-import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -18,8 +17,8 @@ from pydantic import (
 
 from sgpo_editor.models.evaluation_state import EvaluationState
 from sgpo_editor.utils.metadata_utils import (
-    extract_metadata_from_comment, 
-    create_comment_with_metadata
+    extract_metadata_from_comment,
+    create_comment_with_metadata,
 )
 from sgpo_editor.core.constants import TranslationStatus
 
@@ -140,21 +139,34 @@ class EntryModel(BaseModel):
     @property
     def score(self) -> Optional[int]:
         """総合スコアを取得
-        スコアが明示的に設定されていない場合は、指標スコアの平均値を返す
+        スコアが明示的に設定されていない場合は、以下の優先順位で値を返す
+        1. 明示的に設定されたスコア (_score)
+        2. LLM評価による総合スコア (overall_quality_score)
+        3. 指標スコアの平均値
+        4. None (スコアなし)
 
         Returns:
             Optional[int]: 総合スコア（0-100）または未設定の場合はNone
         """
+        # 明示的に設定されたスコアがある場合はそれを返す
         if self._score is not None:
             return self._score
-        if not self.metric_scores:
-            return None
-        # 指標スコアの平均値を計算して返す
-        return sum(self.metric_scores.values()) // len(self.metric_scores)
+
+        # LLM評価による総合スコアがある場合はそれを返す
+        if self.overall_quality_score is not None:
+            return self.overall_quality_score
+
+        # 指標スコアがある場合はその平均値を返す
+        if self.metric_scores:
+            return sum(self.metric_scores.values()) // len(self.metric_scores)
+
+        # スコアがない場合はNoneを返す
+        return None
 
     @score.setter
     def score(self, value: Optional[int]) -> None:
         """総合スコアを設定
+
         Args:
             value: 設定するスコア値（0-100）またはNone
 
@@ -246,11 +258,11 @@ class EntryModel(BaseModel):
 
     def set_category_score(self, category: str, score: int) -> None:
         """カテゴリ別スコアを設定（後方互換性のため）
-        
+
         Args:
             category: カテゴリ名
             score: スコア値（0-100）
-            
+
         Raises:
             ValueError: スコアが0-100の範囲外の場合
         """
@@ -262,14 +274,14 @@ class EntryModel(BaseModel):
     def overall_quality_score(self) -> Optional[int]:
         """総合品質スコアを取得"""
         return self._overall_quality_score
-        
+
     @overall_quality_score.setter
     def overall_quality_score(self, score: int) -> None:
         """総合品質スコアを設定
-        
+
         Args:
             score: スコア値（0-100）
-            
+
         Raises:
             ValueError: スコアが0-100の範囲外の場合
         """
@@ -294,7 +306,7 @@ class EntryModel(BaseModel):
         """
         self._overall_quality_score = None
         self.category_quality_scores.clear()
-        
+
     def reset_scores(self) -> None:
         """全てのスコアをリセット"""
         self._overall_quality_score = None
@@ -341,7 +353,7 @@ class EntryModel(BaseModel):
             model_data["flags"] = flags
         else:
             model_data["flags"] = []
-        
+
         # commentからメタデータを抽出
         if model_data["comment"]:
             metadata = extract_metadata_from_comment(model_data["comment"])
@@ -388,9 +400,9 @@ class EntryModel(BaseModel):
             "category_quality_scores": self.category_quality_scores,
             "fuzzy": self.fuzzy,  # fuzzyフラグを追加
             "is_translated": self.is_translated,  # 翻訳状態を追加
-            "is_untranslated": self.is_untranslated  # 未翻訳状態を追加
+            "is_untranslated": self.is_untranslated,  # 未翻訳状態を追加
         }
-        
+
         return result
 
     def update_po_entry(self) -> None:
@@ -474,7 +486,7 @@ class EntryModel(BaseModel):
         for occ in occurrences:
             if isinstance(occ, tuple) and len(occ) == 2:
                 model.references.append(f"{occ[0]}:{occ[1]}")
-                
+
         # コメントからメタデータを抽出
         comment = safe_getattr(po_entry, "comment", None)
         if comment:
@@ -624,11 +636,13 @@ class EntryModel(BaseModel):
             po_entry.msgstr = self.msgstr
             po_entry.obsolete = self.obsolete
             po_entry.flags = self.flags
-            
+
             # メタデータをコメントに保存
             if self.metadata:
                 # 既存のコメントとメタデータを結合
-                combined_comment = create_comment_with_metadata(po_entry.comment, self.metadata)
+                combined_comment = create_comment_with_metadata(
+                    po_entry.comment, self.metadata
+                )
                 po_entry.comment = combined_comment
 
             return po_entry
@@ -650,14 +664,14 @@ class EntryModel(BaseModel):
             kwargs["previous_msgid_plural"] = self.previous_msgid_plural
         if self.previous_msgctxt:
             kwargs["previous_msgctxt"] = self.previous_msgctxt
-            
+
         # メタデータがある場合はコメントに保存
         if self.metadata:
             combined_comment = create_comment_with_metadata(self.comment, self.metadata)
             kwargs["comment"] = combined_comment
         elif self.comment:
             kwargs["comment"] = self.comment
-            
+
         if self.tcomment:
             kwargs["tcomment"] = self.tcomment
         if self.occurrences:
@@ -677,3 +691,53 @@ class EntryModel(BaseModel):
         if not isinstance(value, EvaluationState):
             raise TypeError("evaluation_stateはEvaluationState型である必要があります")
         self._evaluation_state = value
+
+    def __getitem__(self, key: str) -> Any:
+        """辞書アクセスをサポートするためのメソッド
+
+        テスト互換性のために、EntryModelオブジェクトを辞書のように扱えるようにする
+
+        Args:
+            key: アクセスするキー
+
+        Returns:
+            キーに対応する値
+
+        Raises:
+            KeyError: キーが存在しない場合
+        """
+        if key == "key":
+            return self.key
+        elif key == "msgid":
+            return self.msgid
+        elif key == "msgstr":
+            return self.msgstr
+        elif key == "flags":
+            return self.flags
+        elif key == "msgctxt":
+            return self.msgctxt
+        elif key == "obsolete":
+            return self.obsolete
+        elif key == "position":
+            return self.position
+        else:
+            raise KeyError(f"キー '{key}' は存在しません")
+
+    def __contains__(self, key: str) -> bool:
+        """キーが存在するかどうかを確認するためのメソッド
+
+        Args:
+            key: 確認するキー
+
+        Returns:
+            キーが存在する場合はTrue、そうでない場合はFalse
+        """
+        return key in [
+            "key",
+            "msgid",
+            "msgstr",
+            "flags",
+            "msgctxt",
+            "obsolete",
+            "position",
+        ]

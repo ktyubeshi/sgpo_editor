@@ -405,12 +405,16 @@ class POFormatEditor(QDialog):
                 if not entry:
                     # キーが見つからない場合はmsgidに基づいて絞り込み検索を行う
                     # フィルタを使って効率的に検索
-                    filtered_entries = po_file.get_filtered_entries(filter_keyword=msgid)
+                    filtered_entries = po_file.get_filtered_entries(
+                        filter_keyword=msgid
+                    )
                     for e in filtered_entries:
                         # msgidが完全一致かつmsgctxtも一致（またはともにNone）する場合
                         if e.msgid == msgid and e.msgctxt == msgctxt:
                             entry = e
-                            logger.debug(f"エントリを絞り込み検索で発見: key={e.key}, msgid={msgid}")
+                            logger.debug(
+                                f"エントリを絞り込み検索で発見: key={e.key}, msgid={msgid}"
+                            )
                             break
 
                 if entry:
@@ -419,7 +423,9 @@ class POFormatEditor(QDialog):
                         # エントリのmsgstrを更新
                         old_msgstr = entry.msgstr
                         entry.msgstr = msgstr
-                        logger.debug(f"エントリ更新開始: key={entry.key}, msgid={entry.msgid}")
+                        logger.debug(
+                            f"エントリ更新開始: key={entry.key}, msgid={entry.msgid}"
+                        )
                         # トランザクション内で更新を行う
                         try:
                             # 更新されたエントリを保存
@@ -437,10 +443,14 @@ class POFormatEditor(QDialog):
                         except Exception as update_error:
                             # 例外発生時も元の値に戻す
                             entry.msgstr = old_msgstr
-                            logger.exception(f"エントリ更新中に例外発生: {update_error}")
+                            logger.exception(
+                                f"エントリ更新中に例外発生: {update_error}"
+                            )
                             not_found_count += 1
                 else:
-                    logger.warning(f"エントリが見つかりませんでした: msgid={msgid}, msgctxt={msgctxt}")
+                    logger.warning(
+                        f"エントリが見つかりませんでした: msgid={msgid}, msgctxt={msgctxt}"
+                    )
                     not_found_count += 1
 
             # 結果を表示
@@ -481,23 +491,19 @@ class POFormatEditor(QDialog):
                 continue
 
             # 現在のエントリのコンテキスト
-            current_context = {
-                "msgid": "",
-                "msgstr": "",
-                "msgctxt": None
-            }
+            current_context = {"msgid": "", "msgstr": "", "msgctxt": None}
 
             # 行ごとに処理
             lines = entry_text.split("\n")
             current_key = None
-            
+
             for i, line in enumerate(lines):
                 line = line.strip()
-                
+
                 # コメント行はスキップ
                 if line.startswith("#"):
                     continue
-                
+
                 # msgid、msgstr、msgctxtの行を処理
                 if line.startswith("msgid "):
                     current_key = "msgid"
@@ -545,13 +551,13 @@ class POFormatEditor(QDialog):
         match = re.match(r'"(.*?)"', text)
         if not match:
             return ""
-            
+
         content = match.group(1)
-        
+
         # POファイル形式のエスケープシーケンスを処理
         content = content.replace('\\"', '"')  # ダブルクォートのエスケープを解除
-        content = content.replace('\\n', '\n')  # 改行のエスケープを解除
-        content = content.replace('\\t', '\t')  # タブのエスケープを解除
-        content = content.replace('\\\\', '\\')  # バックスラッシュのエスケープを解除
-        
+        content = content.replace("\\n", "\n")  # 改行のエスケープを解除
+        content = content.replace("\\t", "\t")  # タブのエスケープを解除
+        content = content.replace("\\\\", "\\")  # バックスラッシュのエスケープを解除
+
         return content
