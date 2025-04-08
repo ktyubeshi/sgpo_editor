@@ -1,19 +1,29 @@
-# SGPOエディタ ToDoリスト
+レビューお疲れ様です。キャッシュ関連の命名や役割を明確化する修正、お疲れ様でした。
+提供されたコードベースとToDoリスト (`_doc/todo.md`) をレビューし、キャッシュ関連の改善タスクの進捗状況を評価しました。
 
-このドキュメントは、SGPOエディタプロジェクトの今後の開発タスクを管理します。
+**評価結果**
+
+キャッシュ関連の改善について、`src/sgpo_editor/core/viewer_po_file.py` 内のキャッシュ変数名の一部 (`_complete_entry_cache`, `_entry_basic_info_cache`, `_cache_enabled`) が変更され、命名の明確化に向けた第一歩が踏み出されています ([source: 2799], [source: 2800])。
+
+しかし、ToDoリストに記載されている以下のキャッシュ改善タスクについては、まだ完了していない、または部分的な対応に留まっているようです。
+
+* フィルタリング結果キャッシュ関連の命名・役割明確化 (`ViewerPOFile`)
+* 各種キャッシュ利用・更新・無効化ロジックの役割明確化とドキュメント化 (`ViewerPOFile`)
+* `TableManager`, `EventHandler`, `EntryListFacade`, `POFormatEditor` におけるキャッシュ利用ロジックと `ViewerPOFile` との連携方法、役割分担の明確化
+
+**更新されたToDoリスト**
+
+以下に、現在の状況を反映したToDoリストをファイル名ごとに整理して示します。
+
+---
+
+# SGPOエディタ ToDoリスト (更新版)
 
 ## P1: 最優先タスク (バグ修正・安定性)
 
-* **`src/sgpo_editor/gui/widgets/po_format_editor.py`**
-    * [x] `_on_apply_clicked` メソッドで発生するエラー（`_doc/issue/po_format_window/適用に失敗する.md`参照）の修正。
-        * 原因調査: `ViewerPOFile.get_entry_by_key` でエントリが見つからない、または `ViewerPOFile.update_entry` の呼び出しに問題がある可能性。`get_filtered_entries` を使用した代替検索ロジックの検証。
-        * `ViewerPOFile.update_entry` の呼び出し前に、EntryModelオブジェクトが正しく構築・更新されているか確認。
-        * データベース更新 (`Database.update_entry`) がトランザクション内で正しく実行され、コミットされているか確認。
-    * [x] `_parse_po_format` の実装が、複数行のmsgid/msgstrや特殊文字を正しく処理できるか検証・修正。可能であれば `polib` や `sgpo` ライブラリの解析機能を利用する。
-
 * **`src/sgpo_editor/core/viewer_po_file.py`**
-    * [x] キャッシュ無効化ロジック (`_force_filter_update`) が `update_entry` 後に確実に機能し、`get_filtered_entries` で適切にリセットされるように修正・検証。
-    * [x] `update_entry` 実行後、MainWindowの `_update_table` が呼び出され、キャッシュフラグがリセットされた状態で `get_filtered_entries` が実行されることを保証する仕組みの確認・修正。
+    * [x] キャッシュ無効化ロジック (`_force_filter_update`) が `update_entry` 後に確実に機能し、`get_filtered_entries` で適切にリセットされるように修正・検証済 ([source: 17, 1472])。
+    * [x] `update_entry` 実行後、MainWindowの `_update_table` が呼び出され、キャッシュフラグがリセットされた状態で `get_filtered_entries` が実行されることを保証する仕組みを確認済 ([source: 2593], [source: 2865], [source: 2146])。
     * [ ] 修正によって影響を受けた単体テストの修正。特に以下のテストに注目：
         * `tests/integration/test_viewer_po_file.py::test_get_entries`
         * `tests/integration/test_viewer_po_file.py::test_search_entries`
@@ -30,11 +40,11 @@
     * [ ] **責務分割**: キャッシュ管理ロジックを新しいクラス (`EntryCacheManager` など) に分離するリファクタリング。
     * [ ] **責務分割**: データベースアクセスロジック (`db.get_entries` など) を新しいクラス (`DatabaseAccessor` など) に分離するリファクタリング。
     * [ ] ファイル読み込み (`load`) 処理の非同期化を検討し、UIの応答性を改善する。進捗表示も実装する。
-    * [ ] **【キャッシュ改善】**: `_entry_cache` (完全なEntryModelオブジェクトのキャッシュ) と `_basic_info_cache` (基本情報のみのキャッシュ) の命名と役割を明確化する。
-    * [ ] **【キャッシュ改善】**: `get_entry_by_key`, `get_entries_by_keys`, `get_entry_basic_info` におけるキャッシュの利用ロジックと命名を見直し、役割を明確にする。
-    * [ ] **【キャッシュ改善】**: フィルタリング結果のキャッシュ (`_filtered_entries_cache`, `_filtered_entries_cache_key`, `_force_filter_update`) の命名と、`get_filtered_entries` における更新/無効化ロジックの役割を明確化する。
-    * [ ] **【キャッシュ改善】**: `update_entry` 内でのキャッシュ更新 (`_entry_cache`, `_basic_info_cache`) およびキャッシュ無効化フラグ (`_force_filter_update`) 設定の役割をドキュメント化し、関連する命名を見直す。
-    * [ ] **【キャッシュ改善】**: `_clear_cache`, `enable_cache`, `prefetch_entries` の命名とキャッシュ戦略における役割を明確化する。
+    * [ ] **【キャッシュ改善】**: キャッシュ変数 (`_complete_entry_cache`, `_entry_basic_info_cache`) の命名を再評価し、役割をドキュメントで明確化する。([source: 2799] で一部対応済み)
+    * [ ] **【キャッシュ改善】**: `get_entry_by_key`, `get_entries_by_keys`, `get_entry_basic_info` におけるキャッシュ利用ロジックの役割をドキュメント化し、関連する命名を見直す。
+    * [ ] **【キャッシュ改善】**: フィルタリング結果キャッシュ関連 (`_filtered_entries_cache`, `_filtered_entries_cache_key`, `_force_filter_update`) の命名と、`get_filtered_entries` における更新/無効化ロジックの役割を明確化する。
+    * [ ] **【キャッシュ改善】**: `update_entry` 内でのキャッシュ更新 (`_complete_entry_cache`, `_entry_basic_info_cache`) およびキャッシュ無効化フラグ (`_force_filter_update`) 設定の役割をドキュメント化し、関連する命名を見直す。
+    * [ ] **【キャッシュ改善】**: `_clear_cache`, `_cache_enabled`, `prefetch_entries` の命名とキャッシュ戦略における役割を明確化する。([source: 2905], [source: 2800], [source: 2906] で一部対応済み)
 
 * **`src/sgpo_editor/gui/evaluation_dialog.py` & `src/sgpo_editor/utils/llm_utils.py`**
     * [ ] LLM評価実行 (`_evaluate`) を非同期処理（例: `QThread`, `QRunnable`）に変更し、UIのフリーズを防止する。
@@ -43,7 +53,7 @@
 
 * **`src/sgpo_editor/gui/table_manager.py`**
     * [ ] 列の表示/非表示機能 (`toggle_column_visibility`) が確実に動作し、状態がUI (メニュー) と同期するように修正・検証。
-    * [ ] Score列の表示・ソート機能の実装。`_sort_entries_by_score` の実装と `update_table_contents` でのスコア表示。
+    * [ ] Score列の表示・ソート機能の実装。`_sort_entries_by_score` の実装と `_update_table_contents` でのスコア表示。
     * [ ] **【キャッシュ改善】**: 内部の `_entry_cache` と `ViewerPOFile` のキャッシュとの関係性・役割分担を明確にする。命名も見直す。
 
 * **`src/sgpo_editor/models/entry.py`**
@@ -118,3 +128,7 @@
 * **Entryモデル関連のテスト修正**
     * [ ] `tests/models/entry/test_entry_list_integration.py::test_entry_list_status_display`
     * [ ] `tests/models/entry/test_entry_structure.py::TestEntryStructure` のテスト
+
+---
+
+引き続き、残りのキャッシュ改善タスクや他のToDoを進めていくことをお勧めします。特に、各コンポーネント間のキャッシュ連携と役割分担を明確にすることで、コードの保守性やパフォーマンスがさらに向上するでしょう。
