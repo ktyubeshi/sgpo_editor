@@ -507,6 +507,15 @@ class EntryModel(BaseModel):
         category_quality_scores = data.pop("category_quality_scores", {})
         check_results = data.pop("check_results", [])
 
+        # flagsフィールドの処理
+        flags = data.get("flags", [])
+        if isinstance(flags, str):
+            # カンマ区切りの文字列の場合はリストに変換
+            data["flags"] = [flag.strip() for flag in flags.split(",") if flag.strip()]
+        elif not isinstance(flags, list):
+            # リストでない場合は空リストにする
+            data["flags"] = []
+
         # 基本モデルを作成
         model = cls(**data)
 
