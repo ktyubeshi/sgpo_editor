@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         self.ui_manager.setup_dock_widgets()
 
         # ツールバー
-        self.ui_manager.setup_toolbar(self.entry_editor._show_review_dialog)
+        self.ui_manager.setup_toolbar(self.entry_editor_facade.show_review_dialog)
 
         # メニューバー
         self.ui_manager.setup_menubar({
@@ -181,11 +181,11 @@ class MainWindow(QMainWindow):
             logger.debug("MainWindow._open_file: ファイルを開くのに失敗しました")
             return
 
-        # EntryEditorにデータベースを設定
+        # EntryEditorにデータベースを設定（ファサード経由）
         current_po = self._get_current_po()
         if current_po:
-            logger.debug(f"MainWindow._open_file: EntryEditorにデータベースを設定")
-            self.entry_editor.database = current_po.db
+            logger.debug(f"MainWindow._open_file: ファサード経由でデータベースを設定")
+            self.entry_editor_facade.set_database(current_po.db)
             logger.debug(f"MainWindow._open_file: データベース設定完了")
 
         # 最近使用したファイルメニューを更新
@@ -205,11 +205,11 @@ class MainWindow(QMainWindow):
                 logger.debug(f"MainWindow._open_recent_file: ファイル '{filepath}' を開くのに失敗しました")
                 return
 
-            # EntryEditorにデータベースを設定
+            # EntryEditorにデータベースを設定（ファサード経由）
             current_po = self._get_current_po()
             if current_po:
-                logger.debug(f"MainWindow._open_recent_file: EntryEditorにデータベースを設定")
-                self.entry_editor.database = current_po.db
+                logger.debug(f"MainWindow._open_recent_file: ファサード経由でデータベースを設定")
+                self.entry_editor_facade.set_database(current_po.db)
                 logger.debug(f"MainWindow._open_recent_file: データベース設定完了")
 
             # 最近使用したファイルメニューを更新

@@ -144,19 +144,24 @@
     * [ ] **列表示:** `toggle_column_visibility` などのUI状態変更が、メニュー (`UIManager`) と同期が取れているか確認します。 [source:2942]
 * **`widgets/entry_editor.py`** [source:2513]
     * [ ] **データバインディング:** `set_entry` や `_on_msgstr_changed` などでの `EntryModel` とUI要素のデータ同期ロジックを確認し、`EntryEditorFacade` 経由での更新に統一できないか検討します。 [source:2539, 2536]
-    * [ ] **`_on_apply_clicked`:** このメソッド内のデータベース更新ロジックは `EntryEditorFacade.apply_changes` に完全に移譲し、このメソッドはシグナル発行のみに専念させます。 [source:2530]
+    * [✅] **`_on_apply_clicked`:** このメソッド内のデータベース更新ロジックは `EntryEditorFacade.apply_changes` に完全に移譲し、このメソッドはシグナル発行のみに専念させます。 [source:2530]
 * **`widgets/po_format_editor.py`** [source:2556]
     * [ ] **エントリ検索:** `_on_apply_clicked` 内のエントリ検索ロジック (`get_entry_by_key`, `get_filtered_entries`) が最新のコア層の実装と整合性が取れているか確認します。特にキー形式が `|msgid` と `msgctxt\x04msgid` で統一されているか確認します。 [source:2587, 2588]
     * [ ] **エントリ更新:** `po_file.update_entry` の呼び出し部分がキャッシュ更新を含めて正しく動作するか確認します。 [source:2595]
     * [ ] **構文解析:** `_parse_po_format` が様々なPO形式（コメント、複数行msgid/msgstrなど）を正しく解析できるか確認します。 [source:2604]
 * **`facades/entry_editor_facade.py`** [source:1859]
-    * [ ] **責務範囲:** `apply_changes` がエントリ更新とシグナル発行以外の余計な処理（UI更新など）を含んでいないか確認します。 [source:1865]
+    * [✅] **責務範囲:** `apply_changes` がエントリ更新とシグナル発行以外の余計な処理（UI更新など）を含んでいないか確認します。 [source:1865]
+    * [✅] **レビューダイアログ対応:** `show_review_dialog`メソッドを追加し、レビューダイアログの表示もファサード経由で行えるようにします。
+    * [✅] **データベース連携:** `set_database`、`get_database`メソッドを追加し、データベース参照の設定・取得もファサード経由で行えるようにします。
 * **`facades/entry_list_facade.py`** [source:2359]
     * [ ] **`update_table`:** `ViewerPOFile.get_filtered_entries(update_filter=True)` の呼び出しが意図通りキャッシュを更新しているか確認します。`TableManager.update_table` との連携ロジックをレビューします。 [source:2364]
     * [ ] **エントリ選択:** `select_entry_by_key` がテーブルの表示状態（ソート、フィルタリング）に関わらず正しく動作するか確認します。 [source:2372]
 * **その他UIウィジェット:**
-    * [ ] 各ウィジェットがデータを直接操作せず、ファサードやシグナル/スロットを通じて連携しているか確認します。
-    * [ ] `EvaluationDialog`, `TranslationEvaluateDialog` など、LLM連携部分のエラーハンドリングと非同期処理を確認します。 [source:2221, 1922]
+    * [✅] **直接データベース操作の削減:** ウィジェットからデータベースの直接操作を減らし、ファサードを介して行うように修正します。
+    * [ ] **残りのウィジェット確認:** 各ウィジェットがデータを直接操作せず、ファサードやシグナル/スロットを通じて連携しているか確認します。
+    * [ ] **LLM連携処理:** `EvaluationDialog`, `TranslationEvaluateDialog` など、LLM連携部分のエラーハンドリングと非同期処理を確認します。 [source:2221, 1922]
+* **MainWindow** [source:3150]
+    * [✅] **EntryEditorFacade活用:** `MainWindow`内のエントリ編集関連処理をEntryEditorFacadeを介して行うように修正します。
 
 **データモデル層 (sgpo_editor/models):**
 
@@ -193,3 +198,31 @@
     * [ ] ファサードパターンの導入意図と使い方について追記または更新します。 [source:1742]
 
 このリストは網羅的ではないかもしれませんが、コードベースの主要な改善点をカバーしています。優先度を付けて段階的に取り組むことをお勧めします。
+
+## 4. 最近の改善内容
+
+### データベース操作のファサードパターン適用
+
+EntryEditorウィジェットのデータベース直接操作を排除し、EntryEditorFacadeを介した操作に変更しました。
+
+1. **EntryEditorFacadeの拡張**
+   - `show_review_dialog` メソッドを追加：レビューダイアログ表示をファサード経由で行えるように
+   - `set_database` メソッドを追加：データベース参照設定をファサード経由で行えるように
+   - `get_database` メソッドを追加：データベース参照取得をファサード経由で行えるように
+
+2. **EntryEditorの改善**
+   - `_on_fuzzy_changed` メソッドから直接データベース更新を排除
+   - `_on_apply_clicked` メソッドからデータベース更新ロジックを排除し、シグナル発行のみを行うように修正
+   - 各メソッドにデバッグログを追加し、処理の流れを追跡しやすくした
+
+3. **MainWindowの改善**
+   - `_open_file` と `_open_recent_file` メソッド内のEntryEditor直接操作をEntryEditorFacade経由に変更
+   - UISetupの `setup_toolbar` メソッド呼び出しをEntryEditorFacade経由に変更
+
+これらの改善により、以下の効果が得られました：
+- コードの結合度が低下し、保守性が向上
+- 責務の分離が進み、各クラスの役割が明確化
+- デバッグログが充実し、問題解決が容易に
+- ファサードパターンの一貫性が向上
+
+今後の課題としては、レビューダイアログウィジェットなど、まだデータベースに直接アクセスしている箇所のファサード化や、EventHandlerとファサードの役割整理が残っています。
