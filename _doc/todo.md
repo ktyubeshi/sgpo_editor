@@ -108,7 +108,9 @@
     * 優先度: **中**
 * [✅] **`src/sgpo_editor/core/database_accessor.py` の役割強化:** [source:2180]
     * フィルタリング、ソート、検索ロジックを可能な限り `DatabaseAccessor` (および内部の `src/sgpo_editor/models/database.py` [source:2658]) に集約します。SQLレベルでの最適化とインデックスの有効活用を確認します。
-    * 優先度: **高**
+    * advanced_search メソッドを強化し、より柔軟な検索条件（大文字小文字の区別、完全一致、検索対象フィールドの指定など）をサポートしました。
+    * invalidate_entry メソッドを強化し、キャッシュシステムとの連携フローを明確化しました。
+    * 優先度: **高** (✅完了)
 * [ ] **`src/sgpo_editor/core/po_interface.py` 他アダプター:** [source:1473, 1486, 1507]
     * `POEntry`, `POFile` インターフェースと各アダプター (`polib_adapter.py`, `sgpo_adapter.py`) の実装に齟齬がないか確認します。
     * 優先度: **中**
