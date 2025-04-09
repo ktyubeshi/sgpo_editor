@@ -15,6 +15,7 @@
 import logging
 import hashlib
 import json
+import time
 from typing import Optional, List, Dict, Any
 
 from sgpo_editor.models.entry import EntryModel
@@ -80,6 +81,20 @@ class EntryCacheManager:
         # 用途: エントリ更新後など、キャッシュが古くなった場合に強制更新
         self._force_filter_update: bool = False
 
+        # パフォーマンス計測用のカウンター
+        self._complete_cache_hits: int = 0
+        self._complete_cache_misses: int = 0
+        self._basic_cache_hits: int = 0
+        self._basic_cache_misses: int = 0
+        self._filter_cache_hits: int = 0
+        self._filter_cache_misses: int = 0
+        
+        # 時間計測用の変数
+        self._last_performance_log_time: float = time.time()
+        
+        # ログ間隔（秒）- デフォルトは60秒
+        self._performance_log_interval: int = 60
+
         logger.debug("EntryCacheManager: 初期化完了")
 
     def clear_all_cache(self) -> None:
@@ -94,6 +109,101 @@ class EntryCacheManager:
         self._filtered_entries_cache = []
         self._filtered_entries_cache_key = ""
         self._force_filter_update = True  # 次回のフィルタ処理で強制的に更新
+        
+        # パフォーマンスカウンターもリセット
+        self._reset_performance_counters()
+
+    def _reset_performance_counters(self) -> None:
+        """パフォーマンス計測用カウンターをリセットする"""
+        self._complete_cache_hits = 0
+        self._complete_cache_misses = 0
+        self._basic_cache_hits = 0
+        self._basic_cache_misses = 0
+        self._filter_cache_hits = 0
+        self._filter_cache_misses = 0
+        self._last_performance_log_time = time.time()
+
+    def set_performance_log_interval(self, seconds: int) -> None:
+        """パフォーマンスログの出力間隔を設定する
+
+        Args:
+            seconds: ログ出力間隔（秒）
+        """
+        self._performance_log_interval = max(1, seconds)  # 最小1秒
+        logger.debug(f"パフォーマンスログ間隔を{self._performance_log_interval}秒に設定")
+
+    def _check_and_log_performance(self) -> None:
+        """パフォーマンス指標をチェックし、必要に応じてログに出力する"""
+        current_time = time.time()
+        if current_time - self._last_performance_log_time >= self._performance_log_interval:
+            self._log_cache_performance()
+            self._last_performance_log_time = current_time
+
+    def _log_cache_performance(self) -> None:
+        """キャッシュのパフォーマンス指標をログに出力する"""
+        # 完全キャッシュのヒット率
+        complete_total = self._complete_cache_hits + self._complete_cache_misses
+        complete_hit_rate = 0.0 if complete_total == 0 else (self._complete_cache_hits / complete_total * 100)
+        
+        # 基本情報キャッシュのヒット率
+        basic_total = self._basic_cache_hits + self._basic_cache_misses
+        basic_hit_rate = 0.0 if basic_total == 0 else (self._basic_cache_hits / basic_total * 100)
+        
+        # フィルタキャッシュのヒット率
+        filter_total = self._filter_cache_hits + self._filter_cache_misses
+        filter_hit_rate = 0.0 if filter_total == 0 else (self._filter_cache_hits / filter_total * 100)
+        
+        # キャッシュサイズ
+        complete_size = len(self._complete_entry_cache)
+        basic_size = len(self._entry_basic_info_cache)
+        
+        logger.info(
+            f"キャッシュパフォーマンス指標:\n"
+            f"  完全キャッシュ: {complete_hit_rate:.1f}% ヒット ({self._complete_cache_hits}/{complete_total}), サイズ: {complete_size}\n"
+            f"  基本情報キャッシュ: {basic_hit_rate:.1f}% ヒット ({self._basic_cache_hits}/{basic_total}), サイズ: {basic_size}\n"
+            f"  フィルタキャッシュ: {filter_hit_rate:.1f}% ヒット ({self._filter_cache_hits}/{filter_total})"
+        )
+
+    def get_cache_performance(self) -> Dict[str, Any]:
+        """キャッシュのパフォーマンス指標を取得する
+
+        Returns:
+            Dict[str, Any]: パフォーマンス指標を含む辞書
+        """
+        # 完全キャッシュのヒット率
+        complete_total = self._complete_cache_hits + self._complete_cache_misses
+        complete_hit_rate = 0.0 if complete_total == 0 else (self._complete_cache_hits / complete_total * 100)
+        
+        # 基本情報キャッシュのヒット率
+        basic_total = self._basic_cache_hits + self._basic_cache_misses
+        basic_hit_rate = 0.0 if basic_total == 0 else (self._basic_cache_hits / basic_total * 100)
+        
+        # フィルタキャッシュのヒット率
+        filter_total = self._filter_cache_hits + self._filter_cache_misses
+        filter_hit_rate = 0.0 if filter_total == 0 else (self._filter_cache_hits / filter_total * 100)
+        
+        return {
+            "complete_cache": {
+                "hits": self._complete_cache_hits,
+                "misses": self._complete_cache_misses,
+                "hit_rate": complete_hit_rate,
+                "size": len(self._complete_entry_cache),
+            },
+            "basic_cache": {
+                "hits": self._basic_cache_hits,
+                "misses": self._basic_cache_misses,
+                "hit_rate": basic_hit_rate,
+                "size": len(self._entry_basic_info_cache),
+            },
+            "filter_cache": {
+                "hits": self._filter_cache_hits,
+                "misses": self._filter_cache_misses,
+                "hit_rate": filter_hit_rate,
+                "size": len(self._filtered_entries_cache),
+            },
+            "cache_enabled": self._cache_enabled,
+            "force_filter_update": self._force_filter_update,
+        }
 
     def clear_cache(self) -> None:
         """キャッシュをクリアする (互換性のため残している)
@@ -222,7 +332,16 @@ class EntryCacheManager:
         if not self._cache_enabled:
             return None
 
-        return self._complete_entry_cache.get(key)
+        entry = self._complete_entry_cache.get(key)
+        if entry:
+            # キャッシュヒット
+            self._complete_cache_hits += 1
+            self._check_and_log_performance()
+            return entry
+        else:
+            # キャッシュミス
+            self._complete_cache_misses += 1
+            return None
 
     def get_basic_info_entry(self, key: str) -> Optional[EntryModel]:
         """基本情報のみのエントリをキャッシュから取得する
@@ -236,7 +355,16 @@ class EntryCacheManager:
         if not self._cache_enabled:
             return None
 
-        return self._entry_basic_info_cache.get(key)
+        entry = self._entry_basic_info_cache.get(key)
+        if entry:
+            # キャッシュヒット
+            self._basic_cache_hits += 1
+            self._check_and_log_performance()
+            return entry
+        else:
+            # キャッシュミス
+            self._basic_cache_misses += 1
+            return None
 
     def cache_complete_entry(self, key: str, entry: EntryModel) -> None:
         """完全なエントリをキャッシュに保存する
@@ -383,6 +511,7 @@ class EntryCacheManager:
 
         # 強制更新フラグがある場合はキャッシュを無視
         if self._force_filter_update:
+            self._filter_cache_misses += 1
             return None
 
         # フィルタ条件からキャッシュキーを生成
@@ -393,8 +522,11 @@ class EntryCacheManager:
             logger.debug(
                 f"EntryCacheManager.get_filtered_entries_cache: キャッシュヒット key={cache_key}"
             )
+            self._filter_cache_hits += 1
+            self._check_and_log_performance()
             return self._filtered_entries_cache
             
+        self._filter_cache_misses += 1
         return None
         
     def cache_filtered_entries(
