@@ -114,6 +114,26 @@ class SgpoEntry(POEntry):
         elif not value and "fuzzy" in self._entry.flags:
             self._entry.flags.remove("fuzzy")
 
+    @property
+    def msgid_plural(self) -> Optional[str]:
+        """複数形のメッセージID"""
+        return getattr(self._entry, "msgid_plural", None)
+
+    @msgid_plural.setter
+    def msgid_plural(self, value: Optional[str]) -> None:
+        """複数形のメッセージIDを設定"""
+        self._entry.msgid_plural = value
+
+    @property
+    def msgstr_plural(self) -> Dict[int, str]:
+        """複数形の翻訳文"""
+        return getattr(self._entry, "msgstr_plural", {})
+
+    @msgstr_plural.setter
+    def msgstr_plural(self, value: Dict[int, str]) -> None:
+        """複数形の翻訳文を設定"""
+        self._entry.msgstr_plural = value
+
     def get_native_entry(self) -> Any:
         """ネイティブのPOEntryオブジェクトを取得"""
         return self._entry

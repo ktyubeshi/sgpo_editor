@@ -120,6 +120,30 @@ class POEntry(abc.ABC):
         """ファジーフラグを設定"""
         pass
 
+    @property
+    @abc.abstractmethod
+    def msgid_plural(self) -> Optional[str]:
+        """複数形のメッセージID"""
+        pass
+
+    @msgid_plural.setter
+    @abc.abstractmethod
+    def msgid_plural(self, value: Optional[str]) -> None:
+        """複数形のメッセージIDを設定"""
+        pass
+
+    @property
+    @abc.abstractmethod
+    def msgstr_plural(self) -> Dict[int, str]:
+        """複数形の翻訳文"""
+        pass
+
+    @msgstr_plural.setter
+    @abc.abstractmethod
+    def msgstr_plural(self, value: Dict[int, str]) -> None:
+        """複数形の翻訳文を設定"""
+        pass
+
 
 class POFile(abc.ABC):
     """POファイルの抽象クラス"""
