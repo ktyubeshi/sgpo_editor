@@ -3,6 +3,7 @@
 このモジュールは、UIコンポーネントの設定と管理に関する機能を提供します。
 """
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -160,10 +161,12 @@ class UIManager:
         # ファイルメニュー
         file_menu = self.main_window.menuBar().addMenu("ファイル")
 
-        # 開く
+        # 開く - 非同期メソッドを呼び出せるようにasyncioでラップ
         open_action = QAction("開く...", self.main_window)
         open_action.setShortcut(QKeySequence.StandardKey.Open)
-        open_action.triggered.connect(callbacks["open_file"])
+        open_action.triggered.connect(
+            lambda: asyncio.create_task(callbacks["open_file"]())
+        )
         file_menu.addAction(open_action)
 
         # 最近使用した項目を開く
@@ -368,8 +371,9 @@ class UIManager:
             action = QAction(Path(filepath).name, self.main_window)
             action.setData(filepath)
             action.setStatusTip(filepath)
+            # 非同期メソッドを呼び出せるようにasyncioでラップ
             action.triggered.connect(
-                lambda checked=False, path=filepath: callback(path)
+                lambda checked=False, path=filepath: asyncio.create_task(callback(path))
             )
             self.recent_files_menu.addAction(action)
             self.recent_file_actions.append(action)

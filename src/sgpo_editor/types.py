@@ -20,6 +20,9 @@ EntryModelMap: TypeAlias = Dict[str, EntryModel]
 # EntryModelのリスト
 EntryModelList: TypeAlias = List[EntryModel]
 
+# フィルタリング済みEntryModelのリスト
+FilteredEntriesList: TypeAlias = List[EntryModel]
+
 # フラグ条件を表す辞書
 FlagConditions: TypeAlias = Dict[str, Any]
 

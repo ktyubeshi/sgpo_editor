@@ -9,7 +9,7 @@ from sgpo.core import (
     pofile,
     pofile_from_text,
 )
-from sgpo_editor.core import ViewerPOFile
+from sgpo_editor.core import ViewerPOFile, ViewerPOFileRefactored
 
 SgPo = SGPOFile  # Alias for backward compatibility
 
@@ -21,6 +21,7 @@ __all__ = [
     "SGPOFile",
     "SgPo",
     "ViewerPOFile",
+    "ViewerPOFileRefactored",
     "pofile",
     "pofile_from_text",
 ]

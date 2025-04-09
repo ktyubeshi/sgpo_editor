@@ -172,9 +172,14 @@ class MainWindow(QMainWindow):
         """
         return self.file_handler.current_po
 
-    def _open_file(self) -> None:
-        """ファイルを開く"""
-        self.file_handler.open_file()
+    async def _open_file(self) -> None:
+        """ファイルを開く（非同期）"""
+        # file_handlerの非同期メソッドを呼び出す
+        success = await self.file_handler.open_file()
+        
+        if not success:
+            logger.debug("MainWindow._open_file: ファイルを開くのに失敗しました")
+            return
 
         # EntryEditorにデータベースを設定
         current_po = self._get_current_po()
@@ -186,14 +191,19 @@ class MainWindow(QMainWindow):
         # 最近使用したファイルメニューを更新
         self.ui_manager.update_recent_files_menu(self._open_recent_file)
 
-    def _open_recent_file(self, filepath: str) -> None:
-        """最近使用したファイルを開く
+    async def _open_recent_file(self, filepath: str) -> None:
+        """最近使用したファイルを開く（非同期）
 
         Args:
             filepath: ファイルパス
         """
         if filepath:
-            self.file_handler.open_file(filepath)
+            # file_handlerの非同期メソッドを呼び出す
+            success = await self.file_handler.open_file(filepath)
+            
+            if not success:
+                logger.debug(f"MainWindow._open_recent_file: ファイル '{filepath}' を開くのに失敗しました")
+                return
 
             # EntryEditorにデータベースを設定
             current_po = self._get_current_po()

@@ -8,12 +8,13 @@ from __future__ import annotations
 import logging
 import traceback
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 
 # 循環インポートを避けるために型アノテーションを文字列に変更
 
@@ -42,7 +43,7 @@ class FileHandler:
             status_callback: ステータス表示用コールバック
         """
         self.parent = parent
-        self.current_po: Optional["ViewerPOFile"] = None
+        self.current_po: Optional[Union[ViewerPOFile, ViewerPOFileRefactored]] = None
         self.current_filepath: Optional[Path] = None
         self._update_stats = update_stats_callback
         self._update_table = update_table_callback
@@ -108,7 +109,7 @@ class FileHandler:
         """
         return self.recent_files
 
-    def open_file(self, filepath: Optional[str] = None) -> bool:
+    async def open_file(self, filepath: Optional[str] = None) -> bool:
         """POファイルを開く
 
         Args:
@@ -131,9 +132,10 @@ class FileHandler:
 
             self._show_status(f"ファイルを開いています: {filepath}...", 0)
 
-            # POファイルを開く
-            po_file = ViewerPOFile()
-            po_file.load(filepath)
+            # リファクタリング版のViewerPOFileを使用
+            po_file = ViewerPOFileRefactored()
+            # 非同期で読み込み
+            await po_file.load(filepath)
 
             self.current_po = po_file
             self.current_filepath = Path(filepath)
