@@ -21,9 +21,7 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
         filter_keyword = "keyword"
 
         # get_filtered_entriesを呼び出し
-        self.viewer.get_filtered_entries(
-            filter_keyword=filter_keyword
-        )
+        self.viewer.get_filtered_entries(filter_keyword=filter_keyword)
 
         # データベースのget_entriesが正しいパラメータで呼ばれることを確認
         self.viewer.db.get_entries.assert_called_with(
@@ -54,30 +52,32 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
     def test_get_filtered_entries_with_update_filter_parameter(self):
         """update_filterパラメータが機能することを確認"""
         from unittest.mock import patch
-        
+
         # キャッシュされたエントリを設定
         mock_entries = ["cached_entry"]
         self.viewer.filtered_entries = mock_entries
-        
+
         # ViewerPOFile.get_filtered_entriesメソッドの一部をモックしてテストを実行
-        with patch.object(self.viewer, 'get_filtered_entries', return_value=mock_entries) as mock_get_filtered:
+        with patch.object(
+            self.viewer, "get_filtered_entries", return_value=mock_entries
+        ) as mock_get_filtered:
             # モックしたメソッドを呼び出し
             result = mock_get_filtered(update_filter=False)
-            
+
             # キャッシュされたエントリが返されることを確認
             self.assertEqual(result, mock_entries)
-            
+
             # update_filter=Falseで呼び出されたことを確認
             mock_get_filtered.assert_called_with(update_filter=False)
-        
+
         # データベースのget_entriesが呼ばれないことを確認
         self.viewer.db.get_entries.assert_not_called()
-        
+
         # update_filter=Trueの場合はデータベースが呼ばれることを確認
         # モックを解除して実際のメソッドを呼び出す
         self.viewer.get_filtered_entries = self.viewer.__class__.get_filtered_entries
         self.viewer.get_filtered_entries(self.viewer, update_filter=True)
-        
+
         # データベースのget_entriesが呼ばれることを確認
         self.viewer.db.get_entries.assert_called_once()
 

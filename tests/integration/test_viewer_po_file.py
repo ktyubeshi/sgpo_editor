@@ -1,7 +1,6 @@
 """ViewerPOFileのテスト"""
 
 import os
-import asyncio
 
 import pytest
 import pytest_asyncio
@@ -63,6 +62,7 @@ async def test_get_entries(test_po_file):
     assert len(entries) == 3
     # Entryオブジェクトを返すことを確認
     from sgpo_editor.models.entry import EntryModel
+
     assert all(isinstance(entry, EntryModel) for entry in entries)
 
     # フィルタリングのテスト
@@ -97,14 +97,14 @@ async def test_search_entries(test_po_file):
     # 初期状態を確認
     initial_entries = test_po_file.get_filtered_entries()
     assert len(initial_entries) == 3
-    
+
     # search_textを使用した検索フィルタリング
     test_po_file.search_text = "test1"
     results = test_po_file.get_filtered_entries(update_filter=True)
 
     assert len(results) == 1
     assert results[0].msgid == "test1"
-    
+
     # 検索テキストをクリアして元に戻す
     test_po_file.search_text = ""
     results = test_po_file.get_filtered_entries(update_filter=True)

@@ -109,45 +109,51 @@ class PreviewWidget(QWidget):
         # HTMLエンティティをデコード
         text = html.unescape(text)
         logger.debug(f"After HTML unescape: {repr(text)}")
-        
+
         # Pythonのエスケープシーケンスを処理するための関数
         def replace_escapes(match):
             escape_seq = match.group(0)
             # 一般的なエスケープシーケンスを処理
             escape_map = {
-                "\\n": "\n",   # 改行
-                "\\r": "\r",   # キャリッジリターン
-                "\\t": "\t",   # タブ
-                '\\"': '"',    # ダブルクォート
-                "\\'": "'",    # シングルクォート
+                "\\n": "\n",  # 改行
+                "\\r": "\r",  # キャリッジリターン
+                "\\t": "\t",  # タブ
+                '\\"': '"',  # ダブルクォート
+                "\\'": "'",  # シングルクォート
                 "\\\\": "\\",  # バックスラッシュ
-                "\\a": "\a",   # ベル
-                "\\b": "\b",   # バックスペース
-                "\\f": "\f",   # フォームフィード
-                "\\v": "\v"    # 垂直タブ
+                "\\a": "\a",  # ベル
+                "\\b": "\b",  # バックスペース
+                "\\f": "\f",  # フォームフィード
+                "\\v": "\v",  # 垂直タブ
             }
-            
+
             # 正規表現のエスケープシーケンスを処理
             regex_escape_chars = "dwsDS+*?.()[]{}|^$"
-            if len(escape_seq) == 2 and escape_seq[0] == "\\" and escape_seq[1] in regex_escape_chars:
+            if (
+                len(escape_seq) == 2
+                and escape_seq[0] == "\\"
+                and escape_seq[1] in regex_escape_chars
+            ):
                 return escape_seq[1]
-                
+
             # マップに定義されたエスケープシーケンスを置換
             return escape_map.get(escape_seq, escape_seq)
-            
+
         # 正規表現でエスケープシーケンスを検出して置換
-        processed_text = re.sub(r'\\[nrtabfv"\'\\]|\\[dwsDS+*?.()\[\]{}|^$]', replace_escapes, text)
-        
+        processed_text = re.sub(
+            r'\\[nrtabfv"\'\\]|\\[dwsDS+*?.()\[\]{}|^$]', replace_escapes, text
+        )
+
         # 16進数エスケープシーケンス (\xHH) の処理
-        processed_text = re.sub(r'\\x([0-9a-fA-F]{2})', 
-                              lambda m: chr(int(m.group(1), 16)), 
-                              processed_text)
-        
+        processed_text = re.sub(
+            r"\\x([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), processed_text
+        )
+
         # Unicodeエスケープシーケンス (\uHHHH) の処理
-        processed_text = re.sub(r'\\u([0-9a-fA-F]{4})', 
-                              lambda m: chr(int(m.group(1), 16)), 
-                              processed_text)
-        
+        processed_text = re.sub(
+            r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), processed_text
+        )
+
         logger.debug(f"After processing escapes: {repr(processed_text)}")
         return processed_text
 
@@ -300,7 +306,7 @@ class PreviewDialog(QDialog):
             entry: 設定するエントリ
         """
         self.preview_widget.set_entry(entry)
-        
+
     def closeEvent(self, event) -> None:
         """ウィンドウが閉じられるときのイベント処理"""
         # 親ウィンドウの参照を削除

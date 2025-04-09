@@ -6,7 +6,7 @@
 import json
 import logging
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 import anthropic
 import openai
@@ -195,7 +195,9 @@ class LLMEvaluator:
             EvaluationResult: 評価結果
         """
         try:
-            logger.debug(f"OpenAI API呼び出し開始: モデル={self.model}, max_tokens={self.max_tokens}")
+            logger.debug(
+                f"OpenAI API呼び出し開始: モデル={self.model}, max_tokens={self.max_tokens}"
+            )
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
@@ -208,7 +210,7 @@ class LLMEvaluator:
             # レスポンスからJSONを抽出
             content = response.choices[0].message.content
             logger.debug(f"レスポンス取得 (長さ: {len(content)}文字)")
-            
+
             try:
                 result_json = json.loads(content)
                 logger.debug("JSONパース成功")
@@ -217,7 +219,9 @@ class LLMEvaluator:
                 raise
 
             # 評価結果を構築
-            logger.debug(f"評価結果構築: overall_score={result_json.get('overall_score', 0)}")
+            logger.debug(
+                f"評価結果構築: overall_score={result_json.get('overall_score', 0)}"
+            )
             result = EvaluationResult(
                 overall_score=result_json.get("overall_score", 0),
                 metric_scores=result_json.get("metric_scores", {}),
@@ -251,7 +255,9 @@ class LLMEvaluator:
             EvaluationResult: 評価結果
         """
         try:
-            logger.debug(f"Anthropic API呼び出し開始: モデル={self.model}, max_tokens={self.max_tokens}")
+            logger.debug(
+                f"Anthropic API呼び出し開始: モデル={self.model}, max_tokens={self.max_tokens}"
+            )
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
@@ -266,15 +272,15 @@ class LLMEvaluator:
             # レスポンスからJSONを抽出
             content = response.content[0].text
             logger.debug(f"レスポンス取得 (長さ: {len(content)}文字)")
-            
+
             # JSONブロックを抽出
             json_start = content.find("```json")
             json_end = content.rfind("```")
-            
+
             try:
                 if json_start >= 0 and json_end > json_start:
                     logger.debug(f"JSONブロック検出: {json_start}～{json_end}")
-                    json_text = content[json_start + 7:json_end].strip()
+                    json_text = content[json_start + 7 : json_end].strip()
                     result_json = json.loads(json_text)
                 else:
                     # JSONブロックがない場合は直接パース
@@ -286,7 +292,9 @@ class LLMEvaluator:
                 raise
 
             # 評価結果を構築
-            logger.debug(f"評価結果構築: overall_score={result_json.get('overall_score', 0)}")
+            logger.debug(
+                f"評価結果構築: overall_score={result_json.get('overall_score', 0)}"
+            )
             result = EvaluationResult(
                 overall_score=result_json.get("overall_score", 0),
                 metric_scores=result_json.get("metric_scores", {}),

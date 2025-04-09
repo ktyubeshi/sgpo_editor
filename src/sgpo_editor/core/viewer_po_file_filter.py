@@ -26,7 +26,9 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         Args:
             status: TranslationStatus定数
         """
-        logger.debug(f"ViewerPOFileFilter._set_flag_conditions_from_status: ステータス={status}")
+        logger.debug(
+            f"ViewerPOFileFilter._set_flag_conditions_from_status: ステータス={status}"
+        )
 
         # フラグ条件をリセット
         self.flag_conditions = {}
@@ -66,11 +68,17 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             str: キャッシュキー
         """
         # フィルタ条件の各要素を文字列化
-        translation_status_str = str(self.translation_status) if self.translation_status else "None"
+        translation_status_str = (
+            str(self.translation_status) if self.translation_status else "None"
+        )
         search_text_str = str(self.search_text) if self.search_text else "None"
         sort_column_str = str(self.sort_column) if self.sort_column else "None"
         sort_order_str = str(self.sort_order) if self.sort_order else "None"
-        flag_conditions_str = str(sorted(self.flag_conditions.items())) if self.flag_conditions else "None"
+        flag_conditions_str = (
+            str(sorted(self.flag_conditions.items()))
+            if self.flag_conditions
+            else "None"
+        )
 
         # キャッシュキーを生成（フィルタ条件の組み合わせ）
         cache_key = (
@@ -114,11 +122,15 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
 
         # キャッシュキーの生成
         cache_key = self._generate_filter_cache_key()
-        logger.debug(f"ViewerPOFileFilter.get_filtered_entries: キャッシュキー={cache_key}")
+        logger.debug(
+            f"ViewerPOFileFilter.get_filtered_entries: キャッシュキー={cache_key}"
+        )
 
         # キャッシュからフィルタ結果を取得（強制更新でない場合）
         if not self._force_filter_update and self.filtered_entries:
-            logger.debug("ViewerPOFileFilter.get_filtered_entries: キャッシュされたフィルタ結果を使用")
+            logger.debug(
+                "ViewerPOFileFilter.get_filtered_entries: キャッシュされたフィルタ結果を使用"
+            )
             return self.filtered_entries
 
         # データベースからフィルタリングされたエントリを取得
@@ -154,7 +166,9 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         self.filtered_entries = filtered_entries
         self._force_filter_update = False
 
-        logger.debug(f"ViewerPOFileFilter.get_filtered_entries: フィルタ結果件数={len(filtered_entries)}")
+        logger.debug(
+            f"ViewerPOFileFilter.get_filtered_entries: フィルタ結果件数={len(filtered_entries)}"
+        )
         return filtered_entries
 
     def set_filter(
@@ -183,7 +197,10 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         update_needed = False
 
         # 翻訳ステータス
-        if translation_status is not None and translation_status != self.translation_status:
+        if (
+            translation_status is not None
+            and translation_status != self.translation_status
+        ):
             self._set_flag_conditions_from_status(translation_status)
             update_needed = True
 

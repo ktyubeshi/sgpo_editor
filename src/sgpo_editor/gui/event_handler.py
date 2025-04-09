@@ -17,43 +17,43 @@ logger = logging.getLogger(__name__)
 
 class EventHandler(QObject):
     """イベント処理クラス
-    
+
     GUIイベントを処理し、エントリの選択、表示、編集、更新に関するロジックを提供します。
-    
+
     ファサードとの役割分担:
         ファサード導入後のEventHandlerの主な役割:
         1. テーブル操作に関連するイベント処理（セル選択、エントリ選択時のUI更新等）
         2. エントリエディタとの直接的なインタラクション処理
         3. キャッシュ管理とパフォーマンス最適化
-        
+
         ファサードに委譲された責務:
         1. EntryListFacade: テーブル表示と更新、エントリリスト操作のカプセル化
         2. EntryEditorFacade: エントリ編集操作のカプセル化
-        
+
         注意: このクラスは段階的にファサードに機能を移行中のため、一部の機能はファサードと
         重複している場合があります。今後の開発では、以下の方針でリファクタリングを検討:
         - ファサードを使った実装に一本化し、EventHandlerの役割を純粋なイベント連携に限定
         - または、EventHandlerを完全にファサードに統合し、このクラスを廃止
-    
+
     キャッシュ管理:
         このクラスは、UI表示の高速化のために以下の独自キャッシュを管理します:
-        
+
         1. _entry_cache: エントリキーをキーとするエントリオブジェクトのキャッシュ
            - 目的: 繰り返しアクセスされるエントリの高速表示
            - スコープ: UI表示限定の一時的キャッシュ
            - EntryCacheManagerとの関係: 独立したUI専用キャッシュであり、コアの
              EntryCacheManagerとは別に管理される。データの永続化には関与しない
-           
+
         2. _row_key_map: 行インデックスとエントリキーのマッピング
            - 目的: テーブル行からエントリへの素早いアクセス
            - スコープ: テーブル表示中のみ有効
-    
+
     プリフェッチ戦略:
         _prefetch_visible_entries メソッドは、以下の機能を提供します:
         - 現在表示中のテーブル行のエントリをバックグラウンドで事前ロード
         - スクロール時のスムーズな表示のために先読み
         - UIスレッドのブロックを避けるために部分的なロード
-        
+
     注意:
         このクラスのキャッシュは表示用途のみであり、エントリの編集・保存には
         ViewerPOFileを通じたDBアクセスが必要。エントリ更新時には、適切に
@@ -154,13 +154,13 @@ class EventHandler(QObject):
 
     def _update_detail_view(self, row: int) -> None:
         """指定された行のエントリ詳細を表示する
-        
+
         テーブルの行を元に対応するエントリを取得し、エントリエディタに表示します。
         パフォーマンス最適化のため、以下のキャッシュ戦略を使用します:
         1. 内部キャッシュ(_entry_cache)をまず確認
         2. キャッシュになければViewerPOFileからエントリを取得
         3. 取得したエントリを内部キャッシュに保存
-        
+
         Args:
             row: 行インデックス
         """
@@ -222,18 +222,18 @@ class EventHandler(QObject):
 
     def _prefetch_visible_entries(self) -> None:
         """現在表示されているエリアのエントリをプリフェッチする
-        
+
         テーブルスクロール時やテーブル表示後に呼び出され、現在表示されている
         エリアおよびその前後のエントリを事前にロードします。これにより:
         1. エントリ間のナビゲーション高速化
         2. スクロール時の表示遅延軽減
         3. エントリ選択時のレスポンス向上
-        
+
         キャッシュ戦略:
         - 現在表示中の行の前後数行を含む範囲のエントリをロード
         - すでにキャッシュにあるエントリは再取得しない
         - DBアクセスを最小限に抑えるため、必要なエントリのみを取得
-        
+
         注意:
         このメソッドはタイマーを介して非同期に実行され、UIスレッドをブロックしません。
         """
@@ -307,27 +307,37 @@ class EventHandler(QObject):
 
             current_po = self._get_current_po()
             if not current_po:
-                logger.debug("EventHandler._on_apply_clicked: POファイルがNoneのため終了")
+                logger.debug(
+                    "EventHandler._on_apply_clicked: POファイルがNoneのため終了"
+                )
                 return
 
             # エントリの更新
-            logger.debug(f"EventHandler._on_apply_clicked: エントリ更新開始 key={entry.key}, position={entry.position}")
+            logger.debug(
+                f"EventHandler._on_apply_clicked: エントリ更新開始 key={entry.key}, position={entry.position}"
+            )
             current_po.update_entry(entry)
-            logger.debug(f"EventHandler._on_apply_clicked: エントリ更新完了")
+            logger.debug("EventHandler._on_apply_clicked: エントリ更新完了")
 
             # キャッシュの更新
             if hasattr(entry, "key") and entry.key:
-                logger.debug(f"EventHandler._on_apply_clicked: キャッシュ更新 key={entry.key}")
+                logger.debug(
+                    f"EventHandler._on_apply_clicked: キャッシュ更新 key={entry.key}"
+                )
                 self._entry_cache[entry.key] = entry
 
             # この時点でテーブルを更新すると重複更新が発生するため、ここでの更新は行わない
             # MainWindowの_on_entry_updatedで一元的に更新される
             # self._update_table()
-            logger.debug(f"EventHandler._on_apply_clicked: テーブル更新はMainWindowに委譲")
+            logger.debug(
+                "EventHandler._on_apply_clicked: テーブル更新はMainWindowに委譲"
+            )
 
             # 更新されたエントリを選択状態に戻す
             if hasattr(entry, "key") and entry.key:
-                logger.debug(f"EventHandler._on_apply_clicked: 更新されたエントリを選択状態に戻す key={entry.key}")
+                logger.debug(
+                    f"EventHandler._on_apply_clicked: 更新されたエントリを選択状態に戻す key={entry.key}"
+                )
                 # テーブルの現在の行データを使用して、更新されたエントリの行を見つける
                 for row in range(self.table.rowCount()):
                     item = self.table.item(row, 0)
@@ -336,16 +346,20 @@ class EventHandler(QObject):
 
                     key = item.data(Qt.ItemDataRole.UserRole)
                     if key == entry.key:
-                        logger.debug(f"EventHandler._on_apply_clicked: 該当する行を選択 row={row}")
+                        logger.debug(
+                            f"EventHandler._on_apply_clicked: 該当する行を選択 row={row}"
+                        )
                         # 該当する行を選択
                         self.table.selectRow(row)
                         break
 
-            logger.debug(f"EventHandler._on_apply_clicked: ステータス表示")
+            logger.debug("EventHandler._on_apply_clicked: ステータス表示")
             self._show_status(f"エントリ {entry.position} を更新しました", 3000)
-            logger.debug(f"EventHandler._on_apply_clicked: entry_updatedシグナル発行 position={entry.position}")
+            logger.debug(
+                f"EventHandler._on_apply_clicked: entry_updatedシグナル発行 position={entry.position}"
+            )
             self.entry_updated.emit(entry.position)
-            logger.debug(f"EventHandler._on_apply_clicked: 完了")
+            logger.debug("EventHandler._on_apply_clicked: 完了")
 
         except Exception as e:
             logger.error(f"EventHandler._on_apply_clicked: エラー発生 {e}")
@@ -376,12 +390,12 @@ class EventHandler(QObject):
 
     def clear_cache(self) -> None:
         """エントリキャッシュをクリアする
-        
+
         以下の場合に呼び出されます:
         1. POファイルの読み込み/切り替え時
         2. テーブル内容の完全な更新時
         3. エントリに重要な変更があった場合
-        
+
         これにより、キャッシュデータとViewerPOFileの実データとの整合性が保たれます。
         """
         self._entry_cache.clear()

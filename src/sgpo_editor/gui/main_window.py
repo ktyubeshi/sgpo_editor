@@ -189,9 +189,9 @@ class MainWindow(QMainWindow):
         # EntryEditorにデータベースを設定（ファサード経由）
         current_po = self._get_current_po()
         if current_po:
-            logger.debug(f"MainWindow._open_file: ファサード経由でデータベースを設定")
+            logger.debug("MainWindow._open_file: ファサード経由でデータベースを設定")
             self.entry_editor_facade.set_database(current_po.db)
-            logger.debug(f"MainWindow._open_file: データベース設定完了")
+            logger.debug("MainWindow._open_file: データベース設定完了")
 
         # 最近使用したファイルメニューを更新
         self.ui_manager.update_recent_files_menu(self._open_recent_file)
@@ -216,10 +216,10 @@ class MainWindow(QMainWindow):
             current_po = self._get_current_po()
             if current_po:
                 logger.debug(
-                    f"MainWindow._open_recent_file: ファサード経由でデータベースを設定"
+                    "MainWindow._open_recent_file: ファサード経由でデータベースを設定"
                 )
                 self.entry_editor_facade.set_database(current_po.db)
-                logger.debug(f"MainWindow._open_recent_file: データベース設定完了")
+                logger.debug("MainWindow._open_recent_file: データベース設定完了")
 
             # 最近使用したファイルメニューを更新
             self.ui_manager.update_recent_files_menu(self._open_recent_file)
@@ -487,20 +487,20 @@ class MainWindow(QMainWindow):
             )
 
             # 統計情報の更新
-            logger.debug(f"MainWindow._on_entry_updated: 統計情報の更新")
+            logger.debug("MainWindow._on_entry_updated: 統計情報の更新")
             stats = current_po.get_stats()
             self._update_stats(stats)
 
             # 強制的にフィルタ更新フラグを設定
             logger.debug(
-                f"MainWindow._on_entry_updated: 強制的にフィルタ更新フラグを設定"
+                "MainWindow._on_entry_updated: 強制的にフィルタ更新フラグを設定"
             )
             current_po._force_filter_update = True
 
             # ファサードを使用してテーブルを更新
-            logger.debug(f"MainWindow._on_entry_updated: テーブル更新開始")
+            logger.debug("MainWindow._on_entry_updated: テーブル更新開始")
             self.entry_list_facade.update_table()
-            logger.debug(f"MainWindow._on_entry_updated: テーブル更新完了")
+            logger.debug("MainWindow._on_entry_updated: テーブル更新完了")
 
             # エントリの選択状態を維持
             if updated_key:
@@ -529,9 +529,9 @@ class MainWindow(QMainWindow):
                 self.entry_list_facade.select_entry_by_key(current_key)
 
             # メタデータパネルの更新
-            logger.debug(f"MainWindow._on_entry_updated: メタデータパネルの更新")
+            logger.debug("MainWindow._on_entry_updated: メタデータパネルの更新")
             self.update_metadata_panel()
-            logger.debug(f"MainWindow._on_entry_updated: 完了")
+            logger.debug("MainWindow._on_entry_updated: 完了")
 
         except Exception as e:
             logger.error(f"MainWindow._on_entry_updated: エラー発生 {e}")
@@ -925,7 +925,7 @@ class MainWindow(QMainWindow):
 
         # 選択されたエントリを取得
         logger.debug(
-            f"MainWindow._update_preview_dialog: フィルタリングされたエントリを取得"
+            "MainWindow._update_preview_dialog: フィルタリングされたエントリを取得"
         )
         entries = current_po.get_filtered_entries()
         logger.debug(

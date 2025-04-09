@@ -227,7 +227,11 @@ class ReviewCommentWidget(QWidget):
 
         if comment_obj:
             # データベースにも即時反映
-            self._db.update_entry_field(self._current_entry.key, "review_comments", self._current_entry.review_comments)
+            self._db.update_entry_field(
+                self._current_entry.key,
+                "review_comments",
+                self._current_entry.review_comments,
+            )
 
         # UIを更新
         self.set_entry(self._current_entry)
@@ -260,7 +264,11 @@ class ReviewCommentWidget(QWidget):
             self._current_entry.remove_review_comment(comment_id)
 
             # データベースからも即時削除
-            self._db.update_entry_field(self._current_entry.key, "review_comments", self._current_entry.review_comments)
+            self._db.update_entry_field(
+                self._current_entry.key,
+                "review_comments",
+                self._current_entry.review_comments,
+            )
 
             # UIを更新
             self.set_entry(self._current_entry)
@@ -290,7 +298,11 @@ class ReviewCommentWidget(QWidget):
         self._current_entry.review_comments.append(comment_obj)
 
         # データベースにも即時反映
-        self._db.update_entry_field(self._current_entry.key, "review_comments", self._current_entry.review_comments)
+        self._db.update_entry_field(
+            self._current_entry.key,
+            "review_comments",
+            self._current_entry.review_comments,
+        )
 
         # UIを更新
         self.set_entry(self._current_entry)
@@ -639,16 +651,13 @@ class CheckResultWidget(QWidget):
 
         # データベースに即時反映
         try:
-            self._db.add_check_result(
-                self._current_entry.key,
-                code,
-                message,
-                severity
-            )
+            self._db.add_check_result(self._current_entry.key, code, message, severity)
             logger.debug(f"チェック結果を追加しました: {code} - {message}")
         except Exception as e:
             logger.error(f"チェック結果追加エラー: {e}")
-            QMessageBox.warning(self, "エラー", f"チェック結果の追加に失敗しました: {e}")
+            QMessageBox.warning(
+                self, "エラー", f"チェック結果の追加に失敗しました: {e}"
+            )
             # エントリの状態を元に戻す
             self._current_entry.check_results.pop()
             return
@@ -674,7 +683,9 @@ class CheckResultWidget(QWidget):
         # 現在選択されている行を取得
         current_row = self.result_table.currentRow()
         if current_row < 0:
-            QMessageBox.warning(self, "エラー", "削除するチェック結果を選択してください")
+            QMessageBox.warning(
+                self, "エラー", "削除するチェック結果を選択してください"
+            )
             return
 
         # 削除確認
@@ -693,35 +704,36 @@ class CheckResultWidget(QWidget):
             # 選択された行のコードとメッセージを取得
             code_item = self.result_table.item(current_row, 0)
             message_item = self.result_table.item(current_row, 1)
-            
+
             if code_item and message_item:
                 code = int(code_item.text())
                 message = message_item.text()
-                
+
                 # データベースから削除
-                self._db.remove_check_result(
-                    self._current_entry.key,
-                    code,
-                    message
-                )
+                self._db.remove_check_result(self._current_entry.key, code, message)
                 logger.debug(f"チェック結果を削除しました: {code} - {message}")
-                
+
                 # エントリオブジェクトからも削除
                 if self._current_entry.check_results:
                     for i, result in enumerate(self._current_entry.check_results):
-                        if result.get("code") == code and result.get("message") == message:
+                        if (
+                            result.get("code") == code
+                            and result.get("message") == message
+                        ):
                             self._current_entry.check_results.pop(i)
                             break
-                
+
                 # テーブルから行を削除
                 self.result_table.removeRow(current_row)
-                
+
                 # 変更通知
                 self.result_removed.emit()
-            
+
         except Exception as e:
             logger.error(f"チェック結果削除エラー: {e}")
-            QMessageBox.warning(self, "エラー", f"チェック結果の削除に失敗しました: {e}")
+            QMessageBox.warning(
+                self, "エラー", f"チェック結果の削除に失敗しました: {e}"
+            )
 
     def _on_clear_results(self) -> None:
         """チェック結果クリアボタンクリック時の処理"""
@@ -744,16 +756,18 @@ class CheckResultWidget(QWidget):
             # データベースから削除
             self._db.clear_check_results(self._current_entry.key)
             logger.debug(f"チェック結果をクリアしました: {self._current_entry.key}")
-            
+
             # エントリオブジェクトからも削除
             self._current_entry.check_results = []
-            
+
             # テーブルをクリア
             self.result_table.setRowCount(0)
-            
+
             # 変更通知
             self.result_removed.emit()
-            
+
         except Exception as e:
             logger.error(f"チェック結果クリアエラー: {e}")
-            QMessageBox.warning(self, "エラー", f"チェック結果のクリアに失敗しました: {e}")
+            QMessageBox.warning(
+                self, "エラー", f"チェック結果のクリアに失敗しました: {e}"
+            )

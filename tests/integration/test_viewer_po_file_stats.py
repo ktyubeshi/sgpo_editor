@@ -19,7 +19,7 @@ class TestViewerPOFileStats(unittest.TestCase):
         """get_statsメソッドが返すオブジェクトにprogress属性があることを確認"""
         # EntryModelクラスをインポート
         from sgpo_editor.models.entry import EntryModel
-        
+
         # モックエントリをEntryModelインスタンスとして設定
         mock_entries = [
             EntryModel(key="1", msgid="test1", msgstr="テスト1", fuzzy=False),
@@ -42,7 +42,7 @@ class TestViewerPOFileStats(unittest.TestCase):
         """get_statsメソッドがprogress属性を正しく計算することを確認"""
         # EntryModelクラスをインポート
         from sgpo_editor.models.entry import EntryModel
-        
+
         # ケース1: 翻訳済み1件、Fuzzy1件、未翻訳1件の場合
         mock_entries1 = [
             EntryModel(key="1", msgid="test1", msgstr="テスト1", fuzzy=False),

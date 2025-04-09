@@ -10,7 +10,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
-from PySide6.QtWidgets import QCheckBox
 from PySide6.QtWidgets import (
     QDockWidget,
     QMainWindow,
@@ -26,6 +25,18 @@ from sgpo_editor.gui.widgets.search import SearchWidget
 from sgpo_editor.gui.widgets.stats import StatsWidget
 
 logger = logging.getLogger(__name__)
+
+
+# 非同期メソッドを呼び出すためのヘルパー関数
+def run_async(async_func):
+    """非同期関数をQtイベントループで実行するためのヘルパー関数"""
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        # イベントループがすでに実行中の場合は、新しいタスクを作成
+        return asyncio.create_task(async_func())
+    else:
+        # イベントループが実行されていない場合は、一時的にイベントループを実行
+        return asyncio.run(async_func())
 
 
 class UIManager:
@@ -65,7 +76,7 @@ class UIManager:
         # 最近使用したファイルのアクション
         self.recent_file_actions: List[QAction] = []
         self.recent_files_menu: Optional[QMenu] = None
-        
+
         # 列表示設定のアクション
         self.column_visibility_actions: List[QAction] = []
         self.column_visibility_menu: Optional[QMenu] = None
@@ -111,7 +122,7 @@ class UIManager:
         self.main_window.addDockWidget(
             Qt.DockWidgetArea.RightDockWidgetArea, stats_dock
         )
-        
+
         # 統計情報ドックをdock_widgets辞書に追加
         self.dock_widgets["stats"] = stats_dock
 
@@ -123,12 +134,12 @@ class UIManager:
             dock_widget: ドックウィジェット
         """
         self.dock_widgets[name] = dock_widget
-        
+
     def setup_window_menu(self) -> None:
         """ウィンドウメニューの設定"""
         window_menu = self.main_window.menuBar().addMenu("ウィンドウ")
         window_menu.setObjectName("window_menu")
-        
+
         # 登録されたドックウィジェットごとにメニュー項目を作成
         for name, dock_widget in self.dock_widgets.items():
             action = QAction(dock_widget.windowTitle(), self.main_window)
@@ -161,12 +172,10 @@ class UIManager:
         # ファイルメニュー
         file_menu = self.main_window.menuBar().addMenu("ファイル")
 
-        # 開く - 非同期メソッドを呼び出せるようにasyncioでラップ
+        # 開く - 非同期メソッドを呼び出せるように修正
         open_action = QAction("開く...", self.main_window)
         open_action.setShortcut(QKeySequence.StandardKey.Open)
-        open_action.triggered.connect(
-            lambda: asyncio.create_task(callbacks["open_file"]())
-        )
+        open_action.triggered.connect(lambda: run_async(callbacks["open_file"]))
         file_menu.addAction(open_action)
 
         # 最近使用した項目を開く
@@ -231,18 +240,17 @@ class UIManager:
         layout_group.addAction(self.layout1_action)
         layout_group.addAction(self.layout2_action)
         layout_group.setExclusive(True)
-        
+
         # 列表示設定サブメニュー
         self.column_visibility_menu = display_menu.addMenu("表示列の設定")
         self.column_visibility_menu.setObjectName("column_visibility_menu")
-        
+
         # テーブルマネージャが提供されている場合は列表示設定を構成
         if callbacks.get("table_manager") and callbacks.get("toggle_column_visibility"):
             self._setup_column_visibility_menu(
-                callbacks["toggle_column_visibility"],
-                callbacks["table_manager"]
+                callbacks["toggle_column_visibility"], callbacks["table_manager"]
             )
-            
+
         # ツールメニュー
         tools_menu = self.main_window.menuBar().addMenu("ツール")
         tools_menu.setObjectName("tools_menu")
@@ -260,26 +268,32 @@ class UIManager:
         preview_action.setShortcut("Ctrl+R")
         preview_action.triggered.connect(callbacks["show_preview"])
         tools_menu.addAction(preview_action)
-        
+
         # 翻訳品質評価
         if "show_translation_evaluate" in callbacks:
             translation_evaluate_action = QAction("翻訳品質評価", self.main_window)
             translation_evaluate_action.setObjectName("translation_evaluate_action")
             translation_evaluate_action.setShortcut("Ctrl+E")
-            translation_evaluate_action.triggered.connect(callbacks["show_translation_evaluate"])
+            translation_evaluate_action.triggered.connect(
+                callbacks["show_translation_evaluate"]
+            )
             tools_menu.addAction(translation_evaluate_action)
-            
+
         # 翻訳品質評価結果表示
         if "show_translation_evaluation_result" in callbacks:
             translation_result_action = QAction("翻訳品質評価結果", self.main_window)
             translation_result_action.setObjectName("translation_result_action")
             translation_result_action.setShortcut("Ctrl+Shift+E")
-            translation_result_action.triggered.connect(callbacks["show_translation_evaluation_result"])
+            translation_result_action.triggered.connect(
+                callbacks["show_translation_evaluation_result"]
+            )
             tools_menu.addAction(translation_result_action)
 
-    def _setup_column_visibility_menu(self, toggle_callback: Callable[[int], None], table_manager: Any) -> None:
+    def _setup_column_visibility_menu(
+        self, toggle_callback: Callable[[int], None], table_manager: Any
+    ) -> None:
         """列表示設定メニューを設定
-        
+
         Args:
             toggle_callback: 列の表示/非表示を切り替えるコールバック関数
             table_manager: テーブルマネージャーインスタンス
@@ -288,11 +302,11 @@ class UIManager:
         if not self.column_visibility_menu:
             print("Column visibility menu not found")
             return
-            
+
         # 既存のアクションをクリア
         self.column_visibility_menu.clear()
         self.column_visibility_actions.clear()
-        
+
         # 各列の表示/非表示切り替えアクションを作成
         for i in range(table_manager.get_column_count()):
             column_name = table_manager.get_column_name(i)
@@ -305,83 +319,103 @@ class UIManager:
 
             # インデックスを別の変数に保存してクロージャを回避
             index = i  # 現在のループ値をコピー
-            
+
             # シンプルなQAction.triggered接続方法に変更
             action.triggered.connect(
-                lambda checked=False, idx=index: self._handle_column_toggle(idx, toggle_callback)
+                lambda checked=False, idx=index: self._handle_column_toggle(
+                    idx, toggle_callback
+                )
             )
-            
+
             self.column_visibility_menu.addAction(action)
             self.column_visibility_actions.append(action)
-    
+
     def update_column_visibility_action(self, column_index: int, visible: bool) -> None:
         """列表示設定アクションの状態を更新
-        
+
         Args:
             column_index: 列インデックス
             visible: 表示状態
         """
-        print(f"Updating column visibility action for column {column_index} to {visible}")
+        print(
+            f"Updating column visibility action for column {column_index} to {visible}"
+        )
         if 0 <= column_index < len(self.column_visibility_actions):
             self.column_visibility_actions[column_index].setChecked(visible)
             print(f"Action updated for column {column_index}")
         else:
-            print(f"Column index {column_index} out of range (0-{len(self.column_visibility_actions)-1})")
-    
-    def _handle_column_toggle(self, index: int, toggle_callback: Callable[[int], None]) -> None:
+            print(
+                f"Column index {column_index} out of range (0-{len(self.column_visibility_actions) - 1})"
+            )
+
+    def _handle_column_toggle(
+        self, index: int, toggle_callback: Callable[[int], None]
+    ) -> None:
         """列の表示/非表示を切り替えるハンドラー
-        
+
         Args:
             index: 列インデックス
             toggle_callback: 列の表示/非表示を切り替えるコールバック関数
         """
         print(f"Menu clicked for column {index}")
         toggle_callback(index)
-    
+
     def update_recent_files_menu(self, callback: Callable[[str], None]) -> None:
-        """最近使用したファイルメニューを更新する
+        """最近使用したファイルメニューの更新
 
         Args:
-            callback: 最近使用したファイルを開くコールバック
+            callback: 最近使用したファイルを開くためのコールバック
         """
-        if not self.recent_files_menu or not callback:
+        # 既存のメニューをクリア
+        if self.recent_files_menu:
+            self.recent_files_menu.clear()
+
+            # アクションリストをクリア
+            self.recent_file_actions.clear()
+
+        if not self.recent_files_menu:
             return
 
-        # まず既存のアクションをクリア
-        self.recent_files_menu.clear()
-        self.recent_file_actions.clear()
+        # サブメニューとの接続を確保するために参照を保持
+        self.open_recent_file_callback = callback
 
         # 設定から最近使用したファイルのリストを取得
         settings = QSettings()
         recent_files_str = settings.value("recent_files_str", "", type=str)
         recent_files = recent_files_str.split(";") if recent_files_str else []
+        recent_files = [
+            f for f in recent_files if f and Path(f).exists()
+        ]  # 存在するファイルのみ
 
         if not recent_files:
-            # 最近使用したファイルがない場合
-            no_files_action = QAction("最近使用した項目はありません", self.main_window)
-            no_files_action.setEnabled(False)
-            self.recent_files_menu.addAction(no_files_action)
+            no_recent_action = QAction(
+                "最近使用したファイルはありません", self.main_window
+            )
+            no_recent_action.setEnabled(False)
+            self.recent_files_menu.addAction(no_recent_action)
             return
 
-        # 最近使用したファイルのアクションを作成
-        for filepath in recent_files:
-            if not filepath or not isinstance(filepath, str):
-                continue
+        for i, filepath in enumerate(recent_files[:10]):  # 最大10件まで
+            file_name = Path(filepath).name
+            action_text = f"{i + 1:d}: {file_name}"
 
-            action = QAction(Path(filepath).name, self.main_window)
-            action.setData(filepath)
-            action.setStatusTip(filepath)
-            # 非同期メソッドを呼び出せるようにasyncioでラップ
+            # アクションを作成
+            action = QAction(action_text, self.main_window)
+            # クロージャの変数バインディングの問題を回避
+            # pylint: disable=cell-var-from-loop
+
+            # 非同期メソッド対応
             action.triggered.connect(
-                lambda checked=False, path=filepath: asyncio.create_task(callback(path))
+                lambda checked, path=filepath: run_async(
+                    lambda: self.open_recent_file_callback(path)
+                )
             )
+
             self.recent_files_menu.addAction(action)
             self.recent_file_actions.append(action)
 
         self.recent_files_menu.addSeparator()
-
-        # クリアアクション
-        clear_action = QAction("履歴をクリア", self.main_window)
+        clear_action = QAction("クリア", self.main_window)
         clear_action.triggered.connect(self._clear_recent_files)
         self.recent_files_menu.addAction(clear_action)
 

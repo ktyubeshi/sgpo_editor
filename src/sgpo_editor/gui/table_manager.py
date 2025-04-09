@@ -164,14 +164,14 @@ class TableManager:
 
         Returns:
             List of entries displayed
-            
+
         キャッシュ管理:
             このメソッドは TableManager のUI表示専用キャッシュである _entry_cache を
             更新します。このキャッシュは以下の目的で使用されます:
-            
+
             1. テーブル表示時のパフォーマンス向上（エントリの検索やソート処理を効率化）
             2. テーブル操作時に頻繁にアクセスされるエントリデータの保持
-            
+
             注意点:
             - このキャッシュは ViewerPOFile の持つキャッシュとは独立している
             - EntryListFacade.update_table() によって ViewerPOFile のキャッシュと同期される
@@ -387,7 +387,7 @@ class TableManager:
             logger.debug(
                 f"列 {column_index} ({self.get_column_name(column_index)}) の表示状態を切り替えました: {'非表示' if new_hidden_state else '表示'}"
             )
-            
+
             # 実際に適用されたかを検証
             actual_state = self.table.isColumnHidden(column_index)
             if actual_state != new_hidden_state:
@@ -614,14 +614,18 @@ class TableManager:
             else:
                 # 第1要素が0なら通常のエントリ（前に配置）
                 # 第2要素は実際のスコア値（昇順/降順に応じて符号を反転）
-                score_value = entry_score if order == Qt.SortOrder.AscendingOrder else -entry_score
+                score_value = (
+                    entry_score
+                    if order == Qt.SortOrder.AscendingOrder
+                    else -entry_score
+                )
                 logger.debug(f"Entry {entry.key} のスコア: {entry_score}")
                 return (0, score_value)
 
         # タプルによるソート: 第1要素でまず比較し、同じ場合は第2要素で比較
         sorted_entries = sorted(entries, key=score_key)
         logger.debug(f"スコアソート完了: {len(sorted_entries)}件")
-        
+
         return sorted_entries
 
     def _update_table_contents(self, entries: List[EntryModel]) -> None:

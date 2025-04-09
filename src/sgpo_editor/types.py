@@ -4,7 +4,7 @@
 複雑な型に分かりやすい名前を付けることで、コードの可読性と保守性を向上させます。
 """
 
-from typing import Any, Dict, List, Optional, TypeAlias, Union
+from typing import Any, Dict, List, TypeAlias, Union, Tuple, Callable
 
 from sgpo_editor.models.entry import EntryModel
 
@@ -43,3 +43,12 @@ CategoryScores: TypeAlias = Dict[str, float]
 
 # チェック結果の辞書
 CheckResults: TypeAlias = Dict[str, Any]
+
+# ソートカラム名と順序のタプル
+SortInfo: TypeAlias = Tuple[str, str]
+
+# フィルタ設定の辞書
+FilterSettings: TypeAlias = Dict[str, Any]
+
+# イベントハンドラコールバック
+EventCallback: TypeAlias = Callable[..., Any]

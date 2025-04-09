@@ -12,8 +12,8 @@ class EvaluationState(Enum):
     """
 
     NOT_EVALUATED = auto()  # 未評価
-    EVALUATING = auto()     # 評価中
-    EVALUATED = auto()      # 評価済み
+    EVALUATING = auto()  # 評価中
+    EVALUATED = auto()  # 評価済み
 
     def __str__(self) -> str:
         """文字列表現を取得"""

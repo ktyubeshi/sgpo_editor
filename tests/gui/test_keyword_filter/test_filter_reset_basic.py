@@ -119,9 +119,9 @@ class TestFilterResetBasic:
         )
 
         # 5. 検証: フィルタリセット後のsearch_textがNoneになるはず
-        assert po_file.search_text is None or po_file.search_text.strip() == "", f"search_textがNoneになっていません: {
-            po_file.search_text
-        }"
+        assert (
+            po_file.search_text is None or po_file.search_text.strip() == ""
+        ), f"search_textがNoneになっていません: {po_file.search_text}"
 
         print(
             "[TEST] 空白文字フィルタテスト成功: 初期状態とリセット後のエントリ数が一致しました"
@@ -172,9 +172,9 @@ class TestFilterResetBasic:
         )
 
         # 5. 検証: フィルタリセット後のsearch_textがNoneになるはず
-        assert po_file.search_text is None or po_file.search_text.strip() == "", f"search_textがNoneになっていません: {
-            po_file.search_text
-        }"
+        assert (
+            po_file.search_text is None or po_file.search_text.strip() == ""
+        ), f"search_textがNoneになっていません: {po_file.search_text}"
 
         print(
             "[TEST] Noneフィルタテスト成功: 初期状態とリセット後のエントリ数が一致しました"

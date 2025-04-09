@@ -19,7 +19,9 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
     このクラスは、ViewerPOFileFilterを継承し、エントリ更新に関連する機能を実装します。
     """
 
-    def _entry_needs_update(self, entry_obj: EntryModel, entry_dict: Dict[str, Any]) -> bool:
+    def _entry_needs_update(
+        self, entry_obj: EntryModel, entry_dict: Dict[str, Any]
+    ) -> bool:
         """エントリオブジェクトが更新を必要とするかどうかを判断する
 
         Args:
@@ -60,7 +62,11 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             # キャッシュを更新
             if result:
                 # EntryModelオブジェクトに変換
-                entry_obj = entry if isinstance(entry, EntryModel) else EntryModel.from_dict(entry)
+                entry_obj = (
+                    entry
+                    if isinstance(entry, EntryModel)
+                    else EntryModel.from_dict(entry)
+                )
                 key = entry_obj.key
 
                 # キャッシュマネージャを使用してキャッシュを更新
@@ -91,7 +97,9 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             logger.error(f"エントリ更新エラー: {e}")
             return False
 
-    def update_entries(self, entries: Dict[str, Union[Dict[str, Any], EntryModel]]) -> bool:
+    def update_entries(
+        self, entries: Dict[str, Union[Dict[str, Any], EntryModel]]
+    ) -> bool:
         """複数のエントリを一括更新する
 
         Args:
@@ -116,7 +124,11 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             if result:
                 for key, entry in entries.items():
                     # EntryModelオブジェクトに変換
-                    entry_obj = entry if isinstance(entry, EntryModel) else EntryModel.from_dict(entry)
+                    entry_obj = (
+                        entry
+                        if isinstance(entry, EntryModel)
+                        else EntryModel.from_dict(entry)
+                    )
 
                     # キャッシュマネージャを使用してキャッシュを更新
                     self.cache_manager.add_entry_to_cache(key, entry_obj)
@@ -145,7 +157,9 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             logger.error(f"複数エントリ更新エラー: {e}")
             return False
 
-    def import_entries(self, entries: Dict[str, Union[Dict[str, Any], EntryModel]]) -> bool:
+    def import_entries(
+        self, entries: Dict[str, Union[Dict[str, Any], EntryModel]]
+    ) -> bool:
         """エントリをインポートする（既存エントリの上書き）
 
         Args:
@@ -163,14 +177,20 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             )
 
             if not result:
-                logger.error("ViewerPOFileUpdater.import_entries: データベースインポート失敗")
+                logger.error(
+                    "ViewerPOFileUpdater.import_entries: データベースインポート失敗"
+                )
                 return False
 
             # キャッシュを更新
             if result:
                 for key, entry in entries.items():
                     # EntryModelオブジェクトに変換
-                    entry_obj = entry if isinstance(entry, EntryModel) else EntryModel.from_dict(entry)
+                    entry_obj = (
+                        entry
+                        if isinstance(entry, EntryModel)
+                        else EntryModel.from_dict(entry)
+                    )
 
                     # キャッシュマネージャを使用してキャッシュを更新
                     self.cache_manager.add_entry_to_cache(key, entry_obj)

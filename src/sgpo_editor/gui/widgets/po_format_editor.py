@@ -259,8 +259,7 @@ class POFormatEditor(QDialog):
 
         # フィルタされたエントリを取得
         entries = po_file.get_filtered_entries(
-            update_filter=True, 
-            filter_keyword=filter_keyword
+            update_filter=True, filter_keyword=filter_keyword
         )
 
         if not entries:
@@ -376,9 +375,9 @@ class POFormatEditor(QDialog):
 
     def _on_apply_clicked(self):
         """適用ボタンがクリックされたときの処理
-        
+
         このメソッドは、エディタ上のPO形式テキストを解析し、対応するエントリのmsgstrを更新します。
-        
+
         キャッシュ管理:
             ViewerPOFile.update_entry呼び出し時に、以下のキャッシュ更新処理が行われます:
             1. ViewerPOFileがエントリをデータベースに保存
@@ -402,7 +401,9 @@ class POFormatEditor(QDialog):
         try:
             # エディタのテキストを解析
             entries = self._parse_po_format(self.editor.toPlainText())
-            logger.debug(f"POFormatEditor._on_apply_clicked: {len(entries)}個のエントリを解析しました")
+            logger.debug(
+                f"POFormatEditor._on_apply_clicked: {len(entries)}個のエントリを解析しました"
+            )
 
             # 更新されたエントリの数
             updated_count = 0
@@ -416,30 +417,41 @@ class POFormatEditor(QDialog):
                 else:
                     entry_key = f"|{msgid}"  # 標準形式のキーを使用
 
-                logger.debug(f"POFormatEditor._on_apply_clicked: エントリ処理 key={entry_key}, msgid={msgid}")
+                logger.debug(
+                    f"POFormatEditor._on_apply_clicked: エントリ処理 key={entry_key}, msgid={msgid}"
+                )
 
                 # エントリを検索（正確なキーで検索）
                 entry = po_file.get_entry_by_key(entry_key)
-                
+
                 # それでも見つからない場合は、フィルタリングで検索
                 if not entry:
-                    logger.debug(f"POFormatEditor._on_apply_clicked: キーで見つからないため、フィルタリングで検索 msgid={msgid}")
+                    logger.debug(
+                        f"POFormatEditor._on_apply_clicked: キーで見つからないため、フィルタリングで検索 msgid={msgid}"
+                    )
                     try:
                         # フィルタを使って効率的に検索（キャッシュを強制的に更新）
                         filtered_entries = po_file.get_filtered_entries(
                             update_filter=True,  # キャッシュを強制更新
-                            filter_keyword=msgid   # msgidで検索
+                            filter_keyword=msgid,  # msgidで検索
                         )
-                        
+
                         for e in filtered_entries:
                             # msgidが完全一致かつmsgctxtも一致（またはともにNone）する場合
                             e_msgctxt = getattr(e, "msgctxt", None)
-                            if e.msgid == msgid and ((e_msgctxt is None and msgctxt is None) or e_msgctxt == msgctxt):
+                            if e.msgid == msgid and (
+                                (e_msgctxt is None and msgctxt is None)
+                                or e_msgctxt == msgctxt
+                            ):
                                 entry = e
-                                logger.debug(f"POFormatEditor._on_apply_clicked: エントリを絞り込み検索で発見: key={e.key}, msgid={msgid}")
+                                logger.debug(
+                                    f"POFormatEditor._on_apply_clicked: エントリを絞り込み検索で発見: key={e.key}, msgid={msgid}"
+                                )
                                 break
                     except Exception as filter_error:
-                        logger.exception(f"POFormatEditor._on_apply_clicked: フィルタリング検索中にエラー: {filter_error}")
+                        logger.exception(
+                            f"POFormatEditor._on_apply_clicked: フィルタリング検索中にエラー: {filter_error}"
+                        )
 
                 if entry:
                     # エントリが見つかった場合は更新
@@ -447,8 +459,10 @@ class POFormatEditor(QDialog):
                         # エントリのmsgstrを更新
                         old_msgstr = entry.msgstr
                         entry.msgstr = msgstr
-                        logger.debug(f"POFormatEditor._on_apply_clicked: エントリ更新開始: key={entry.key}, msgid={entry.msgid}")
-                        
+                        logger.debug(
+                            f"POFormatEditor._on_apply_clicked: エントリ更新開始: key={entry.key}, msgid={entry.msgid}"
+                        )
+
                         # トランザクション内で更新を行う
                         try:
                             # 更新されたエントリを保存
@@ -457,21 +471,31 @@ class POFormatEditor(QDialog):
                                 updated_count += 1
                                 # 更新シグナルを発行
                                 self.entry_updated.emit(entry.key, msgstr)
-                                logger.debug(f"POFormatEditor._on_apply_clicked: エントリ更新成功: key={entry.key}")
+                                logger.debug(
+                                    f"POFormatEditor._on_apply_clicked: エントリ更新成功: key={entry.key}"
+                                )
                             else:
                                 # 更新に失敗した場合は元の値に戻す
                                 entry.msgstr = old_msgstr
-                                logger.error(f"POFormatEditor._on_apply_clicked: エントリ更新失敗: key={entry.key}")
+                                logger.error(
+                                    f"POFormatEditor._on_apply_clicked: エントリ更新失敗: key={entry.key}"
+                                )
                                 not_found_count += 1
                         except Exception as update_error:
                             # 例外発生時も元の値に戻す
                             entry.msgstr = old_msgstr
-                            logger.exception(f"POFormatEditor._on_apply_clicked: エントリ更新中に例外発生: {update_error}")
+                            logger.exception(
+                                f"POFormatEditor._on_apply_clicked: エントリ更新中に例外発生: {update_error}"
+                            )
                             not_found_count += 1
                     else:
-                        logger.debug(f"POFormatEditor._on_apply_clicked: エントリの訳文に変更なし: key={entry.key}")
+                        logger.debug(
+                            f"POFormatEditor._on_apply_clicked: エントリの訳文に変更なし: key={entry.key}"
+                        )
                 else:
-                    logger.warning(f"POFormatEditor._on_apply_clicked: エントリが見つかりませんでした: msgid={msgid}, msgctxt={msgctxt}")
+                    logger.warning(
+                        f"POFormatEditor._on_apply_clicked: エントリが見つかりませんでした: msgid={msgid}, msgctxt={msgctxt}"
+                    )
                     not_found_count += 1
 
             # 結果を表示
@@ -488,7 +512,9 @@ class POFormatEditor(QDialog):
                 )
 
         except Exception as e:
-            logger.exception("POFormatEditor._on_apply_clicked: エントリ適用中にエラーが発生しました")
+            logger.exception(
+                "POFormatEditor._on_apply_clicked: エントリ適用中にエラーが発生しました"
+            )
             QMessageBox.critical(
                 self, "エラー", f"エントリの適用に失敗しました: {str(e)}"
             )

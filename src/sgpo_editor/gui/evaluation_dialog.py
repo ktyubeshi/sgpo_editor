@@ -9,7 +9,7 @@ import time
 import os
 from typing import Tuple
 
-from PySide6.QtCore import Signal, QSettings, Qt, QThread, QThreadPool
+from PySide6.QtCore import Signal, QThread
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -86,24 +86,17 @@ class APIKeyDialog(QDialog):
 
 class EvaluationWorker(QThread):
     """評価処理を行うワーカースレッド"""
-    
+
     # 進捗シグナル
     progress_updated = Signal(int)
-    
+
     # 結果シグナル
     evaluation_finished = Signal(object)
     evaluation_error = Signal(str)
-    
-    def __init__(
-        self, 
-        evaluator, 
-        entry, 
-        metrics, 
-        language, 
-        db=None
-    ):
+
+    def __init__(self, evaluator, entry, metrics, language, db=None):
         """初期化
-        
+
         Args:
             evaluator: LLMEvaluator
             entry: 評価対象のエントリ
@@ -119,36 +112,42 @@ class EvaluationWorker(QThread):
         self.db = db
         # タイムアウト設定（秒）
         self.timeout = 180
-        
+
     def run(self):
         """評価処理を実行"""
-        logger.debug(f"評価処理開始: エントリキー={self.entry.key}, 言語={self.language}")
+        logger.debug(
+            f"評価処理開始: エントリキー={self.entry.key}, 言語={self.language}"
+        )
         try:
             # 評価状態を更新
             self.entry.evaluation_state = EvaluationState.EVALUATING
             if self.db:
                 try:
-                    self.db.save_evaluation_state(self.entry, EvaluationState.EVALUATING)
+                    self.db.save_evaluation_state(
+                        self.entry, EvaluationState.EVALUATING
+                    )
                     logger.debug("評価状態をEVALUATINGに更新しました")
                 except Exception as e:
                     logger.error(f"評価状態の更新に失敗しました: {e}", exc_info=True)
-            
+
             # 進捗通知
             self.progress_updated.emit(10)
             logger.debug("進捗: 10% - 評価準備完了")
-            
+
             # 評価パラメータを表示
             metrics_names = [m.name for m in self.metrics]
-            logger.debug(f"評価パラメータ: 指標数={len(self.metrics)}, 指標={metrics_names}")
-            
+            logger.debug(
+                f"評価パラメータ: 指標数={len(self.metrics)}, 指標={metrics_names}"
+            )
+
             # タイムアウト設定
             is_timedout = False
             start_time = time.time()
-            
+
             # 進捗通知 - API接続開始
             self.progress_updated.emit(20)
             logger.debug("進捗: 20% - LLM APIに接続")
-            
+
             # 評価実行
             try:
                 result = self.evaluator.evaluate_translation(
@@ -158,54 +157,69 @@ class EvaluationWorker(QThread):
                     language=self.language,
                     context=self.entry.msgctxt,
                 )
-                
+
                 # タイムアウトチェック
                 elapsed_time = time.time() - start_time
                 if elapsed_time > self.timeout:
                     is_timedout = True
-                    raise TimeoutError(f"評価がタイムアウトしました (経過時間: {elapsed_time:.1f}秒)")
-                
+                    raise TimeoutError(
+                        f"評価がタイムアウトしました (経過時間: {elapsed_time:.1f}秒)"
+                    )
+
                 logger.debug("LLMからの評価結果を受信しました")
-                
+
             except Exception as api_error:
-                logger.error(f"LLM API呼び出し中にエラー発生: {api_error}", exc_info=True)
-                
+                logger.error(
+                    f"LLM API呼び出し中にエラー発生: {api_error}", exc_info=True
+                )
+
                 # API特有のエラーメッセージをフォーマット
-                if "rate limits" in str(api_error).lower() or "rate_limit" in str(api_error).lower():
+                if (
+                    "rate limits" in str(api_error).lower()
+                    or "rate_limit" in str(api_error).lower()
+                ):
                     error_msg = f"APIレート制限に達しました。しばらく待ってから再試行してください。\n詳細: {api_error}"
-                elif "auth" in str(api_error).lower() or "key" in str(api_error).lower() or "token" in str(api_error).lower():
+                elif (
+                    "auth" in str(api_error).lower()
+                    or "key" in str(api_error).lower()
+                    or "token" in str(api_error).lower()
+                ):
                     error_msg = f"APIキー認証エラーが発生しました。APIキー設定を確認してください。\n詳細: {api_error}"
                 elif is_timedout or "timeout" in str(api_error).lower():
                     error_msg = f"API呼び出しがタイムアウトしました。ネットワーク接続を確認してください。\n詳細: {api_error}"
                 else:
                     error_msg = f"LLM APIエラー: {api_error}"
-                
+
                 # エラーを通知
                 self.evaluation_error.emit(error_msg)
-                
+
                 # 評価状態をエラーに更新
                 self.entry.evaluation_state = EvaluationState.ERROR
                 if self.db:
                     try:
                         self.db.save_evaluation_state(self.entry, EvaluationState.ERROR)
                     except Exception as e:
-                        logger.error(f"評価状態の更新に失敗しました: {e}", exc_info=True)
-                
+                        logger.error(
+                            f"評価状態の更新に失敗しました: {e}", exc_info=True
+                        )
+
                 return
-            
+
             # 進捗通知
             self.progress_updated.emit(80)
             logger.debug("進捗: 80% - 評価結果の処理")
-            
+
             # 評価結果のログ
             log_message = f"評価結果: 総合評価={result.overall_score:.1f}, "
-            log_message += ", ".join([f"{score.name}={score.score:.1f}" for score in result.scores])
+            log_message += ", ".join(
+                [f"{score.name}={score.score:.1f}" for score in result.scores]
+            )
             logger.debug(log_message)
-            
+
             # 進捗通知
             self.progress_updated.emit(90)
             logger.debug("進捗: 90% - 評価結果の保存")
-            
+
             # 評価状態を更新
             self.entry.evaluation_state = EvaluationState.EVALUATED
             if self.db:
@@ -215,29 +229,31 @@ class EvaluationWorker(QThread):
                     logger.debug("評価結果をデータベースに保存しました")
                 except Exception as e:
                     logger.error(f"評価結果の保存に失敗しました: {e}", exc_info=True)
-            
+
             # 完了通知
             self.progress_updated.emit(100)
             logger.debug("進捗: 100% - 評価完了")
-            
+
             # 結果を通知
             self.evaluation_finished.emit(result)
-            
+
         except Exception as e:
             # 一般的なエラーの処理
             logger.error(f"評価処理中にエラーが発生しました: {e}", exc_info=True)
             error_msg = f"評価処理エラー: {str(e)}\n\n詳細なエラーログはアプリケーションログを確認してください。"
-            
+
             # エラーを通知
             self.evaluation_error.emit(error_msg)
-            
+
             # 評価状態をエラーに更新
             self.entry.evaluation_state = EvaluationState.ERROR
             if self.db:
                 try:
                     self.db.save_evaluation_state(self.entry, EvaluationState.ERROR)
                 except Exception as save_error:
-                    logger.error(f"評価状態の更新に失敗しました: {save_error}", exc_info=True)
+                    logger.error(
+                        f"評価状態の更新に失敗しました: {save_error}", exc_info=True
+                    )
 
 
 class EvaluationDialog(QDialog):
@@ -285,9 +301,7 @@ class EvaluationDialog(QDialog):
         layout.addWidget(self.status_label)
 
         # ボタン
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Close
-        )
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
@@ -484,7 +498,9 @@ class EvaluationDialog(QDialog):
 
             history_text = ""
             for i, item in enumerate(history):
-                history_text += f"=== 評価 #{i+1} ({item.get('created_at', '不明')}) ===\n"
+                history_text += (
+                    f"=== 評価 #{i + 1} ({item.get('created_at', '不明')}) ===\n"
+                )
                 history_text += f"総合スコア: {item.get('overall_score', '不明')}\n"
 
                 if "metric_scores" in item:
@@ -508,20 +524,22 @@ class EvaluationDialog(QDialog):
         """APIキー設定を読み込む"""
         try:
             # APIキー設定を保存するファイルパス
-            api_key_file = os.path.join(os.path.expanduser("~"), ".sgpo_editor", "api_keys.json")
-            
+            api_key_file = os.path.join(
+                os.path.expanduser("~"), ".sgpo_editor", "api_keys.json"
+            )
+
             # ファイルが存在しない場合は空の辞書を返す
             if not os.path.exists(api_key_file):
                 logger.debug("APIキーファイルが存在しません: " + api_key_file)
                 return
-                
+
             with open(api_key_file, "r", encoding="utf-8") as f:
                 api_keys = json.load(f)
-                
+
             # APIキーを設定
             self._set_api_keys(api_keys)
             logger.info("APIキー設定を読み込みました")
-            
+
         except json.JSONDecodeError as e:
             logger.error(f"APIキーファイルの解析に失敗しました: {e}", exc_info=True)
             QMessageBox.warning(
@@ -529,77 +547,73 @@ class EvaluationDialog(QDialog):
                 "APIキー読み込みエラー",
                 f"APIキー設定ファイルの解析に失敗しました。\n"
                 f"ファイルが破損している可能性があります。\n"
-                f"詳細: {str(e)}"
+                f"詳細: {str(e)}",
             )
         except Exception as e:
             logger.error(f"APIキー設定の読み込みに失敗しました: {e}", exc_info=True)
             QMessageBox.warning(
                 self,
                 "APIキー読み込みエラー",
-                f"APIキー設定の読み込み中にエラーが発生しました。\n"
-                f"詳細: {str(e)}"
+                f"APIキー設定の読み込み中にエラーが発生しました。\n詳細: {str(e)}",
             )
 
     def _save_api_keys(self) -> None:
         """APIキー設定を保存する"""
         api_keys = {}
-        
+
         # OpenAI APIキーを取得
         openai_api_key = self.openai_api_key.text().strip()
         if openai_api_key:
             api_keys["openai"] = openai_api_key
-            
+
         # Claude APIキーを取得
         claude_api_key = self.claude_api_key.text().strip()
         if claude_api_key:
             api_keys["claude"] = claude_api_key
-            
+
         # Gemini APIキーを取得
         gemini_api_key = self.gemini_api_key.text().strip()
         if gemini_api_key:
             api_keys["gemini"] = gemini_api_key
-            
+
         try:
             # APIキー設定を保存するディレクトリ
             config_dir = os.path.join(os.path.expanduser("~"), ".sgpo_editor")
             os.makedirs(config_dir, exist_ok=True)
-            
+
             # APIキー設定を保存するファイルパス
             api_key_file = os.path.join(config_dir, "api_keys.json")
-            
+
             with open(api_key_file, "w", encoding="utf-8") as f:
                 json.dump(api_keys, f)
-                
+
             logger.info("APIキー設定を保存しました")
-            
+
             # 確認メッセージを表示
-            QMessageBox.information(
-                self,
-                "設定保存完了",
-                "APIキー設定を保存しました。"
-            )
-            
+            QMessageBox.information(self, "設定保存完了", "APIキー設定を保存しました。")
+
         except PermissionError as e:
-            logger.error(f"APIキーファイルの書き込み権限がありません: {e}", exc_info=True)
+            logger.error(
+                f"APIキーファイルの書き込み権限がありません: {e}", exc_info=True
+            )
             QMessageBox.critical(
                 self,
                 "権限エラー",
                 f"APIキー設定の保存に失敗しました。\n"
                 f"ファイルの書き込み権限がない可能性があります。\n"
-                f"詳細: {str(e)}"
+                f"詳細: {str(e)}",
             )
         except Exception as e:
             logger.error(f"APIキー設定の保存に失敗しました: {e}", exc_info=True)
             QMessageBox.critical(
                 self,
                 "保存エラー",
-                f"APIキー設定の保存中にエラーが発生しました。\n"
-                f"詳細: {str(e)}"
+                f"APIキー設定の保存中にエラーが発生しました。\n詳細: {str(e)}",
             )
 
     def _set_api_keys(self, api_keys: dict) -> None:
         """APIキーを設定フォームにセット
-        
+
         Args:
             api_keys: APIキー辞書
         """
@@ -607,17 +621,17 @@ class EvaluationDialog(QDialog):
         if not api_keys:
             logger.debug("APIキーがありません")
             return
-            
+
         # OpenAI APIキーをセット
         if "openai" in api_keys:
             self.openai_api_key.setText(api_keys["openai"])
             logger.debug("OpenAI APIキーを設定しました")
-            
+
         # Claude APIキーをセット
         if "claude" in api_keys:
             self.claude_api_key.setText(api_keys["claude"])
             logger.debug("Claude APIキーを設定しました")
-            
+
         # Gemini APIキーをセット
         if "gemini" in api_keys:
             self.gemini_api_key.setText(api_keys["gemini"])
@@ -626,7 +640,7 @@ class EvaluationDialog(QDialog):
         # 設定されたAPIキーの数を確認
         api_key_count = sum(1 for k in ["openai", "claude", "gemini"] if k in api_keys)
         logger.debug(f"設定されたAPIキー数: {api_key_count}")
-        
+
         # APIキーが設定されていない場合は警告
         if api_key_count == 0:
             logger.warning("APIキーが設定されていません")
@@ -635,7 +649,7 @@ class EvaluationDialog(QDialog):
                 QMessageBox.warning(
                     self,
                     "APIキー未設定",
-                    "評価を実行するには、少なくとも1つのAPIキーを設定してください。"
+                    "評価を実行するには、少なくとも1つのAPIキーを設定してください。",
                 )
         else:
             logger.info(f"{api_key_count}個のAPIキーが設定されています")
@@ -656,7 +670,9 @@ class EvaluationDialog(QDialog):
         # チェックボックスを追加
         checkbox = QCheckBox(f"{name}: {desc}")
         checkbox.setChecked(True)
-        self.tab_widget.widget(1).layout().itemAt(1).widget().layout().addWidget(checkbox)
+        self.tab_widget.widget(1).layout().itemAt(1).widget().layout().addWidget(
+            checkbox
+        )
 
         # スコアラベルを追加
         metric_layout = QHBoxLayout()
@@ -664,7 +680,9 @@ class EvaluationDialog(QDialog):
         score_label = QLabel("未評価")
         self.metric_score_labels[name] = score_label
         metric_layout.addWidget(score_label)
-        self.tab_widget.widget(0).layout().itemAt(2).widget().layout().addLayout(metric_layout)
+        self.tab_widget.widget(0).layout().itemAt(2).widget().layout().addLayout(
+            metric_layout
+        )
 
         # 入力フィールドをクリア
         self.metric_name_edit.clear()
@@ -677,18 +695,14 @@ class EvaluationDialog(QDialog):
         # 評価対象エントリのチェック
         if not self.entry:
             logger.warning("評価対象エントリがありません")
-            QMessageBox.warning(
-                self,
-                "評価エラー",
-                "評価対象のエントリがありません。"
-            )
+            QMessageBox.warning(self, "評価エラー", "評価対象のエントリがありません。")
             return
-            
+
         # 原文と訳文があるか確認
         if not self.entry.msgid or not self.entry.msgstr:
             QMessageBox.warning(self, "エラー", "原文または訳文が空です。")
             return
-        
+
         # プロバイダーを取得
         provider_idx = self.provider_combo.currentIndex()
         provider = self.provider_combo.itemData(provider_idx)
@@ -700,10 +714,10 @@ class EvaluationDialog(QDialog):
             api_key = self.openai_api_key.text()
             if not api_key:
                 QMessageBox.warning(
-                    self, 
-                    "APIキーエラー", 
+                    self,
+                    "APIキーエラー",
                     "OpenAI APIキーが設定されていません。\n"
-                    "「設定」タブの「APIキー設定」ボタンで設定してください。"
+                    "「設定」タブの「APIキー設定」ボタンで設定してください。",
                 )
                 # 設定タブに切り替え
                 self.tab_widget.setCurrentIndex(1)
@@ -713,10 +727,10 @@ class EvaluationDialog(QDialog):
             api_key = self.claude_api_key.text()
             if not api_key:
                 QMessageBox.warning(
-                    self, 
-                    "APIキーエラー", 
+                    self,
+                    "APIキーエラー",
                     "Claude APIキーが設定されていません。\n"
-                    "「設定」タブの「APIキー設定」ボタンで設定してください。"
+                    "「設定」タブの「APIキー設定」ボタンで設定してください。",
                 )
                 # 設定タブに切り替え
                 self.tab_widget.setCurrentIndex(1)
@@ -744,24 +758,28 @@ class EvaluationDialog(QDialog):
         # 選択された評価指標を取得
         selected_metrics = []
         for i in range(len(self.metrics)):
-            metric_layout = self.tab_widget.widget(1).layout().itemAt(1).widget().layout()
+            metric_layout = (
+                self.tab_widget.widget(1).layout().itemAt(1).widget().layout()
+            )
             if i < metric_layout.count():
                 checkbox_item = metric_layout.itemAt(i)
-                if checkbox_item and checkbox_item.widget() and isinstance(checkbox_item.widget(), QCheckBox):
+                if (
+                    checkbox_item
+                    and checkbox_item.widget()
+                    and isinstance(checkbox_item.widget(), QCheckBox)
+                ):
                     checkbox = checkbox_item.widget()
                     if checkbox.isChecked():
                         selected_metrics.append(self.metrics[i])
-                        
+
         # 評価指標が選択されているか確認
         if not selected_metrics:
             QMessageBox.warning(
-                self, 
-                "設定エラー", 
-                "少なくとも1つの評価指標を選択してください。"
+                self, "設定エラー", "少なくとも1つの評価指標を選択してください。"
             )
             self.tab_widget.setCurrentIndex(1)
             return
-            
+
         logger.debug(f"選択された評価指標: {[m.name for m in selected_metrics]}")
 
         # 評価器を初期化
@@ -777,9 +795,9 @@ class EvaluationDialog(QDialog):
         except Exception as e:
             logger.error(f"評価器の初期化エラー: {e}", exc_info=True)
             QMessageBox.critical(
-                self, 
-                "評価器エラー", 
-                f"評価器の初期化中にエラーが発生しました: {str(e)}"
+                self,
+                "評価器エラー",
+                f"評価器の初期化中にエラーが発生しました: {str(e)}",
             )
             return
 
@@ -787,83 +805,83 @@ class EvaluationDialog(QDialog):
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(10)
         logger.debug("進捗バー: 10%")
-        
+
         # 評価ボタンを無効化
         self.evaluate_button.setEnabled(False)
-        
+
         # 状態表示を更新
         self.status_label.setText("評価中...")
-        
+
         # ワーカースレッドを作成
         self.worker = EvaluationWorker(
             self.evaluator,
             self.entry,
             selected_metrics,  # 選択された評価指標のみを使用
             language,
-            self.db
+            self.db,
         )
-        
+
         # シグナルを接続
         self.worker.progress_updated.connect(self.progress_bar.setValue)
         self.worker.evaluation_finished.connect(self._on_evaluation_finished)
         self.worker.evaluation_error.connect(self._on_evaluation_error)
-        
+
         # スレッド開始
         self.worker.start()
         logger.debug("評価ワーカースレッドを開始しました")
-    
+
     def _on_evaluation_finished(self, result):
         """評価完了時の処理
-        
+
         Args:
             result: 評価結果
         """
         logger.debug("評価完了")
-        
+
         # 結果を表示
         self._display_evaluation_result(result)
-        
+
         # 評価結果を保存
         self._save_evaluation_result(result)
-        
+
         # 進捗バーを100%に
         self.progress_bar.setValue(100)
-        
+
         # 評価完了シグナルを発行
         self.evaluation_completed.emit(self.entry, result)
-        
+
         # UI状態を復元
         self.progress_bar.setVisible(False)
         self.evaluate_button.setEnabled(True)
         self.status_label.setText("評価が完了しました")
-        
+
         # 完了メッセージ
         QMessageBox.information(self, "評価完了", "翻訳の評価が完了しました。")
-        
+
         # 評価タブに切り替え
         self.tab_widget.setCurrentIndex(0)
-    
+
     def _on_evaluation_error(self, error_message):
         """評価エラー時の処理
-        
+
         Args:
             error_message: エラーメッセージ
         """
         logger.error(f"評価エラー: {error_message}")
-        
+
         # エラーメッセージを表示
         QMessageBox.critical(
-            self, 
-            "評価エラー", 
+            self,
+            "評価エラー",
             f"評価中にエラーが発生しました:\n{error_message}\n\n"
-            "APIキーの設定と接続状態を確認してください。"
+            "APIキーの設定と接続状態を確認してください。",
         )
-        
+
         # UI状態を復元
         self.progress_bar.setVisible(False)
         self.evaluate_button.setEnabled(True)
         self.status_label.setText("評価に失敗しました")
-        
+
         # エントリの評価状態を更新
         self.entry.evaluation_state = EvaluationState.ERROR
         if self.db:

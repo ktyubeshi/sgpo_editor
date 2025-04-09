@@ -5,12 +5,9 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from pathlib import Path
 
-from PySide6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QTableWidget
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.widgets.search import SearchCriteria
 from sgpo_editor.models.entry import EntryModel
@@ -30,7 +27,7 @@ def app():
 def mock_entries():
     """モックエントリのリスト"""
     entries = []
-    
+
     # 未翻訳エントリ
     entry1 = EntryModel(
         position=0,
@@ -42,7 +39,7 @@ def mock_entries():
     )
     entry1.score = None
     entries.append(entry1)
-    
+
     # 翻訳済みエントリ
     entry2 = EntryModel(
         position=1,
@@ -54,7 +51,7 @@ def mock_entries():
     )
     entry2.score = 90
     entries.append(entry2)
-    
+
     # ファジーエントリ
     entry3 = EntryModel(
         position=2,
@@ -66,7 +63,7 @@ def mock_entries():
     )
     entry3.score = 60
     entries.append(entry3)
-    
+
     # 廃止済みエントリ
     entry4 = EntryModel(
         position=3,
@@ -78,7 +75,7 @@ def mock_entries():
     )
     entry4.score = 70
     entries.append(entry4)
-    
+
     # 低品質スコアのエントリ
     entry5 = EntryModel(
         position=4,
@@ -90,7 +87,7 @@ def mock_entries():
     )
     entry5.score = 30
     entries.append(entry5)
-    
+
     return entries
 
 
@@ -102,132 +99,159 @@ def table_manager():
     return manager
 
 
-
 class TestEntryListFilter:
     """エントリリストのフィルタリング機能テストクラス"""
-    
+
     def test_filter_by_status(self, app, mock_entries, table_manager):
         """状態によるフィルタリングテスト"""
         # ViewerPOFileのget_filtered_entriesをモック
         po_file = MagicMock()
         po_file.get_filtered_entries.side_effect = lambda **kwargs: [
-            entry for entry in mock_entries 
-            if self._entry_matches_filter(entry, kwargs.get('filter_text'))
+            entry
+            for entry in mock_entries
+            if self._entry_matches_filter(entry, kwargs.get("filter_text"))
         ]
-        
+
         # 未翻訳のエントリフィルタリング
         filter_text = TranslationStatus.UNTRANSLATED
-        entries = po_file.get_filtered_entries(filter_text=filter_text, filter_keyword="")
-        
+        entries = po_file.get_filtered_entries(
+            filter_text=filter_text, filter_keyword=""
+        )
+
         # SearchCriteriaを作成
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
-        
+
         # テーブル更新処理をモック
-        with patch.object(table_manager, '_update_table_contents'):
+        with patch.object(table_manager, "_update_table_contents"):
             table_manager.update_table(entries, criteria)
-        
+
         assert len(entries) == 1
         assert entries[0].get_status() == TranslationStatus.UNTRANSLATED
-        
+
         # 翻訳済みのエントリフィルタリング
         filter_text = TranslationStatus.TRANSLATED
-        entries = po_file.get_filtered_entries(filter_text=filter_text, filter_keyword="")
+        entries = po_file.get_filtered_entries(
+            filter_text=filter_text, filter_keyword=""
+        )
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
-        
-        with patch.object(table_manager, '_update_table_contents'):
+
+        with patch.object(table_manager, "_update_table_contents"):
             table_manager.update_table(entries, criteria)
-        
+
         assert len(entries) == 2
         for entry in entries:
             assert entry.get_status() == TranslationStatus.TRANSLATED
-        
+
         # ファジーのエントリフィルタリング
         filter_text = TranslationStatus.FUZZY
-        entries = po_file.get_filtered_entries(filter_text=filter_text, filter_keyword="")
+        entries = po_file.get_filtered_entries(
+            filter_text=filter_text, filter_keyword=""
+        )
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
-        
-        with patch.object(table_manager, '_update_table_contents'):
+
+        with patch.object(table_manager, "_update_table_contents"):
             table_manager.update_table(entries, criteria)
-        
+
         assert len(entries) == 1
         assert entries[0].get_status() == TranslationStatus.FUZZY
-        
+
         # 廃止済みのエントリフィルタリング
         filter_text = TranslationStatus.OBSOLETE
-        entries = po_file.get_filtered_entries(filter_text=filter_text, filter_keyword="")
+        entries = po_file.get_filtered_entries(
+            filter_text=filter_text, filter_keyword=""
+        )
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
-        
-        with patch.object(table_manager, '_update_table_contents'):
+
+        with patch.object(table_manager, "_update_table_contents"):
             table_manager.update_table(entries, criteria)
-        
+
         assert len(entries) == 1
         assert entries[0].get_status() == TranslationStatus.OBSOLETE
-    
+
     def test_text_search(self, app, mock_entries, table_manager):
         """テキスト検索によるフィルタリングテスト"""
         # ViewerPOFileのget_filtered_entriesをモック
         po_file = MagicMock()
         po_file.get_filtered_entries.side_effect = lambda **kwargs: [
-            entry for entry in mock_entries 
-            if self._entry_matches_keyword(entry, kwargs.get('filter_keyword'))
+            entry
+            for entry in mock_entries
+            if self._entry_matches_keyword(entry, kwargs.get("filter_keyword"))
         ]
-        
+
         # 「Test」を含むエントリの検索
         filter_text = "すべて"
         filter_keyword = "Test"
-        entries = po_file.get_filtered_entries(filter_text=filter_text, filter_keyword=filter_keyword)
-        
+        entries = po_file.get_filtered_entries(
+            filter_text=filter_text, filter_keyword=filter_keyword
+        )
+
         # SearchCriteriaを作成
         criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
-        
+
         # テーブル更新
-        with patch.object(table_manager, '_update_table_contents'):
+        with patch.object(table_manager, "_update_table_contents"):
             table_manager.update_table(entries, criteria)
-        
+
         assert len(entries) == 1
         assert "Testing" == entries[0].msgid
-        
+
         # 「エントリ」を含むエントリの検索
         filter_keyword = "エントリ"
-        entries = po_file.get_filtered_entries(filter_text=filter_text, filter_keyword=filter_keyword)
+        entries = po_file.get_filtered_entries(
+            filter_text=filter_text, filter_keyword=filter_keyword
+        )
         criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
-        
-        with patch.object(table_manager, '_update_table_contents'):
+
+        with patch.object(table_manager, "_update_table_contents"):
             table_manager.update_table(entries, criteria)
-        
+
         assert len(entries) == 1
         assert "廃止されたエントリ" == entries[0].msgstr
-        
+
         # コンテキストでの検索
         filter_keyword = "quality"
-        entries = po_file.get_filtered_entries(filter_text=filter_text, filter_keyword=filter_keyword)
+        entries = po_file.get_filtered_entries(
+            filter_text=filter_text, filter_keyword=filter_keyword
+        )
         criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
-        
-        with patch.object(table_manager, '_update_table_contents'):
+
+        with patch.object(table_manager, "_update_table_contents"):
             table_manager.update_table(entries, criteria)
-        
+
         assert len(entries) == 1
         assert "quality" == entries[0].msgctxt
-    
+
     def _entry_matches_filter(self, entry, filter_text):
         """エントリがフィルタに一致するかを判定"""
         if filter_text == "すべて" or filter_text == TranslationStatus.ALL:
             return True
-        elif filter_text == TranslationStatus.UNTRANSLATED and entry.get_status() == TranslationStatus.UNTRANSLATED:
+        elif (
+            filter_text == TranslationStatus.UNTRANSLATED
+            and entry.get_status() == TranslationStatus.UNTRANSLATED
+        ):
             return True
-        elif filter_text == TranslationStatus.TRANSLATED and entry.get_status() == TranslationStatus.TRANSLATED:
+        elif (
+            filter_text == TranslationStatus.TRANSLATED
+            and entry.get_status() == TranslationStatus.TRANSLATED
+        ):
             return True
-        elif filter_text == TranslationStatus.FUZZY and entry.get_status() == TranslationStatus.FUZZY:
+        elif (
+            filter_text == TranslationStatus.FUZZY
+            and entry.get_status() == TranslationStatus.FUZZY
+        ):
             return True
-        elif filter_text == TranslationStatus.OBSOLETE and entry.get_status() == TranslationStatus.OBSOLETE:
+        elif (
+            filter_text == TranslationStatus.OBSOLETE
+            and entry.get_status() == TranslationStatus.OBSOLETE
+        ):
             return True
         return False
-    
+
     def _entry_matches_keyword(self, entry, keyword):
         """エントリがキーワードに一致するかを判定"""
         if not keyword:
             return True
-            
+
         # 各フィールドでキーワード検索
         if keyword.lower() in str(entry.msgid).lower():
             return True
@@ -236,49 +260,47 @@ class TestEntryListFilter:
         if keyword.lower() in str(entry.msgctxt).lower():
             return True
         return False
-        
+
     def test_combined_search(self, app, mock_entries, table_manager):
         """状態とキーワードを組み合わせた検索テスト"""
         # ViewerPOFileのget_filtered_entriesをモック
         po_file = MagicMock()
         po_file.get_filtered_entries.side_effect = lambda **kwargs: [
-            entry for entry in mock_entries
-            if self._entry_matches_filter(entry, kwargs.get('filter_text')) and
-               self._entry_matches_keyword(entry, kwargs.get('filter_keyword'))
+            entry
+            for entry in mock_entries
+            if self._entry_matches_filter(entry, kwargs.get("filter_text"))
+            and self._entry_matches_keyword(entry, kwargs.get("filter_keyword"))
         ]
-        
+
         # 翻訳済みのエントリから「世界」を含むものの検索
         table_manager._current_filter_text = TranslationStatus.TRANSLATED
         table_manager._current_search_text = "世界"
-        
+
         entries = po_file.get_filtered_entries(
-            filter_text=TranslationStatus.TRANSLATED,
-            filter_keyword="世界"
+            filter_text=TranslationStatus.TRANSLATED, filter_keyword="世界"
         )
-        
+
         assert len(entries) == 1
         assert "世界" in entries[0].msgstr
         assert entries[0].get_status() == TranslationStatus.TRANSLATED
-        
+
         # 全てのエントリから「エントリ」を含むものの検索
         table_manager._current_filter_text = TranslationStatus.ALL
         table_manager._current_search_text = "エントリ"
-        
+
         entries = po_file.get_filtered_entries(
-            filter_text=TranslationStatus.ALL,
-            filter_keyword="エントリ"
+            filter_text=TranslationStatus.ALL, filter_keyword="エントリ"
         )
-        
+
         assert len(entries) == 1
         assert "廃止されたエントリ" == entries[0].msgstr
-        
+
         # コンテキストでの検索
         filter_keyword = "quality"
         entries = po_file.get_filtered_entries(
-            filter_text=TranslationStatus.ALL,
-            filter_keyword=filter_keyword
+            filter_text=TranslationStatus.ALL, filter_keyword=filter_keyword
         )
-        
+
         assert len(entries) == 1
         assert "quality" == entries[0].msgctxt
 
@@ -286,45 +308,53 @@ class TestEntryListFilter:
         """SearchCriteriaとの連携テスト"""
         # フィルタとキーワードの組み合わせパターン
         test_cases = [
-            (TranslationStatus.ALL, "", 5),       # すべてのエントリ
-            (TranslationStatus.TRANSLATED, "", 2),     # 翻訳済みエントリのみ
-            (TranslationStatus.UNTRANSLATED, "", 1),       # 未翻訳エントリのみ
-            (TranslationStatus.FUZZY, "", 1),     # ファジーエントリのみ
-            (TranslationStatus.ALL, "Test", 1),   # "Test"を含むすべてのエントリ
+            (TranslationStatus.ALL, "", 5),  # すべてのエントリ
+            (TranslationStatus.TRANSLATED, "", 2),  # 翻訳済みエントリのみ
+            (TranslationStatus.UNTRANSLATED, "", 1),  # 未翻訳エントリのみ
+            (TranslationStatus.FUZZY, "", 1),  # ファジーエントリのみ
+            (TranslationStatus.ALL, "Test", 1),  # "Test"を含むすべてのエントリ
             (TranslationStatus.TRANSLATED, "世界", 1),  # "世界"を含む翻訳済みエントリ
         ]
-        
+
         for filter_text, keyword, expected_count in test_cases:
             # フィルタリング結果をテスト用に生成
             filtered_entries = [
-                entry for entry in mock_entries
-                if self._entry_matches_filter(entry, filter_text) and
-                   self._entry_matches_keyword(entry, keyword)
+                entry
+                for entry in mock_entries
+                if self._entry_matches_filter(entry, filter_text)
+                and self._entry_matches_keyword(entry, keyword)
             ]
-            
+
             # 検索条件の作成
             criteria = SearchCriteria(filter=filter_text, filter_keyword=keyword)
-            
+
             # テーブル更新
-            with patch.object(table_manager, '_update_table_contents'):
+            with patch.object(table_manager, "_update_table_contents"):
                 table_manager.update_table(filtered_entries, criteria)
-            
+
             # 結果の確認 - フィルタリング結果の数が期待値と一致するか
-            assert len(filtered_entries) == expected_count, \
+            assert len(filtered_entries) == expected_count, (
                 f"フィルタ '{filter_text}' とキーワード '{keyword}' の結果数が期待と異なります"
+            )
 
     def test_update_filtered_table(self, app, mock_entries, table_manager):
         """フィルタリングされたテーブル更新のテスト"""
         # 翻訳済みエントリのフィルタリング
-        translated_entries = [entry for entry in mock_entries if entry.get_status() == TranslationStatus.TRANSLATED]
-        
+        translated_entries = [
+            entry
+            for entry in mock_entries
+            if entry.get_status() == TranslationStatus.TRANSLATED
+        ]
+
         # 検索条件の設定
-        criteria = SearchCriteria(filter=TranslationStatus.TRANSLATED, filter_keyword="")
-        
+        criteria = SearchCriteria(
+            filter=TranslationStatus.TRANSLATED, filter_keyword=""
+        )
+
         # テーブル更新処理をモック
-        with patch.object(table_manager, '_update_table_contents'):
+        with patch.object(table_manager, "_update_table_contents"):
             table_manager.update_table(translated_entries, criteria)
-        
+
         # フィルタリング結果の確認
         assert len(translated_entries) == 2  # 2つの翻訳済みエントリ
         for entry in translated_entries:

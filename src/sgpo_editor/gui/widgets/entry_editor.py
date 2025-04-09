@@ -173,12 +173,16 @@ class EntryEditor(QWidget):
         logger.debug(f"EntryEditor._show_review_dialog: ダイアログ種類={dialog_type}")
 
         if not self._current_entry:
-            logger.warning("EntryEditor._show_review_dialog: エントリがセットされていないためダイアログを表示できません")
+            logger.warning(
+                "EntryEditor._show_review_dialog: エントリがセットされていないためダイアログを表示できません"
+            )
             return
 
         if dialog_type not in self._review_dialogs:
             # ダイアログが未作成の場合は新規作成
-            logger.debug(f"EntryEditor._show_review_dialog: 新規ダイアログを作成 dialog_type={dialog_type}")
+            logger.debug(
+                f"EntryEditor._show_review_dialog: 新規ダイアログを作成 dialog_type={dialog_type}"
+            )
             dialog = QDialog(self)
             dialog.setWindowTitle(f"対訳表示: {dialog_type}")
             # 常に最前面に表示されるようにウィンドウフラグを設定
@@ -212,15 +216,21 @@ class EntryEditor(QWidget):
                 # データベース参照を設定（対応するメソッドがある場合）
                 # 注意: 将来的にはファサードを介してデータにアクセスするように修正するべき
                 if hasattr(widget, "set_database") and self._database:
-                    logger.debug(f"EntryEditor._show_review_dialog: ウィジェットにデータベース参照を設定")
+                    logger.debug(
+                        "EntryEditor._show_review_dialog: ウィジェットにデータベース参照を設定"
+                    )
                     widget.set_database(self._database)
 
             # ダイアログを保存
             dialog.widget = widget  # ウィジェットへの参照を保持
             self._review_dialogs[dialog_type] = dialog
-            logger.debug(f"EntryEditor._show_review_dialog: ダイアログ作成完了 dialog_type={dialog_type}")
+            logger.debug(
+                f"EntryEditor._show_review_dialog: ダイアログ作成完了 dialog_type={dialog_type}"
+            )
         else:
-            logger.debug(f"EntryEditor._show_review_dialog: 既存ダイアログを更新 dialog_type={dialog_type}")
+            logger.debug(
+                f"EntryEditor._show_review_dialog: 既存ダイアログを更新 dialog_type={dialog_type}"
+            )
             dialog = self._review_dialogs[dialog_type]
             # 現在のエントリを更新
             if hasattr(dialog.widget, "set_entry"):
@@ -229,30 +239,42 @@ class EntryEditor(QWidget):
             # データベース参照を更新（対応するメソッドがある場合）
             # 注意: 将来的にはファサードを介してデータにアクセスするように修正するべき
             if hasattr(dialog.widget, "set_database") and self._database:
-                logger.debug(f"EntryEditor._show_review_dialog: ウィジェットのデータベース参照を更新")
+                logger.debug(
+                    "EntryEditor._show_review_dialog: ウィジェットのデータベース参照を更新"
+                )
                 dialog.widget.set_database(self._database)
 
         # ダイアログを表示
         dialog.show()
         dialog.raise_()  # 前面に表示
         dialog.activateWindow()  # ウィンドウをアクティブにする
-        logger.debug(f"EntryEditor._show_review_dialog: ダイアログ表示完了 dialog_type={dialog_type}")
+        logger.debug(
+            f"EntryEditor._show_review_dialog: ダイアログ表示完了 dialog_type={dialog_type}"
+        )
 
     def _update_open_review_dialogs(self) -> None:
         """開いているすべてのレビューダイアログを更新"""
         if not self._current_entry:
-            logger.debug("EntryEditor._update_open_review_dialogs: current_entryがNoneのため更新しません")
+            logger.debug(
+                "EntryEditor._update_open_review_dialogs: current_entryがNoneのため更新しません"
+            )
             return
 
-        logger.debug(f"EntryEditor._update_open_review_dialogs: 開始 ダイアログ数={len(self._review_dialogs)}")
+        logger.debug(
+            f"EntryEditor._update_open_review_dialogs: 開始 ダイアログ数={len(self._review_dialogs)}"
+        )
         updated_count = 0
         for dialog_type, dialog in self._review_dialogs.items():
             if dialog.isVisible() and hasattr(dialog.widget, "set_entry"):
                 # ダイアログが表示中の場合のみ更新
-                logger.debug(f"EntryEditor._update_open_review_dialogs: ダイアログを更新 type={dialog_type}")
+                logger.debug(
+                    f"EntryEditor._update_open_review_dialogs: ダイアログを更新 type={dialog_type}"
+                )
                 dialog.widget.set_entry(self._current_entry)
                 updated_count += 1
-        logger.debug(f"EntryEditor._update_open_review_dialogs: 完了 更新したダイアログ数={updated_count}")
+        logger.debug(
+            f"EntryEditor._update_open_review_dialogs: 完了 更新したダイアログ数={updated_count}"
+        )
 
     @property
     def current_entry(self) -> Optional[EntryModel]:
@@ -283,16 +305,31 @@ class EntryEditor(QWidget):
             return None
 
     def _on_apply_clicked(self) -> None:
-        """適用ボタンクリック時の処理"""
+        """適用ボタンがクリックされたときの処理"""
         logger.debug("EntryEditor._on_apply_clicked: 開始")
-        
+
+        # 現在のエントリがなければ何もしない
         if not self.current_entry:
-            logger.debug("EntryEditor._on_apply_clicked: current_entryがNoneのため終了")
+            logger.debug("EntryEditor._on_apply_clicked: エントリがないため終了")
             return
-            
-        # apply_clickedシグナルを発行
-        # このシグナルはEntryEditorFacadeによって監視され、
-        # ファサードがエントリの更新を処理
+
+        # テキスト編集フィールドからmsgstrを取得して更新
+        msgstr = self._get_msgstr_from_fields()
+        logger.debug(
+            f"EntryEditor._on_apply_clicked: 更新前のmsgstr={self.current_entry.msgstr}"
+        )
+        logger.debug(f"EntryEditor._on_apply_clicked: 更新後のmsgstr={msgstr}")
+
+        # 内容が変更されていなければ何もしない
+        if self.current_entry.msgstr == msgstr:
+            logger.debug("EntryEditor._on_apply_clicked: 内容に変更がないため終了")
+            return
+
+        # エントリの更新（msgstrの更新）
+        self.current_entry.msgstr = msgstr
+
+        # ファザードパターン適用のため、データベース更新は行わず、シグナル発行のみ行う
+        # データベース更新はEntryEditorFacadeが処理する
         logger.debug("EntryEditor._on_apply_clicked: apply_clickedシグナル発行")
         self.apply_clicked.emit()
         logger.debug("EntryEditor._on_apply_clicked: 完了")
@@ -368,7 +405,9 @@ class EntryEditor(QWidget):
             logger.debug("EntryEditor.set_entry: UI要素を無効化")
             return
 
-        logger.debug(f"EntryEditor.set_entry: エントリ設定 key={entry.key}, msgctxt='{entry.msgctxt}'")
+        logger.debug(
+            f"EntryEditor.set_entry: エントリ設定 key={entry.key}, msgctxt='{entry.msgctxt}'"
+        )
         self.setEnabled(True)
         if self.msgid_edit:
             self.msgid_edit.blockSignals(True)
@@ -390,7 +429,9 @@ class EntryEditor(QWidget):
         # 開いているダイアログがあれば更新
         self._update_open_review_dialogs()
 
-        logger.debug(f"EntryEditor.set_entry: シグナル発行 position={self.current_entry_number or -1}")
+        logger.debug(
+            f"EntryEditor.set_entry: シグナル発行 position={self.current_entry_number or -1}"
+        )
         self.entry_changed.emit(self.current_entry_number or -1)
         logger.debug("EntryEditor.set_entry: 完了")
 
@@ -460,3 +501,10 @@ class EntryEditor(QWidget):
     def sizeHint(self) -> QSize:
         # デフォルトの幅はスーパークラスのサイズヒントから取得し、高さは 300px に設定（レビューウィジェット用に拡大）
         return QSize(super().sizeHint().width(), 300)
+
+    def _get_msgstr_from_fields(self) -> str:
+        """テキスト編集フィールドからmsgstrを取得"""
+        if self.msgstr_edit:
+            return self.msgstr_edit.toPlainText()
+        else:
+            return ""

@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from typing import Optional, Any, List
+from typing import Optional, List
 
 from po_viewer.gui.main_window import MainWindow
 from PySide6.QtWidgets import QApplication
@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from sgpo_editor.core.po_factory import get_po_factory, POLibraryType
-from sgpo_editor.core.po_interface import POFile, POEntry
+from sgpo_editor.core.po_interface import POEntry
 
 console = Console()
 
@@ -18,7 +18,11 @@ console = Console()
 class PoFile:
     """POファイルを扱うクラス"""
 
-    def __init__(self, file_path: str | Path, library_type: Optional[POLibraryType] = POLibraryType.SGPO):
+    def __init__(
+        self,
+        file_path: str | Path,
+        library_type: Optional[POLibraryType] = POLibraryType.SGPO,
+    ):
         """
         POファイルを読み込む
 
@@ -83,11 +87,11 @@ class PoFile:
             filter_type: 表示するエントリの種類（'translated', 'untranslated', 'fuzzy'）
         """
         entries: List[POEntry] = []
-        if filter_type == 'translated':
+        if filter_type == "translated":
             entries = self.po.translated_entries()
-        elif filter_type == 'untranslated':
+        elif filter_type == "untranslated":
             entries = self.po.untranslated_entries()
-        elif filter_type == 'fuzzy':
+        elif filter_type == "fuzzy":
             entries = self.po.fuzzy_entries()
         else:
             entries = list(self.po)

@@ -7,8 +7,7 @@ import json
 import logging
 import os
 import sqlite3
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.models.evaluation_state import EvaluationState
@@ -190,9 +189,7 @@ class EvaluationDatabase:
         entry_key = entry.key
 
         # エントリを検索
-        cursor.execute(
-            "SELECT id FROM entries WHERE entry_key = ?", (entry_key,)
-        )
+        cursor.execute("SELECT id FROM entries WHERE entry_key = ?", (entry_key,))
         result = cursor.fetchone()
 
         if result:
@@ -209,9 +206,7 @@ class EvaluationDatabase:
         self.conn.commit()
         return cursor.lastrowid
 
-    def save_evaluation_state(
-        self, entry: EntryModel, state: EvaluationState
-    ) -> None:
+    def save_evaluation_state(self, entry: EntryModel, state: EvaluationState) -> None:
         """評価状態を保存
 
         Args:
@@ -665,9 +660,7 @@ class EvaluationDatabase:
         }
         self.save_evaluation_history(entry, history_data)
 
-    def load_all_entries_evaluation_data(
-        self, entries: List[EntryModel]
-    ) -> None:
+    def load_all_entries_evaluation_data(self, entries: List[EntryModel]) -> None:
         """全エントリの評価データをロード
 
         Args:
@@ -676,9 +669,7 @@ class EvaluationDatabase:
         for entry in entries:
             self.load_entry_evaluation_data(entry)
 
-    def save_all_entries_evaluation_data(
-        self, entries: List[EntryModel]
-    ) -> None:
+    def save_all_entries_evaluation_data(self, entries: List[EntryModel]) -> None:
         """全エントリの評価データを保存
 
         Args:

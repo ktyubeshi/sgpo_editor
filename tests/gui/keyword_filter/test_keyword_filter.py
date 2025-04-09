@@ -46,9 +46,7 @@ class TestKeywordFilter(unittest.TestCase):
         # 翻訳ステータスを設定
         self.po_file.translation_status = "translated"
         # get_filtered_entriesを呼び出し
-        self.po_file.get_filtered_entries(
-            filter_keyword="keyword", update_filter=True
-        )
+        self.po_file.get_filtered_entries(filter_keyword="keyword", update_filter=True)
 
         # get_entriesが正しいパラメータで呼び出されたことを確認
         self.mock_db.get_entries.assert_called_once()

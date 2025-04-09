@@ -12,7 +12,6 @@ from typing import Any, Dict, Iterator, List, Optional, Union
 
 from sgpo_editor.types import EntryDict, EntryDictList, FlagConditions
 
-from sgpo_editor.core.constants import TranslationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class InMemoryEntryStore:
 
         メモリ上にSQLiteデータベースを作成し、POエントリを格納するためのテーブル構造を初期化します。
         このデータベースはアプリケーションの実行中のみ存在し、終了時にはデータは失われます。
-        
+
         非同期処理をサポートするために、check_same_thread=Falseオプションを使用し、
         スレッドセーフティを確保するためのロック機構を実装します。
         """
@@ -196,7 +195,7 @@ class InMemoryEntryStore:
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Cursor]:
         """トランザクションを開始
-        
+
         スレッドセーフティを確保するため、ロック機構を使用してデータベース操作を保護します。
         非同期処理からの呼び出しでも安全に動作します。
         """
@@ -266,9 +265,9 @@ class InMemoryEntryStore:
             for entry in entries:
                 entry_id = entry.get("id")
                 if entry_id:
-                    references.extend([
-                        (entry_id, ref) for ref in entry.get("references", []) or []
-                    ])
+                    references.extend(
+                        [(entry_id, ref) for ref in entry.get("references", []) or []]
+                    )
 
             if references:
                 cur.executemany(
@@ -281,9 +280,9 @@ class InMemoryEntryStore:
             for entry in entries:
                 entry_id = entry.get("id")
                 if entry_id:
-                    flags.extend([
-                        (entry_id, flag) for flag in entry.get("flags", []) or []
-                    ])
+                    flags.extend(
+                        [(entry_id, flag) for flag in entry.get("flags", []) or []]
+                    )
 
             if flags:
                 cur.executemany(
@@ -447,7 +446,7 @@ class InMemoryEntryStore:
         Args:
             key_or_entry: 更新するエントリのキーまたはエントリデータ辞書
             entry: エントリデータ辞書（key_or_entryが文字列の場合に使用）
-            
+
         Returns:
             bool: 更新が成功したかどうか
         """
@@ -469,7 +468,7 @@ class InMemoryEntryStore:
         try:
             # 更新成功フラグと行数を初期化
             rows_updated = 0
-            
+
             with self.transaction() as cur:
                 # エントリを更新
                 cur.execute(
@@ -502,7 +501,7 @@ class InMemoryEntryStore:
                         key,
                     ),
                 )
-                
+
                 # 更新された行数を確認
                 rows_updated = cur.rowcount
 
@@ -558,8 +557,10 @@ class InMemoryEntryStore:
                     if row:
                         entry_id = row[0]
                         # レビューデータを保存
-                        self._save_review_data_in_transaction(cur, entry_id, entry_data["review_data"])
-            
+                        self._save_review_data_in_transaction(
+                            cur, entry_id, entry_data["review_data"]
+                        )
+
             logger.debug("エントリ更新完了: %s, 結果: %s", key, rows_updated > 0)
             return rows_updated > 0
         except Exception as e:
@@ -595,9 +596,7 @@ class InMemoryEntryStore:
             List[Dict[str, Any]]: エントリのリスト
         """
         # デバッグ用ログ出力
-        print(
-            f"InMemoryEntryStore.get_entries呼び出し: search_text={search_text}"
-        )
+        print(f"InMemoryEntryStore.get_entries呼び出し: search_text={search_text}")
 
         query = """
             SELECT e.*, GROUP_CONCAT(f.flag) as flags, d.position
@@ -650,16 +649,18 @@ class InMemoryEntryStore:
                     )
                 """
                 )
-                
+
             # 廃止済みエントリのみを取得
             if flag_conditions.get("obsolete_only"):
                 conditions.append("e.obsolete = 1")
 
         # 翻訳状態によるフィルタリング
         if translation_status:
-            logger.debug(f"translation_statusによるフィルタリング: {translation_status}")
+            logger.debug(
+                f"translation_statusによるフィルタリング: {translation_status}"
+            )
             from sgpo_editor.core.constants import TranslationStatus
-            
+
             if translation_status == TranslationStatus.TRANSLATED:
                 logger.debug("翻訳済みエントリのみを取得")
                 conditions.append(
@@ -740,12 +741,19 @@ class InMemoryEntryStore:
         # テーブルスキーマに基づいた列名とエイリアスの定義
         # entries テーブルの列
         entry_columns = [
-            "id", "msgid", "msgstr", "msgctxt", "obsolete", 
-            "translator_comment", "extracted_comment", "created_at", "updated_at"
+            "id",
+            "msgid",
+            "msgstr",
+            "msgctxt",
+            "obsolete",
+            "translator_comment",
+            "extracted_comment",
+            "created_at",
+            "updated_at",
         ]
         # display_order テーブルの列
         display_columns = ["position"]
-        
+
         # 許可されるソート列のリスト（テーブル名付きとなしの両方を含む）
         allowed_sort_columns = []
         # entries テーブルの列（エイリアスなし）
@@ -758,17 +766,24 @@ class InMemoryEntryStore:
         allowed_sort_columns.extend([f"d.{col}" for col in display_columns])
         # 集計関数や特殊な列
         allowed_sort_columns.extend(["flags", "COALESCE(d.position, 0)"])
-        
+
         allowed_sort_orders = ["ASC", "DESC", "asc", "desc"]
-        
+
         if sort_column and sort_order:
             # カラム名とソート順序を検証
-            if sort_column in allowed_sort_columns and sort_order.upper() in allowed_sort_orders:
+            if (
+                sort_column in allowed_sort_columns
+                and sort_order.upper() in allowed_sort_orders
+            ):
                 logger.debug(f"有効なソート条件を適用: {sort_column} {sort_order}")
                 query += f" ORDER BY {sort_column} {sort_order}"
             else:
-                logger.warning(f"不正なソート条件を検出: column='{sort_column}', order='{sort_order}'")
-                logger.warning(f"デフォルトのソート順序を適用: COALESCE(d.position, 0) ASC")
+                logger.warning(
+                    f"不正なソート条件を検出: column='{sort_column}', order='{sort_order}'"
+                )
+                logger.warning(
+                    "デフォルトのソート順序を適用: COALESCE(d.position, 0) ASC"
+                )
                 query += " ORDER BY COALESCE(d.position, 0) ASC"
         else:
             logger.debug("ソート条件が指定されていないため、デフォルト順序を適用")
@@ -880,12 +895,14 @@ class InMemoryEntryStore:
             )
 
             for row in cur.fetchall():
-                review_data["review_comments"].append({
-                    "id": row[0],
-                    "author": row[1],
-                    "comment": row[2],
-                    "created_at": row[3],
-                })
+                review_data["review_comments"].append(
+                    {
+                        "id": row[0],
+                        "author": row[1],
+                        "comment": row[2],
+                        "created_at": row[3],
+                    }
+                )
 
             # 品質スコアを取得
             cur.execute(
@@ -926,18 +943,22 @@ class InMemoryEntryStore:
             )
 
             for row in cur.fetchall():
-                review_data["check_results"].append({
-                    "code": row[0],
-                    "message": row[1],
-                    "severity": row[2],
-                    "created_at": row[3],
-                })
+                review_data["check_results"].append(
+                    {
+                        "code": row[0],
+                        "message": row[1],
+                        "severity": row[2],
+                        "created_at": row[3],
+                    }
+                )
 
         return review_data
 
-    def _save_review_data_in_transaction(self, cur, entry_id: int, review_data: Dict[str, Any]) -> None:
+    def _save_review_data_in_transaction(
+        self, cur, entry_id: int, review_data: Dict[str, Any]
+    ) -> None:
         """トランザクション内でエントリのレビュー関連データを保存する
-        
+
         Args:
             cur: データベースカーソル
             entry_id: エントリID
@@ -946,9 +967,7 @@ class InMemoryEntryStore:
         # レビューコメント保存
         if "review_comments" in review_data:
             # 既存のレビューコメントを削除
-            cur.execute(
-                "DELETE FROM review_comments WHERE entry_id = ?", (entry_id,)
-            )
+            cur.execute("DELETE FROM review_comments WHERE entry_id = ?", (entry_id,))
 
             # 新しいレビューコメントを保存
             for comment in review_data["review_comments"]:
@@ -970,9 +989,7 @@ class InMemoryEntryStore:
         # 品質スコア保存
         if "quality_score" in review_data or "category_scores" in review_data:
             # 既存の品質スコア情報を削除
-            cur.execute(
-                "DELETE FROM quality_scores WHERE entry_id = ?", (entry_id,)
-            )
+            cur.execute("DELETE FROM quality_scores WHERE entry_id = ?", (entry_id,))
 
             quality_score = review_data.get("quality_score")
             category_scores = review_data.get("category_scores", {})
@@ -1021,7 +1038,7 @@ class InMemoryEntryStore:
                         result.get("created_at"),
                     ),
                 )
-                
+
     def _save_review_data(self, entry_id: int, review_data: Dict[str, Any]) -> None:
         """エントリのレビュー関連データを保存"""
         with self.transaction() as cur:

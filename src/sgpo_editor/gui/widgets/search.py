@@ -1,6 +1,6 @@
 """フィルタリング用ウィジェット"""
 
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, Optional
 
 from pydantic import BaseModel, ConfigDict
 from PySide6.QtCore import QTimer, Signal
@@ -27,7 +27,7 @@ class SearchCriteria(BaseModel):
 
 class SearchWidget(QWidget):
     """フィルタリング用ウィジェット"""
-    
+
     # シグナル定義
     filter_changed = Signal()
 
@@ -67,17 +67,19 @@ class SearchWidget(QWidget):
         # フィルタリング用のラベルとコンボボックス
         filter_label = QLabel(translate("filter") + ":")
         layout.addWidget(filter_label)
-        
+
         self.filter_combo = QComboBox()
-        
+
         # ステータスの表示名と内部値のマッピングを作成
         # 表示名と内部状態のマッピングを初期化
         self._init_status_mapping()
-        
+
         # コンボボックスに翻訳されたステータス名を追加
-        display_items = [self._status_to_display[status] for status in TRANSLATION_STATUS_ORDER]
+        display_items = [
+            self._status_to_display[status] for status in TRANSLATION_STATUS_ORDER
+        ]
         self.filter_combo.addItems(display_items)
-        
+
         # シグナル接続
         self.filter_combo.currentTextChanged.connect(self._start_filter_timer)
         layout.addWidget(self.filter_combo)
@@ -85,7 +87,7 @@ class SearchWidget(QWidget):
         # キーワード検索用のラベルとテキストボックス
         keyword_label = QLabel(translate("keyword") + ":")
         layout.addWidget(keyword_label)
-        
+
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText(translate("keyword_placeholder"))
         self.search_edit.textChanged.connect(self._start_search_timer)
@@ -100,7 +102,7 @@ class SearchWidget(QWidget):
         """ステータスの表示名と内部値のマッピングを初期化"""
         self._status_to_display = {}
         self._display_to_status = {}
-        
+
         # 各ステータスの翻訳を取得して、双方向マッピングを作成
         for status in TRANSLATION_STATUS_ORDER:
             display_name = translate(status)
@@ -115,8 +117,10 @@ class SearchWidget(QWidget):
         """現在のフィルタ条件をSearchCriteriaの形で返す"""
         # 表示テキストから内部ステータス値に変換
         display_filter = self.filter_combo.currentText()
-        internal_filter = self._display_to_status.get(display_filter, TranslationStatus.ALL)
-        
+        internal_filter = self._display_to_status.get(
+            display_filter, TranslationStatus.ALL
+        )
+
         return SearchCriteria(
             filter=internal_filter,
             filter_keyword=self.search_edit.text(),
@@ -141,10 +145,10 @@ class SearchWidget(QWidget):
         # 「すべて」に対応する内部値を取得
         all_display = self._status_to_display[TranslationStatus.ALL]
         self.filter_combo.setCurrentText(all_display)
-        
+
         # フィルタ変更シグナルを発行
         self.filter_changed.emit()
-        
+
         # 両方のコールバックを呼び出してテーブルを更新
         self._on_filter_changed()
         self._on_search_changed()

@@ -36,7 +36,7 @@ class TestEntryModel(unittest.TestCase):
             msgstr="テスト",
             msgctxt="context",
             obsolete=False,
-            position=1
+            position=1,
         )
 
         self.assertEqual(entry.key, "context\x04test")
@@ -375,7 +375,9 @@ class TestEntryModel(unittest.TestCase):
         entry2.fuzzy = False
         self.assertFalse(entry2.fuzzy)
         self.assertNotIn("fuzzy", entry2.flags)
-        self.assertIn("python-format", entry2.flags)  # 莉悶・繝輔Λ繧ｰ縺ｯ谿九▲縺ｦ縺・ｋ縺薙→繧堤｢ｺ隱・
+        self.assertIn(
+            "python-format", entry2.flags
+        )  # 莉悶・繝輔Λ繧ｰ縺ｯ谿九▲縺ｦ縺・ｋ縺薙→繧堤｢ｺ隱・
 
     def test_review_comment(self):
         # 繝ｬ繝薙Η繝ｼ繧ｳ繝｡繝ｳ繝域ｩ溯・縺ｮ繝・せ繝・
@@ -435,17 +437,13 @@ class TestEntryModel(unittest.TestCase):
         self.assertEqual(entry.check_results, [])
 
         # 繝√ぉ繝・け邨先棡繧定ｿｽ蜉�
-        entry.add_check_result(
-            code=1001, message="警告", severity="warning"
-        )
+        entry.add_check_result(code=1001, message="警告", severity="warning")
         self.assertEqual(len(entry.check_results), 1)
         self.assertEqual(entry.check_results[0]["code"], 1001)
         self.assertEqual(entry.check_results[0]["severity"], "warning")
 
         # 蛻･縺ｮ繝√ぉ繝・け邨先棡繧定ｿｽ蜉�
-        entry.add_check_result(
-            code=2003, message="エラー", severity="error"
-        )
+        entry.add_check_result(code=2003, message="エラー", severity="error")
         self.assertEqual(len(entry.check_results), 2)
 
         # 迚ｹ螳壹・繧ｳ繝ｼ繝峨・繝√ぉ繝・け邨先棡繧貞炎髯､

@@ -66,10 +66,10 @@ def test_entry_editor_state_text_changes(entry_editor, mock_entry):
     # コンテキストの変更
     entry_editor.context_edit.setText("new context")
     assert entry_editor.context_edit.text() == "new context"
-    
+
     # テキスト変更タイマーの状態は実装によって変わる可能性があるので
     # テストを安定させるために確認をスキップ
-    
+
     # タイマーの発火を待つ代わりに直接スロットを呼び出す
     entry_editor._on_text_changed()
 
@@ -78,22 +78,22 @@ def test_entry_editor_state_fuzzy_changes(entry_editor, mock_entry):
     """Fuzzy状態変更時の状態確認"""
     # テストを簡素化して、チェックボックスの動作のみをテストする
     entry_editor.set_entry(mock_entry)
-    
+
     # 初期状態を確認
     assert not entry_editor.fuzzy_checkbox.isChecked()
     assert not mock_entry.fuzzy
-    
+
     # Fuzzyチェックボックスの状態変更をシミュレート
     # シグナルハンドラをパッチしてテスト
-    with patch.object(entry_editor, '_on_fuzzy_changed') as mock_fuzzy_changed:
+    with patch.object(entry_editor, "_on_fuzzy_changed") as mock_fuzzy_changed:
         entry_editor.fuzzy_checkbox.setChecked(True)
         # シグナルが発生したことを確認
         mock_fuzzy_changed.assert_called_once()
-    
+
     # モックエントリのfuzzy属性を直接更新して状態を確認
     mock_entry.fuzzy = True
     entry_editor.fuzzy_checkbox.setChecked(True)
-    
+
     # 状態が更新されたことを確認
     assert entry_editor.fuzzy_checkbox.isChecked()
     assert mock_entry.fuzzy

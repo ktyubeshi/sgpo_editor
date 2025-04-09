@@ -12,10 +12,10 @@ def main():
     """アプリケーションを起動"""
     app = QApplication(sys.argv)
     app.setApplicationName("PO Editor")
-    
+
     # 国際化設定
     setup_translator()
-    
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

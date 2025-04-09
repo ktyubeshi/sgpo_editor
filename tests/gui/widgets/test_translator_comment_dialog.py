@@ -26,7 +26,7 @@ class TestTranslatorCommentDialog(unittest.TestCase):
         """各テスト前の準備"""
         # エントリエディタ作成
         self.entry_editor = EntryEditor()
-        
+
         # モックデータベースを作成して設定
         self.mock_db = MagicMock()
         self.entry_editor._database = self.mock_db
@@ -102,15 +102,17 @@ class TestTranslatorCommentDialog(unittest.TestCase):
         # 翻訳者コメントダイアログを表示
         self.entry_editor._show_review_dialog("translator_comment")
         dialog = self.entry_editor._review_dialogs["translator_comment"]
-        
+
         # ダイアログのウィジェットにデータベースを設定
         dialog.widget._db = self.mock_db
-        
+
         # comment_changedシグナルをトラッキング
         comment_changed_emitted = False
+
         def on_comment_changed():
             nonlocal comment_changed_emitted
             comment_changed_emitted = True
+
         dialog.widget.comment_changed.connect(on_comment_changed)
 
         # コメントを編集
@@ -129,7 +131,9 @@ class TestTranslatorCommentDialog(unittest.TestCase):
         )
 
         # シグナルが発行されたことを確認
-        self.assertTrue(comment_changed_emitted, "comment_changedシグナルが発行されていません")
+        self.assertTrue(
+            comment_changed_emitted, "comment_changedシグナルが発行されていません"
+        )
 
         # エントリを切り替えてから元に戻すと、編集後のコメントが保持されていることを確認
         self.entry_editor.set_entry(self.entry2)
@@ -144,32 +148,36 @@ class TestTranslatorCommentDialog(unittest.TestCase):
         # 翻訳者コメントダイアログを表示
         self.entry_editor._show_review_dialog("translator_comment")
         dialog = self.entry_editor._review_dialogs["translator_comment"]
-        
+
         # ダイアログのウィジェットにデータベースを設定
         dialog.widget._db = self.mock_db
-        
+
         # comment_changedシグナルをトラッキング
         comment_changed_emitted = False
+
         def on_comment_changed():
             nonlocal comment_changed_emitted
             comment_changed_emitted = True
+
         dialog.widget.comment_changed.connect(on_comment_changed)
 
         # コメントを編集して適用
         new_comment = "保存されるべきコメント"
         dialog.widget.comment_edit.setPlainText(new_comment)
         dialog.widget._on_apply_clicked()
-        
+
         # エントリのtcommentが更新されていることを確認
         self.assertEqual(self.entry1.tcomment, new_comment)
-        
+
         # データベースの更新が呼ばれたことを確認
         self.mock_db.update_entry_field.assert_called_with(
             self.entry1.key, "tcomment", new_comment
         )
-        
+
         # シグナルが発行されたことを確認
-        self.assertTrue(comment_changed_emitted, "comment_changedシグナルが発行されていません")
+        self.assertTrue(
+            comment_changed_emitted, "comment_changedシグナルが発行されていません"
+        )
 
         # ダイアログを閉じる
         dialog.close()
@@ -177,7 +185,7 @@ class TestTranslatorCommentDialog(unittest.TestCase):
         # 再度ダイアログを開く
         self.entry_editor._show_review_dialog("translator_comment")
         new_dialog = self.entry_editor._review_dialogs["translator_comment"]
-        
+
         # 新しいダイアログのウィジェットにデータベースを設定
         new_dialog.widget._db = self.mock_db
 

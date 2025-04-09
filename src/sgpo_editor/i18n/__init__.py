@@ -5,4 +5,4 @@
 
 from sgpo_editor.i18n.translator import setup_translator, translate
 
-__all__ = ["setup_translator", "translate"] 
+__all__ = ["setup_translator", "translate"]

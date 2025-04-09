@@ -177,7 +177,9 @@ class TestFilterDebug:
         # 6. translation_status="translated"でエントリを取得
         entries_translated = db.get_entries(translation_status="translated")
         count_translated = len(entries_translated)
-        print(f"[DEBUG] translation_status='translated'のエントリ数: {count_translated}件")
+        print(
+            f"[DEBUG] translation_status='translated'のエントリ数: {count_translated}件"
+        )
 
         # 7. 両方の条件を指定してエントリを取得
         entries_both = db.get_entries(translation_status="all", search_text="test")

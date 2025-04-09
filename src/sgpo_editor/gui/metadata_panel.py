@@ -1,10 +1,9 @@
 """メタデータ表示パネル"""
 
-import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -23,10 +22,10 @@ logger = logging.getLogger(__name__)
 
 class MetadataPanel(QWidget):
     """メタデータ表示パネル"""
-    
+
     # エントリ編集リクエストシグナル
     edit_requested = Signal(EntryModel)
-    
+
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         """初期化
 
@@ -36,32 +35,34 @@ class MetadataPanel(QWidget):
         super().__init__(parent)
         self.entry = None
         self.setup_ui()
-    
+
     def setup_ui(self) -> None:
         """UIコンポーネントの設定"""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # タイトル
         title_layout = QHBoxLayout()
         title_label = QLabel("メタデータ")
         title_label.setStyleSheet("font-weight: bold;")
         title_layout.addWidget(title_label)
-        
+
         self.edit_button = QPushButton("編集")
         self.edit_button.setEnabled(False)
         self.edit_button.clicked.connect(self.request_edit)
         title_layout.addWidget(self.edit_button)
-        
+
         layout.addLayout(title_layout)
-        
+
         # ツリーウィジェット
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["キー", "値"])
-        self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.tree.header().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.ResizeToContents
+        )
         self.tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.tree)
-    
+
     def set_entry(self, entry: Optional[EntryModel]) -> None:
         """表示するエントリを設定
 
@@ -71,28 +72,30 @@ class MetadataPanel(QWidget):
         self.entry = entry
         self.edit_button.setEnabled(entry is not None)
         self.update_display()
-    
+
     def update_display(self) -> None:
         """表示を更新"""
         self.tree.clear()
-        
+
         if not self.entry:
             return
-        
+
         # EntryModelクラスのmetadataプロパティを使用
-        metadata = getattr(self.entry, 'metadata', {})
-        
+        metadata = getattr(self.entry, "metadata", {})
+
         if not metadata:
             no_data_item = QTreeWidgetItem(["", "メタデータなし"])
             self.tree.addTopLevelItem(no_data_item)
             return
-        
+
         for key, value in metadata.items():
             self.add_metadata_item(key, value)
-        
+
         self.tree.expandAll()
-    
-    def add_metadata_item(self, key: str, value: Any, parent: Optional[QTreeWidgetItem] = None) -> QTreeWidgetItem:
+
+    def add_metadata_item(
+        self, key: str, value: Any, parent: Optional[QTreeWidgetItem] = None
+    ) -> QTreeWidgetItem:
         """メタデータアイテムをツリーに追加
 
         Args:
@@ -109,7 +112,7 @@ class MetadataPanel(QWidget):
         else:
             item = QTreeWidgetItem([key, self.format_value(value)])
             parent.addChild(item)
-        
+
         # 複合型の場合は子アイテムを追加
         if isinstance(value, dict):
             for k, v in value.items():
@@ -117,9 +120,9 @@ class MetadataPanel(QWidget):
         elif isinstance(value, list):
             for i, v in enumerate(value):
                 self.add_metadata_item(f"[{i}]", v, item)
-        
+
         return item
-    
+
     def format_value(self, value: Any) -> str:
         """値を表示用にフォーマット
 
@@ -132,7 +135,7 @@ class MetadataPanel(QWidget):
         if isinstance(value, (dict, list)):
             return ""  # 複合型は子アイテムで表示
         return str(value)
-    
+
     def request_edit(self) -> None:
         """メタデータ編集リクエスト"""
         if self.entry:

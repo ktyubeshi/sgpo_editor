@@ -1,6 +1,6 @@
 """エントリエディタのテスト"""
 
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -106,10 +106,10 @@ def test_entry_editor_apply_button(entry_editor, mock_entry):
     with patch.object(entry_editor, "_on_apply_clicked") as mock_handler:
         # テキストを変更して変更状態を作成
         entry_editor.msgstr_edit.setPlainText("Updated text")
-        
+
         # ボタンクリック
         entry_editor.apply_button.click()
-        
+
         # ハンドラが呼び出されたことを確認
         mock_handler.assert_called_once()
 
@@ -126,7 +126,7 @@ def test_entry_editor_review_dialogs(entry_editor, mock_entry, mock_database):
     mock_entry.review_comments = []
     mock_entry.overall_quality_score = 0
     mock_entry.category_quality_scores = {}
-    
+
     entry_editor.set_entry(mock_entry)
     entry_editor.database = mock_database
 
@@ -143,16 +143,16 @@ def test_entry_editor_review_dialogs(entry_editor, mock_entry, mock_database):
         # ダイアログをモックする前に、既存のダイアログをクリア
         if dialog_type in entry_editor._review_dialogs:
             del entry_editor._review_dialogs[dialog_type]
-            
+
         # showメソッドをモックしてダイアログが表示されることを確認
         with patch("PySide6.QtWidgets.QDialog.show") as mock_show:
             # レビューダイアログを表示
             entry_editor._show_review_dialog(dialog_type)
-            
+
             # ダイアログが作成されたことを確認
             assert dialog_type in entry_editor._review_dialogs
             assert entry_editor._review_dialogs[dialog_type] is not None
-            
+
             # showメソッドが呼ばれたことを確認
             mock_show.assert_called_once()
 

@@ -195,7 +195,7 @@ class DatabaseAccessor:
 
         # SQLクエリのパラメータ
         params = []
-        
+
         # 基本クエリ
         query = """
             SELECT e.*, d.position AS position
@@ -214,7 +214,7 @@ class DatabaseAccessor:
 
         # 翻訳ステータスに基づくフィルタ
         from sgpo_editor.core.constants import TranslationStatus
-        
+
         if translation_status == TranslationStatus.TRANSLATED:
             # 翻訳済み: msgstrが空でなく、fuzzyでない
             where_conditions.append("(e.msgstr != '' AND e.fuzzy = 0)")
@@ -235,19 +235,30 @@ class DatabaseAccessor:
                 where_conditions.append("e.fuzzy = 1")
             else:
                 where_conditions.append("e.fuzzy = 0")
-                
+
         if "msgstr_empty" in flag_conditions and flag_conditions["msgstr_empty"]:
             where_conditions.append("e.msgstr = ''")
-            
-        if "msgstr_not_empty" in flag_conditions and flag_conditions["msgstr_not_empty"]:
+
+        if (
+            "msgstr_not_empty" in flag_conditions
+            and flag_conditions["msgstr_not_empty"]
+        ):
             where_conditions.append("e.msgstr != ''")
-            
-        if "fuzzy_or_msgstr_empty" in flag_conditions and flag_conditions["fuzzy_or_msgstr_empty"]:
+
+        if (
+            "fuzzy_or_msgstr_empty" in flag_conditions
+            and flag_conditions["fuzzy_or_msgstr_empty"]
+        ):
             where_conditions.append("(e.fuzzy = 1 OR e.msgstr = '')")
 
         # カスタムフラグ条件
         for flag_name, flag_value in flag_conditions.items():
-            if flag_name not in ("fuzzy", "msgstr_empty", "msgstr_not_empty", "fuzzy_or_msgstr_empty"):
+            if flag_name not in (
+                "fuzzy",
+                "msgstr_empty",
+                "msgstr_not_empty",
+                "fuzzy_or_msgstr_empty",
+            ):
                 if flag_value:
                     # サブクエリでフラグの有無を確認
                     where_conditions.append("""
@@ -272,31 +283,37 @@ class DatabaseAccessor:
                 SELECT qs.overall_score 
                 FROM quality_scores qs 
                 WHERE qs.entry_id = e.id
-            )"""
+            )""",
         }
-        
+
         # 有効なソート列かチェック
         sort_column_sql = valid_sort_columns.get(sort_column, "d.position")
-        
+
         # ソート順のSQLインジェクション防止
         sort_order_sql = "ASC" if sort_order.upper() != "DESC" else "DESC"
-        
+
         # ソート条件を追加
         query += f" ORDER BY {sort_column_sql} {sort_order_sql}"
 
         # クエリ実行と結果の取得
         with self.db.transaction() as cur:
-            logger.debug(f"DatabaseAccessor.get_filtered_entries: SQLクエリ実行: {query}")
-            logger.debug(f"DatabaseAccessor.get_filtered_entries: SQLパラメータ: {params}")
+            logger.debug(
+                f"DatabaseAccessor.get_filtered_entries: SQLクエリ実行: {query}"
+            )
+            logger.debug(
+                f"DatabaseAccessor.get_filtered_entries: SQLパラメータ: {params}"
+            )
             cur.execute(query, params)
-            
+
             # 結果をリストに変換
             result = []
             for row in cur.fetchall():
                 entry_dict = self._row_to_entry_dict(row)
                 result.append(entry_dict)
-                
-        logger.debug(f"DatabaseAccessor.get_filtered_entries: {len(result)}件のエントリを取得")
+
+        logger.debug(
+            f"DatabaseAccessor.get_filtered_entries: {len(result)}件のエントリを取得"
+        )
         return result
 
     def update_entry(self, entry: EntryInput) -> bool:
@@ -600,8 +617,14 @@ class DatabaseAccessor:
         }
 
         # オプションフィールドの追加
-        for field in ["msgctxt", "comment", "tcomment", "previous_msgid", 
-                      "previous_msgid_plural", "previous_msgctxt"]:
+        for field in [
+            "msgctxt",
+            "comment",
+            "tcomment",
+            "previous_msgid",
+            "previous_msgid_plural",
+            "previous_msgctxt",
+        ]:
             if row[field]:
                 entry_dict[field] = row[field]
 
@@ -609,9 +632,7 @@ class DatabaseAccessor:
         entry_id = row["id"]
         with self.db.transaction() as cur:
             # フラグの取得
-            cur.execute(
-                "SELECT flag FROM entry_flags WHERE entry_id = ?", (entry_id,)
-            )
+            cur.execute("SELECT flag FROM entry_flags WHERE entry_id = ?", (entry_id,))
             flags = [row["flag"] for row in cur.fetchall()]
             if flags:
                 entry_dict["flags"] = flags
@@ -626,19 +647,22 @@ class DatabaseAccessor:
 
             # 品質スコアの取得（あれば）
             cur.execute(
-                "SELECT id, overall_score FROM quality_scores WHERE entry_id = ?", (entry_id,)
+                "SELECT id, overall_score FROM quality_scores WHERE entry_id = ?",
+                (entry_id,),
             )
             quality_score_row = cur.fetchone()
             if quality_score_row:
                 entry_dict["quality_score"] = quality_score_row["overall_score"]
-                
+
                 # カテゴリースコアの取得
                 quality_score_id = quality_score_row["id"]
                 cur.execute(
                     "SELECT category, score FROM category_scores WHERE quality_score_id = ?",
                     (quality_score_id,),
                 )
-                category_scores = {row["category"]: row["score"] for row in cur.fetchall()}
+                category_scores = {
+                    row["category"]: row["score"] for row in cur.fetchall()
+                }
                 if category_scores:
                     entry_dict["category_scores"] = category_scores
 

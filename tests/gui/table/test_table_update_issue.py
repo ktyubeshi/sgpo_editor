@@ -6,9 +6,7 @@
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
+from PySide6.QtWidgets import QApplication, QTableWidget
 
 from sgpo_editor.gui.table_manager import TableManager
 
@@ -25,11 +23,11 @@ class TestTableUpdateIssue:
         """各テストメソッド実行前の準備"""
         self.table = QTableWidget()
         self.table.setColumnCount(6)  # 列数を設定
-        self.table.setHorizontalHeaderLabels([
-            "Entry Number", "msgctxt", "msgid", "msgstr", "Status", "Score"
-        ])
+        self.table.setHorizontalHeaderLabels(
+            ["Entry Number", "msgctxt", "msgid", "msgstr", "Status", "Score"]
+        )
         self.table_manager = TableManager(self.table)
-        
+
         # テスト用にモックエントリを作成
         self.mock_entry = MagicMock()
         self.mock_entry.position = 0
@@ -51,21 +49,23 @@ class TestTableUpdateIssue:
         columns_to_hide = [1, 3]  # msgctxt列とmsgstr列
         for col in columns_to_hide:
             self.table_manager.toggle_column_visibility(col)
-            
+
         # この時点で特定の列が非表示になっているはず
         for i in range(self.table_manager.get_column_count()):
             expected_hidden = i in columns_to_hide
             assert self.table.isColumnHidden(i) == expected_hidden
-            
+
         # テーブル更新
-        with patch('sgpo_editor.gui.table_manager.logger'):
+        with patch("sgpo_editor.gui.table_manager.logger"):
             self.table_manager._update_table_contents([self.mock_entry])
-            
+
         # 更新後も列の表示/非表示状態が維持されているか確認
         for i in range(self.table_manager.get_column_count()):
             expected_hidden = i in columns_to_hide
-            assert self.table.isColumnHidden(i) == expected_hidden, f"列 {i} の非表示状態が正しくありません"
-            
+            assert self.table.isColumnHidden(i) == expected_hidden, (
+                f"列 {i} の非表示状態が正しくありません"
+            )
+
         # エントリが正しくテーブルに表示されているか確認
         assert self.table.rowCount() == 1
         assert self.table.item(0, 0).text() == "1"  # Entry Number
@@ -75,17 +75,17 @@ class TestTableUpdateIssue:
     def test_table_contents_after_visibility_toggle(self):
         """列表示切り替え後のテーブル内容テスト"""
         # テーブルにデータを設定
-        with patch('sgpo_editor.gui.table_manager.logger'):
+        with patch("sgpo_editor.gui.table_manager.logger"):
             self.table_manager._update_table_contents([self.mock_entry])
-            
+
         # 初期状態を確認
         assert self.table.rowCount() == 1
         assert self.table.item(0, 0).text() == "1"
-        
+
         # 列を切り替えてもデータは維持されるはず
         column_to_toggle = 2  # msgid列
         self.table_manager.toggle_column_visibility(column_to_toggle)
-        
+
         # データの確認
         assert self.table.rowCount() == 1
         assert self.table.item(0, 0).text() == "1"

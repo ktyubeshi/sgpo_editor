@@ -79,45 +79,45 @@ class TestRecentFiles:
 
         # 検証
         assert loaded_files == test_paths
-        
+
     def test_settings_consistency(self, setup_settings):
         """recent_files_strとrecent_filesの設定値が一致するかテスト"""
         # 準備
         window = MainWindow()
         test_path = "/path/to/test.po"
-        
+
         # 実行：ファイルを追加
         window.file_handler.add_recent_file(test_path)
-        
+
         # 検証：両方の設定値が一致していること
         settings = QSettings()
         recent_files_str = settings.value("recent_files_str", "", type=str)
         recent_files = settings.value("recent_files", [])
-        
+
         # 文字列から復元したリスト
         str_list = recent_files_str.split(";") if recent_files_str else []
-        
+
         # 両方の設定値が一致していること
         assert str_list == recent_files
         assert test_path in str_list
         assert test_path in recent_files
-        
+
     def test_menu_uses_correct_settings(self, qtbot, setup_settings):
         """メニュー更新時に正しい設定値が使用されるかテスト"""
         # 準備
         window = MainWindow()
         qtbot.addWidget(window)
         test_path = "/path/to/menu_test.po"
-        
+
         # recent_files_strのみに値を設定
         settings = QSettings()
         settings.setValue("recent_files_str", test_path)
         settings.setValue("recent_files", [])
         settings.sync()
-        
+
         # メニューを更新
         window.ui_manager.update_recent_files_menu(window._open_recent_file)
-        
+
         # 検証：メニューにファイルが表示されていること
         recent_menu = window.ui_manager.recent_files_menu
         has_file = False
@@ -125,7 +125,7 @@ class TestRecentFiles:
             if action.data() == test_path:
                 has_file = True
                 break
-                
+
         # recent_files_strから読み込まれていれば成功、recent_filesから読み込まれていれば失敗
         assert has_file, "recent_files_strの値がメニューに反映されていません"
 
@@ -177,7 +177,9 @@ class TestRecentFiles:
         # アクションのデータにファイルパスが設定されている
         assert temp_po_file == recent_menu.actions()[0].data()
 
-    def test_open_file_updates_menu(self, qtbot, setup_settings, temp_po_file, monkeypatch):
+    def test_open_file_updates_menu(
+        self, qtbot, setup_settings, temp_po_file, monkeypatch
+    ):
         """_open_fileメソッドを呼び出すと最近使用したファイルメニューが更新されるかテスト"""
         # 準備
         window = MainWindow()
@@ -204,21 +206,21 @@ class TestRecentFiles:
         # 準備
         window = MainWindow()
         qtbot.addWidget(window)
-        
+
         # MAX_RECENT_FILES + 1個のファイルパスを作成
         max_files = 10  # FileHandlerのMAX_RECENT_FILESと同じ値
         test_files = [f"/path/to/file{i}.po" for i in range(max_files + 2)]
-        
+
         # ファイルを順番に追加
         for filepath in test_files:
             window.file_handler.add_recent_file(filepath)
-        
+
         # 検証: 最大数を超えないこと
         assert len(window.file_handler.recent_files) <= max_files
-        
+
         # 最新のファイルがリストの先頭にあること
         assert window.file_handler.recent_files[0] == test_files[-1]
-        
+
         # 最も古いファイルがリストから削除されていること
         assert test_files[0] not in window.file_handler.recent_files
 
@@ -227,28 +229,31 @@ class TestRecentFiles:
         # 準備
         window = MainWindow()
         qtbot.addWidget(window)
-        
+
         # ファイルを追加
         window.file_handler.add_recent_file(temp_po_file)
-        
+
         # メニューを更新
         window.ui_manager.update_recent_files_menu(window._open_recent_file)
-        
+
         # クリアアクションを実行
         clear_action = None
         for action in window.ui_manager.recent_files_menu.actions():
             if action.text() == "履歴をクリア":
                 clear_action = action
                 break
-        
+
         assert clear_action is not None
         clear_action.trigger()
-        
+
         # 検証: 設定から履歴が削除されていること
         settings = QSettings()
         recent_files = settings.value("recent_files", [])
         assert not recent_files
-        
+
         # メニューが初期状態に戻っていること
-        assert window.ui_manager.recent_files_menu.actions()[0].text() == "最近使用した項目はありません"
+        assert (
+            window.ui_manager.recent_files_menu.actions()[0].text()
+            == "最近使用した項目はありません"
+        )
         assert not window.ui_manager.recent_files_menu.actions()[0].isEnabled()

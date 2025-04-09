@@ -10,7 +10,7 @@ import asyncio
 from pathlib import Path
 from typing import Optional, Union
 
-from sgpo_editor.types import EntryDict, EntryDictList, FlagConditions, MetadataDict
+from sgpo_editor.types import EntryDict, FlagConditions, MetadataDict
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.constants import TranslationStatus
@@ -28,12 +28,12 @@ class ViewerPOFileBase:
 
     このクラスは、キャッシュ管理とデータベースアクセスの責務を分離し、
     EntryCacheManagerとDatabaseAccessorを利用して実装されています。
-    
+
     主な機能:
     1. POファイルの非同期読み込み: asyncioを使用してUIの応答性を向上
     2. エントリの取得と管理: キャッシュとデータベースを連携してエントリを効率的に管理
     3. フィルタリングとソート: 検索条件や翻訳ステータスに基づくエントリの絞り込み
-    
+
     キャッシュとデータベースの連携方法:
     - ファイル読み込み時: キャッシュをクリアし、データベースに新しいエントリを格納
     - エントリ取得時: まずキャッシュを確認し、キャッシュミス時にデータベースから取得
@@ -88,7 +88,7 @@ class ViewerPOFileBase:
         このメソッドは、POファイルを非同期で読み込み、データベースに格納します。
         ファイル読み込みやデータベース操作などのCPU負荷の高い処理をasyncio.to_threadを
         使用して別スレッドで実行し、UIの応答性を向上させています。
-        
+
         キャッシュとの連携:
         - 読み込み開始時に、EntryCacheManagerのclear_all_cacheメソッドですべてのキャッシュをクリア
         - 読み込み完了後、_load_all_basic_infoメソッドで基本情報キャッシュを初期化
@@ -123,7 +123,7 @@ class ViewerPOFileBase:
             for i, entry in enumerate(pofile):
                 entry_dict = self._convert_entry_to_dict(entry, i)
                 entries_to_add.append(entry_dict)
-            
+
             await asyncio.to_thread(self.db_accessor.add_entries_bulk, entries_to_add)
 
             # 基本情報をキャッシュにロード（CPU負荷の高い処理を非同期実行）
@@ -147,12 +147,12 @@ class ViewerPOFileBase:
 
         データベースからすべてのエントリの基本情報を取得し、基本情報キャッシュに格納します。
         これにより、詳細情報が必要ない場合の高速なアクセスが可能になります。
-        
+
         キャッシュとの連携:
         - DatabaseAccessorのget_all_entries_basic_infoメソッドで基本情報を取得
         - 取得した基本情報をEntryModelオブジェクトに変換
         - EntryCacheManagerのcache_basic_info_entryメソッドでキャッシュに格納
-        
+
         このメソッドはファイル読み込み時に呼び出され、リスト表示などの高速化に対応します。
         """
         # データベースからすべてのエントリの基本情報を取得
@@ -215,7 +215,7 @@ class ViewerPOFileBase:
 
     def enable_cache(self, enabled: bool = True) -> None:
         """キャッシュを有効/無効にする
-        
+
         キャッシュの有効/無効を切り替えます。無効にすると、すべてのキャッシュがクリアされ、
         以降の操作はすべてデータベースから直接取得されます。これはデバッグ時や
         メモリ使用量を抑えたい場合に便利です。

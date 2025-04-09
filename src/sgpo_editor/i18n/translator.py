@@ -4,7 +4,6 @@
 """
 
 import logging
-import os
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -21,7 +20,6 @@ _translations: Dict[str, Dict[str, str]] = {
         "untranslated": "未翻訳",
         "fuzzy": "ファジー",
         "obsolete": "廃止",
-        
         # その他のUI要素
         "filter": "表示",
         "keyword": "キーワード",
@@ -39,12 +37,12 @@ _translator: Optional[QTranslator] = None
 
 def setup_translator(locale_name: str = None) -> None:
     """トランスレーターを設定する
-    
+
     Args:
         locale_name: 使用するロケール名（例: "ja_JP"）。Noneの場合はシステム設定を使用。
     """
     global _current_locale, _translator
-    
+
     if locale_name is None:
         # システムロケールを取得
         system_locale = QLocale.system().name()
@@ -56,12 +54,12 @@ def setup_translator(locale_name: str = None) -> None:
             _current_locale = "ja_JP"
     else:
         _current_locale = locale_name
-    
+
     logger.debug(f"ロケールを設定します: {_current_locale}")
-    
+
     # トランスレーターを設定
     _translator = QTranslator()
-    
+
     # 将来的にQtの翻訳ファイル (.qm) を使用する場合に対応
     translations_dir = Path(__file__).parent / "translations"
     if translations_dir.exists():
@@ -75,22 +73,22 @@ def setup_translator(locale_name: str = None) -> None:
 
 def translate(text: str) -> str:
     """テキストを現在のロケールに翻訳する
-    
+
     Args:
         text: 翻訳する英語テキスト
-    
+
     Returns:
         翻訳されたテキスト（翻訳が見つからない場合は元のテキスト）
     """
     # インメモリの翻訳マッピングから取得
     if _current_locale in _translations and text in _translations[_current_locale]:
         return _translations[_current_locale][text]
-    
+
     # Qtの翻訳システムを使用（将来的な拡張用）
     if _translator:
         translation = QCoreApplication.translate("SGPOEditor", text)
         if translation != text:
             return translation
-    
+
     # 翻訳が見つからない場合は元のテキストを返す
-    return text 
+    return text

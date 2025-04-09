@@ -15,16 +15,13 @@ class TestEvaluationState(unittest.TestCase):
         self.assertIsNotNone(EvaluationState.EVALUATED)
         # 値が重複していないことを確認
         self.assertNotEqual(
-            EvaluationState.NOT_EVALUATED.value,
-            EvaluationState.EVALUATING.value
+            EvaluationState.NOT_EVALUATED.value, EvaluationState.EVALUATING.value
         )
         self.assertNotEqual(
-            EvaluationState.EVALUATING.value,
-            EvaluationState.EVALUATED.value
+            EvaluationState.EVALUATING.value, EvaluationState.EVALUATED.value
         )
         self.assertNotEqual(
-            EvaluationState.NOT_EVALUATED.value,
-            EvaluationState.EVALUATED.value
+            EvaluationState.NOT_EVALUATED.value, EvaluationState.EVALUATED.value
         )
 
     def test_string_representation(self):
