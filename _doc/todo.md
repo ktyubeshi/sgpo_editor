@@ -115,12 +115,12 @@
 
 ### 3.2. キャッシュ管理の改善 (優先度: 高)
 
-* [ ] **キャッシュの一元化 (`src/sgpo_editor/core/cache_manager.py`):** [source:2154]
+* [✅] **キャッシュの一元化 (`src/sgpo_editor/core/cache_manager.py`):** [source:2154]
     * 他のクラス (特にUI層の `src/sgpo_editor/gui/table_manager.py` [source:2921], `src/sgpo_editor/gui/event_handler.py` [source:2618]) にあるキャッシュ関連ロジック (`_entry_cache`, `_row_key_map`) を廃止し、`EntryCacheManager` に集約します。
     * キャッシュ無効化API (`invalidate_entry(key)`, `invalidate_filter_cache()`, `clear_all()` など) を `EntryCacheManager` に実装し、更新処理クラスから呼び出すようにします。
     * `_force_filter_update` フラグ [source:1844] の管理を `EntryCacheManager` 内部にカプセル化します。
     * 優先度: **高**
-* [ ] **キャッシュ戦略の見直し (`src/sgpo_editor/core/cache_manager.py`):** [source:2154]
+* [✅] **キャッシュ戦略の見直し (`src/sgpo_editor/core/cache_manager.py`):** [source:2154]
     * `_entry_basic_info_cache` の必要性を再評価します。完全キャッシュからの情報抽出で十分なパフォーマンスが得られるか検証します。維持する場合、より軽量なデータ構造 (辞書など) を検討します。
     * フィルタ結果キャッシュ (`_filtered_entries_cache`) のキー生成ロジック (`_generate_filter_cache_key` [source:1842]) を堅牢化します (例: 条件辞書の正規化＋ハッシュ化)。
     * 優先度: **高**

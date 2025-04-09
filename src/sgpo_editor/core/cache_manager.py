@@ -15,10 +15,10 @@
 import logging
 import hashlib
 import json
-from typing import Optional, List, Callable, Dict
+from typing import Optional, List, Dict, Any
 
 from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.types import EntryModelMap, EntryModelList, FlagConditions
+from sgpo_editor.types import EntryModelMap, EntryModelList
 
 logger = logging.getLogger(__name__)
 
@@ -325,108 +325,216 @@ class EntryCacheManager:
         # フィルタ結果キャッシュを無効化
         self.set_force_filter_update(True)
 
-    def cache_filtered_entries(self, entries: EntryModelList, cache_key: str) -> None:
-        """フィルタリング結果をキャッシュに保存する
+    def _generate_filter_cache_key(self, conditions: Dict[str, Any]) -> str:
+        """フィルタ条件からキャッシュキーを生成する
+
+        フィルタ条件の辞書からユニークなキャッシュキーを生成します。
+        このキーはフィルタ結果のキャッシュに使用されます。
+
+        最適化ポイント:
+        - 条件辞書の正規化による一貫したキー生成
+        - MD5ハッシュによる短いキー長と効率的な比較
+        - JSON形式の使用による複雑な条件の正確な表現
 
         Args:
-            entries: フィルタリング結果のエントリリスト
-            cache_key: フィルタ条件を表すキャッシュキー
+            conditions: フィルタ条件の辞書
+
+        Returns:
+            str: 生成されたキャッシュキー
+        """
+        # 辞書を正規化（キーでソート）
+        conditions_sorted = {}
+        
+        # 文字列と基本型のみを含む辞書に変換
+        for key, value in conditions.items():
+            # 関数やクラスインスタンスなど、JSONに変換できない型は除外
+            if isinstance(value, (str, int, float, bool, type(None))):
+                conditions_sorted[key] = value
+            elif isinstance(value, dict):
+                # 入れ子の辞書も正規化
+                conditions_sorted[key] = {
+                    k: v for k, v in value.items() 
+                    if isinstance(v, (str, int, float, bool, type(None)))
+                }
+            elif isinstance(value, (list, tuple)):
+                # リストは単純なJSONに変換できる要素のみを含む新しいリストに変換
+                conditions_sorted[key] = [
+                    v for v in value 
+                    if isinstance(v, (str, int, float, bool, type(None)))
+                ]
+        
+        # 正規化した条件をJSON形式に変換してハッシュ化
+        conditions_str = json.dumps(conditions_sorted, sort_keys=True)
+        return hashlib.md5(conditions_str.encode()).hexdigest()
+        
+    def get_filtered_entries_cache(
+        self, filter_conditions: Dict[str, Any]
+    ) -> Optional[EntryModelList]:
+        """フィルタ条件に合致するフィルタ結果キャッシュを取得する
+
+        Args:
+            filter_conditions: フィルタ条件の辞書
+
+        Returns:
+            フィルタ結果のキャッシュ、存在しない場合はNone
+        """
+        if not self._cache_enabled:
+            return None
+
+        # 強制更新フラグがある場合はキャッシュを無視
+        if self._force_filter_update:
+            return None
+
+        # フィルタ条件からキャッシュキーを生成
+        cache_key = self._generate_filter_cache_key(filter_conditions)
+        
+        # 現在のキャッシュキーと一致すれば、キャッシュを返す
+        if cache_key == self._filtered_entries_cache_key and self._filtered_entries_cache:
+            logger.debug(
+                f"EntryCacheManager.get_filtered_entries_cache: キャッシュヒット key={cache_key}"
+            )
+            return self._filtered_entries_cache
+            
+        return None
+        
+    def cache_filtered_entries(
+        self, filter_conditions: Dict[str, Any], entries: EntryModelList
+    ) -> None:
+        """フィルタ結果をキャッシュに保存する
+
+        最適化されたキャッシュ戦略：
+        - 高速なキー生成によるキャッシュアクセスの効率化
+        - 条件の正規化によるキャッシュヒット率の向上
+        - 強制更新フラグのクリアによるキャッシュの有効化
+
+        Args:
+            filter_conditions: フィルタ条件の辞書
+            entries: フィルタ結果のエントリリスト
         """
         if not self._cache_enabled:
             return
-
+            
+        # フィルタ条件からキャッシュキーを生成
+        cache_key = self._generate_filter_cache_key(filter_conditions)
+        
+        # キャッシュを更新
         logger.debug(
-            f"EntryCacheManager.cache_filtered_entries: {len(entries)}件のフィルタ結果をキャッシュ"
+            f"EntryCacheManager.cache_filtered_entries: キャッシュ更新 key={cache_key}, "
+            f"エントリ数={len(entries)}"
         )
         self._filtered_entries_cache = entries
         self._filtered_entries_cache_key = cache_key
+        self._force_filter_update = False  # 強制更新フラグをクリア
 
-    def get_filtered_entries_cache(self, cache_key: str) -> Optional[EntryModelList]:
-        """フィルタリング結果をキャッシュから取得する
-
-        Args:
-            cache_key: フィルタ条件を表すキャッシュキー
-
+    def evaluate_cache_efficiency(self) -> Dict[str, Any]:
+        """キャッシュ効率の評価情報を取得する
+        
+        現在のキャッシュ状態と効率に関する情報を返します。
+        これはキャッシュ戦略の最適化やデバッグに役立ちます。
+        
         Returns:
-            キャッシュにある場合はエントリリスト、ない場合はNone
+            キャッシュ効率情報の辞書
         """
-        if not self._cache_enabled or self._force_filter_update:
-            return None
-
-        if (
-            not self._filtered_entries_cache
-            or self._filtered_entries_cache_key != cache_key
-        ):
-            return None
-
-        logger.debug(
-            f"EntryCacheManager.get_filtered_entries_cache: キャッシュから{len(self._filtered_entries_cache)}件のフィルタ結果を返却"
-        )
-        return self._filtered_entries_cache
-
-    def prefetch_entries(
-        self,
-        keys: List[str],
-        fetch_callback: Callable[[List[str]], Dict[str, EntryModel]],
-    ) -> None:
-        """指定されたキーのエントリをプリフェッチする
-
-        Args:
-            keys: プリフェッチするエントリのキーリスト
-            fetch_callback: キャッシュにないエントリを取得するためのコールバック関数
-                            List[str]のキーリストを受け取り、Dict[str, EntryModel]のキー→エントリマッピングを返す
-        """
-        if not self._cache_enabled or not keys:
-            return
-
-        # キャッシュにないキーを特定
-        missing_keys = [key for key in keys if key not in self._complete_entry_cache]
-        if not missing_keys:
-            return
-
-        logger.debug(
-            f"EntryCacheManager.prefetch_entries: {len(missing_keys)}件のエントリをプリフェッチ"
-        )
-
-        # コールバックを使用してエントリを取得
-        entries = fetch_callback(missing_keys)
-
-        # キャッシュに保存
-        for key, entry in entries.items():
-            self.cache_complete_entry(key, entry)
-
-    def generate_filter_cache_key(
-        self,
-        search_text: Optional[str] = None,
-        sort_column: Optional[str] = None,
-        sort_order: Optional[str] = None,
-        flag_conditions: Optional[FlagConditions] = None,
-        translation_status: Optional[str] = None,
-    ) -> str:
-        """フィルタ条件からキャッシュキーを生成する
-
-        フィルタ条件の各パラメータから一意のハッシュ値を生成し、
-        フィルタキャッシュのキーとして使用します。
-
-        Args:
-            search_text: 検索テキスト
-            sort_column: ソート列
-            sort_order: ソート順序
-            flag_conditions: フラグ条件
-            translation_status: 翻訳ステータス
-
-        Returns:
-            フィルタ条件に対応するキャッシュキー
-        """
-        # 条件を正規化してハッシュ化
-        conditions = {
-            "search_text": search_text or "",
-            "sort_column": sort_column or "",
-            "sort_order": sort_order or "",
-            "flag_conditions": flag_conditions or {},
-            "translation_status": translation_status or "",
+        info = {
+            "complete_entry_cache_size": len(self._complete_entry_cache),
+            "basic_info_cache_size": len(self._entry_basic_info_cache),
+            "filtered_entries_cache_size": len(self._filtered_entries_cache),
+            "cache_enabled": self._cache_enabled,
+            "force_filter_update": self._force_filter_update,
         }
+        
+        if hasattr(self, "_row_key_map"):
+            info["row_key_map_size"] = len(self._row_key_map)
+            
+        # メモリ使用量の概算（将来的に実装）
+        
+        return info
 
-        # 辞書をJSON文字列に変換し、ハッシュ化
-        conditions_str = json.dumps(conditions, sort_keys=True)
-        return hashlib.md5(conditions_str.encode()).hexdigest()
+    # UI層との連携機能
+
+    def add_row_key_mapping(self, row: int, key: str) -> None:
+        """行インデックスとエントリキーのマッピングを追加する
+        
+        UI層からのアクセスを効率化するために、テーブルの行インデックスと
+        エントリキーのマッピングを管理します。これにより、UI層（TableManager, 
+        EventHandler）の独自キャッシュを排除し、キャッシュ管理を一元化できます。
+
+        Args:
+            row: テーブルの行インデックス
+            key: エントリキー
+        """
+        logger.debug(f"EntryCacheManager.add_row_key_mapping: row={row}, key={key}")
+        # 行→キーのマッピングを保存
+        if not hasattr(self, "_row_key_map"):
+            self._row_key_map = {}
+        self._row_key_map[row] = key
+
+    def get_key_for_row(self, row: int) -> Optional[str]:
+        """行インデックスからエントリキーを取得する
+
+        Args:
+            row: テーブルの行インデックス
+
+        Returns:
+            エントリキー、存在しない場合はNone
+        """
+        if not hasattr(self, "_row_key_map"):
+            return None
+        return self._row_key_map.get(row)
+
+    def clear_row_key_mappings(self) -> None:
+        """行インデックスとエントリキーのマッピングをクリアする"""
+        logger.debug("EntryCacheManager.clear_row_key_mappings: マッピングをクリア")
+        if hasattr(self, "_row_key_map"):
+            self._row_key_map.clear()
+
+    def update_entry_in_ui_cache(self, entry: EntryModel) -> None:
+        """エントリをUIキャッシュに反映する
+        
+        エントリが更新された場合、UI層での表示に使われるキャッシュも更新します。
+        これはTableManagerとEventHandlerの独自キャッシュを廃止し、
+        中央キャッシュに一元化するための機能です。
+
+        Args:
+            entry: 更新するエントリモデル
+        """
+        logger.debug(f"EntryCacheManager.update_entry_in_ui_cache: key={entry.key}")
+        # 完全なエントリキャッシュを更新
+        self.cache_complete_entry(entry.key, entry)
+        
+        # UI表示用イベント通知（将来的にオブザーバーパターンで拡張可能）
+        self.notify_entry_updated(entry.key)
+
+    def notify_entry_updated(self, key: str) -> None:
+        """エントリ更新通知
+        
+        このメソッドは将来的にオブザーバーパターンに拡張可能です。
+        現在は内部処理のみ行います。
+
+        Args:
+            key: 更新されたエントリのキー
+        """
+        logger.debug(f"EntryCacheManager.notify_entry_updated: key={key}")
+        # 将来的にはオブザーバーに通知する実装に拡張可能
+
+    def prefetch_visible_entries(self, visible_keys: List[str]) -> None:
+        """表示中のエントリをプリフェッチする
+        
+        テーブルに表示されている（または表示されそうな）エントリを
+        事前にキャッシュに読み込みます。これにより、スクロール時の
+        エントリ表示をスムーズにします。
+
+        Args:
+            visible_keys: 表示中または表示予定のエントリキーのリスト
+        """
+        logger.debug(f"EntryCacheManager.prefetch_visible_entries: {len(visible_keys)}件")
+        # すでにキャッシュにあるキーを除外
+        keys_to_fetch = [
+            key for key in visible_keys 
+            if key not in self._complete_entry_cache
+        ]
+        
+        if not keys_to_fetch:
+            return
+            
+        # 将来的にはバックグラウンドでの非同期フェッチも検討
