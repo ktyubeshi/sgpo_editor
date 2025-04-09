@@ -477,28 +477,257 @@ class DatabaseAccessor:
             検索条件に一致するエントリのリスト
         """
         logger.debug(
-            f"DatabaseAccessor.advanced_search: search_text={search_text}, exact_match={exact_match}, case_sensitive={case_sensitive}"
+            f"DatabaseAccessor.advanced_search: search_text={search_text}, "
+            f"search_fields={search_fields}, "
+            f"exact_match={exact_match}, case_sensitive={case_sensitive}, "
+            f"limit={limit}, offset={offset}"
         )
 
         # 検索フィールド指定がない場合はデフォルト値を使用
         if not search_fields:
             search_fields = ["msgid", "msgstr"]
 
-        # データベースからエントリを取得
-        entries = self.db.get_entries(
-            search_text=search_text,
-            sort_column=sort_column,
-            sort_order=sort_order,
-            flag_conditions=flag_conditions,
-            translation_status=translation_status,
-            exact_match=exact_match,
-            case_sensitive=case_sensitive,
-            search_fields=search_fields,
-            limit=limit,
-            offset=offset,
-        )
+        # InMemoryEntryStoreはadvanced_searchのパラメータをすべてサポートしていないため、
+        # SQL文を直接構築して実行する
 
-        return entries
+        # SQLクエリのパラメータ
+        params = []
+
+        # 基本クエリ
+        query = """
+            SELECT e.*, d.position AS position
+            FROM entries e
+            JOIN display_order d ON e.id = d.entry_id
+        """
+
+        # WHERE句の条件を格納するリスト
+        where_conditions = []
+
+        # 検索テキストフィルタ
+        if search_text:
+            # 検索フィールドごとの条件を構築
+            search_field_conditions = []
+            
+            for field in search_fields:
+                if field == "msgid":
+                    if exact_match:
+                        if case_sensitive:
+                            search_field_conditions.append("e.msgid = ?")
+                        else:
+                            search_field_conditions.append("LOWER(e.msgid) = LOWER(?)")
+                    else:
+                        if case_sensitive:
+                            search_field_conditions.append("e.msgid LIKE ?")
+                        else:
+                            search_field_conditions.append("LOWER(e.msgid) LIKE LOWER(?)")
+                    
+                    if exact_match:
+                        params.append(search_text)
+                    else:
+                        params.append(f"%{search_text}%")
+                
+                elif field == "msgstr":
+                    if exact_match:
+                        if case_sensitive:
+                            search_field_conditions.append("e.msgstr = ?")
+                        else:
+                            search_field_conditions.append("LOWER(e.msgstr) = LOWER(?)")
+                    else:
+                        if case_sensitive:
+                            search_field_conditions.append("e.msgstr LIKE ?")
+                        else:
+                            search_field_conditions.append("LOWER(e.msgstr) LIKE LOWER(?)")
+                    
+                    if exact_match:
+                        params.append(search_text)
+                    else:
+                        params.append(f"%{search_text}%")
+                
+                elif field == "reference":
+                    if exact_match:
+                        if case_sensitive:
+                            search_field_conditions.append("""
+                                EXISTS (
+                                    SELECT 1 FROM entry_references r 
+                                    WHERE r.entry_id = e.id AND r.reference = ?
+                                )
+                            """)
+                        else:
+                            search_field_conditions.append("""
+                                EXISTS (
+                                    SELECT 1 FROM entry_references r 
+                                    WHERE r.entry_id = e.id AND LOWER(r.reference) = LOWER(?)
+                                )
+                            """)
+                    else:
+                        if case_sensitive:
+                            search_field_conditions.append("""
+                                EXISTS (
+                                    SELECT 1 FROM entry_references r 
+                                    WHERE r.entry_id = e.id AND r.reference LIKE ?
+                                )
+                            """)
+                        else:
+                            search_field_conditions.append("""
+                                EXISTS (
+                                    SELECT 1 FROM entry_references r 
+                                    WHERE r.entry_id = e.id AND LOWER(r.reference) LIKE LOWER(?)
+                                )
+                            """)
+                    
+                    if exact_match:
+                        params.append(search_text)
+                    else:
+                        params.append(f"%{search_text}%")
+                
+                elif field == "translator_comment" or field == "tcomment":
+                    if exact_match:
+                        if case_sensitive:
+                            search_field_conditions.append("e.tcomment = ?")
+                        else:
+                            search_field_conditions.append("LOWER(e.tcomment) = LOWER(?)")
+                    else:
+                        if case_sensitive:
+                            search_field_conditions.append("e.tcomment LIKE ?")
+                        else:
+                            search_field_conditions.append("LOWER(e.tcomment) LIKE LOWER(?)")
+                    
+                    if exact_match:
+                        params.append(search_text)
+                    else:
+                        params.append(f"%{search_text}%")
+                
+                elif field == "extracted_comment" or field == "comment":
+                    if exact_match:
+                        if case_sensitive:
+                            search_field_conditions.append("e.comment = ?")
+                        else:
+                            search_field_conditions.append("LOWER(e.comment) = LOWER(?)")
+                    else:
+                        if case_sensitive:
+                            search_field_conditions.append("e.comment LIKE ?")
+                        else:
+                            search_field_conditions.append("LOWER(e.comment) LIKE LOWER(?)")
+                    
+                    if exact_match:
+                        params.append(search_text)
+                    else:
+                        params.append(f"%{search_text}%")
+            
+            # 検索フィールド条件をORで結合
+            if search_field_conditions:
+                where_conditions.append("(" + " OR ".join(search_field_conditions) + ")")
+
+        # 翻訳ステータスに基づくフィルタ
+        from sgpo_editor.core.constants import TranslationStatus
+
+        if translation_status == TranslationStatus.TRANSLATED:
+            # 翻訳済み: msgstrが空でなく、fuzzyでない
+            where_conditions.append("(e.msgstr != '' AND e.fuzzy = 0)")
+        elif translation_status == TranslationStatus.UNTRANSLATED:
+            # 未翻訳: msgstrが空で、fuzzyでない
+            where_conditions.append("(e.msgstr = '' AND e.fuzzy = 0)")
+        elif translation_status == TranslationStatus.FUZZY:
+            # fuzzy: fuzzyフラグがある
+            where_conditions.append("e.fuzzy = 1")
+        elif translation_status == TranslationStatus.FUZZY_OR_UNTRANSLATED:
+            # fuzzyまたは未翻訳
+            where_conditions.append("(e.fuzzy = 1 OR e.msgstr = '')")
+        # ALL（すべて）の場合は条件なし
+
+        # フラグ条件に基づくフィルタ
+        if flag_conditions:
+            if "fuzzy" in flag_conditions:
+                if flag_conditions["fuzzy"]:
+                    where_conditions.append("e.fuzzy = 1")
+                else:
+                    where_conditions.append("e.fuzzy = 0")
+
+            if "msgstr_empty" in flag_conditions and flag_conditions["msgstr_empty"]:
+                where_conditions.append("e.msgstr = ''")
+
+            if (
+                "msgstr_not_empty" in flag_conditions
+                and flag_conditions["msgstr_not_empty"]
+            ):
+                where_conditions.append("e.msgstr != ''")
+
+            if (
+                "fuzzy_or_msgstr_empty" in flag_conditions
+                and flag_conditions["fuzzy_or_msgstr_empty"]
+            ):
+                where_conditions.append("(e.fuzzy = 1 OR e.msgstr = '')")
+
+            # カスタムフラグ条件
+            for flag_name, flag_value in flag_conditions.items():
+                if flag_name not in (
+                    "fuzzy",
+                    "msgstr_empty",
+                    "msgstr_not_empty",
+                    "fuzzy_or_msgstr_empty",
+                ):
+                    if flag_value:
+                        # サブクエリでフラグの有無を確認
+                        where_conditions.append("""
+                            EXISTS (
+                                SELECT 1 FROM entry_flags ef 
+                                WHERE ef.entry_id = e.id AND ef.flag = ?
+                            )
+                        """)
+                        params.append(flag_name)
+
+        # WHERE句を構築
+        if where_conditions:
+            query += " WHERE " + " AND ".join(where_conditions)
+
+        # ソート順の決定
+        valid_sort_columns = {
+            "position": "d.position",
+            "msgid": "e.msgid",
+            "msgstr": "e.msgstr",
+            "fuzzy": "e.fuzzy",
+            "score": """(
+                SELECT qs.overall_score 
+                FROM quality_scores qs 
+                WHERE qs.entry_id = e.id
+            )""",
+        }
+
+        # 有効なソート列かチェック
+        sort_column_sql = valid_sort_columns.get(sort_column, "d.position")
+
+        # ソート順のSQLインジェクション防止
+        sort_order_sql = "ASC" if sort_order is None or sort_order.upper() != "DESC" else "DESC"
+
+        # ソート条件を追加
+        query += f" ORDER BY {sort_column_sql} {sort_order_sql}"
+
+        # LIMIT と OFFSET の追加
+        if limit is not None:
+            query += f" LIMIT {limit}"
+            if offset > 0:
+                query += f" OFFSET {offset}"
+
+        # クエリ実行と結果の取得
+        with self.db.transaction() as cur:
+            logger.debug(
+                f"DatabaseAccessor.advanced_search: SQLクエリ実行: {query}"
+            )
+            logger.debug(
+                f"DatabaseAccessor.advanced_search: SQLパラメータ: {params}"
+            )
+            cur.execute(query, params)
+
+            # 結果をリストに変換
+            result = []
+            for row in cur.fetchall():
+                entry_dict = self._row_to_entry_dict(row)
+                result.append(entry_dict)
+
+        logger.debug(
+            f"DatabaseAccessor.advanced_search: {len(result)}件のエントリを取得"
+        )
+        return result
 
     def get_all_flags(self) -> Set[str]:
         """データベース内のすべてのフラグの集合を取得する
@@ -582,12 +811,38 @@ class DatabaseAccessor:
     def invalidate_entry(self, key: str) -> None:
         """エントリを無効化する
 
+        このメソッドは、指定されたキーのエントリをデータベースで無効化します。
+        実際の処理は、EntryCacheManagerと連携してViewerPOFileRefactoredクラスから呼び出されることを
+        想定しています。
+
+        現在の実装ではデータベース側での処理は必要ありませんが、将来的にはデータベース側で
+        無効化フラグを設定したり、キャッシュ関連の処理を行う可能性があります。
+
+        EntryCacheManagerとの連携フロー:
+        1. ViewerPOFileRefactoredクラスからのエントリ無効化要求が発生
+        2. このinvalidate_entryメソッドが呼び出される（必要に応じてデータベース操作を実行）
+        3. その後、ViewerPOFileRefactoredクラスがEntryCacheManagerのinvalidate_entryを呼び出し
+        4. これによって、データベースとキャッシュの両方が一貫した状態に保たれる
+
+        将来的な拡張可能性:
+        - エントリ無効化ログの記録
+        - 一時的な無効化マーキング（復元可能な形式で）
+        - 関連エントリの無効化（グループ処理）
+
         Args:
             key: 無効化するエントリのキー
         """
         logger.debug(f"DatabaseAccessor.invalidate_entry: key={key}")
-        # キャッシュと連携して無効化すべき機能だが、現在はデータベースのみの操作
-        # キャッシュマネージャとの連携は ViewerPOFileRefactored クラスで行う
+        # 現在の実装では、データベース側での特別な処理は必要なし
+        # 将来的には以下のような処理を追加する可能性がある
+        # with self.db.transaction() as cur:
+        #     cur.execute(
+        #         "UPDATE entries SET invalidated = 1 WHERE key = ?",
+        #         (key,)
+        #     )
+        
+        # キャッシュ無効化はViewerPOFileRefactoredクラスでEntryCacheManagerを通じて行われるため、
+        # ここでは実装しない（責務の分離）
 
     def _row_to_entry_dict(self, row: sqlite3.Row) -> EntryDict:
         """SQLite RowオブジェクトをEntryDict形式に変換する
