@@ -93,11 +93,20 @@ class ViewerPOFileBase:
         - 読み込み開始時に、EntryCacheManagerのclear_all_cacheメソッドですべてのキャッシュをクリア
         - 読み込み完了後、_load_all_basic_infoメソッドで基本情報キャッシュを初期化
 
+        例外処理とリソース管理:
+        - 非同期処理中に発生したすべての例外を適切にキャッチし、UIに通知
+        - 読み込み途中で失敗した場合も、一貫性のある状態を維持
+        - リソースを適切に解放し、メモリリークを防止
+
         Args:
             path: 読み込むPOファイルのパス
         """
+        # 作業中のデータを保存するための変数
+        pofile = None
+        entries_to_add = []
+        start_time = time.time()
+        
         try:
-            start_time = time.time()
             logger.debug(f"POファイル読み込み開始: {path}")
 
             # キャッシュをクリア
@@ -110,24 +119,62 @@ class ViewerPOFileBase:
             factory = get_po_factory(self.library_type)
 
             # POファイルを読み込む（CPU負荷の高い処理を非同期実行）
-            pofile = await asyncio.to_thread(factory.load_file, path)
+            try:
+                logger.debug(f"POファイル読み込み処理開始: {path}")
+                pofile = await asyncio.to_thread(factory.load_file, path)
+                logger.debug(f"POファイル読み込み処理完了: {path}")
+            except Exception as e:
+                logger.error(f"POファイル読み込み処理失敗: {e}")
+                raise RuntimeError(f"POファイルの読み込みに失敗しました: {e}") from e
 
             # メタデータを保存
-            self.metadata = dict(pofile.metadata)
+            if pofile is not None:
+                self.metadata = dict(pofile.metadata)
+            else:
+                logger.error("POファイルがNoneです。これは想定外のエラーです。")
+                raise RuntimeError("POファイルの読み込みに失敗しました: ファイルがNoneです")
 
             # データベースをクリア
-            self.db_accessor.clear_database()
+            try:
+                logger.debug("データベースクリア開始")
+                self.db_accessor.clear_database()
+                logger.debug("データベースクリア完了")
+            except Exception as e:
+                logger.error(f"データベースクリア失敗: {e}")
+                raise RuntimeError(f"データベースのクリアに失敗しました: {e}") from e
 
-            # すべてのエントリをデータベースに追加（CPU負荷の高い処理を非同期実行）
-            entries_to_add = []
-            for i, entry in enumerate(pofile):
-                entry_dict = self._convert_entry_to_dict(entry, i)
-                entries_to_add.append(entry_dict)
+            # すべてのエントリをデータベースに追加するための準備
+            try:
+                logger.debug("エントリ変換処理開始")
+                entries_to_add = []
+                for i, entry in enumerate(pofile):
+                    entry_dict = self._convert_entry_to_dict(entry, i)
+                    entries_to_add.append(entry_dict)
+                logger.debug(f"エントリ変換処理完了: {len(entries_to_add)}件のエントリを変換")
+            except Exception as e:
+                logger.error(f"エントリ変換処理失敗: {e}")
+                raise RuntimeError(f"POエントリの変換に失敗しました: {e}") from e
 
-            await asyncio.to_thread(self.db_accessor.add_entries_bulk, entries_to_add)
+            # エントリをデータベースに追加（CPU負荷の高い処理を非同期実行）
+            try:
+                logger.debug(f"データベース一括追加処理開始: {len(entries_to_add)}件")
+                if entries_to_add:
+                    await asyncio.to_thread(self.db_accessor.add_entries_bulk, entries_to_add)
+                logger.debug("データベース一括追加処理完了")
+            except Exception as e:
+                logger.error(f"データベース一括追加処理失敗: {e}")
+                raise RuntimeError(f"データベースへのエントリ追加に失敗しました: {e}") from e
 
             # 基本情報をキャッシュにロード（CPU負荷の高い処理を非同期実行）
-            await asyncio.to_thread(self._load_all_basic_info)
+            try:
+                logger.debug("基本情報キャッシュロード処理開始")
+                await asyncio.to_thread(self._load_all_basic_info)
+                logger.debug("基本情報キャッシュロード処理完了")
+            except Exception as e:
+                logger.error(f"基本情報キャッシュロード処理失敗: {e}")
+                logger.debug("基本情報キャッシュロードに失敗しましたが、処理を継続します")
+                # キャッシュの失敗はクリティカルではないので、例外を再スローせず続行
+                # ただし、後続のキャッシュオペレーションも失敗する可能性があることに注意
 
             # 読み込み完了フラグを設定
             self._is_loaded = True
@@ -138,8 +185,32 @@ class ViewerPOFileBase:
             logger.debug(f"POファイル読み込み完了: {path} ({elapsed_time:.2f}秒)")
 
         except Exception as e:
-            logger.error(f"POファイル読み込みエラー: {e}")
+            # エラー時の状態復元とリソース解放
+            elapsed_time = time.time() - start_time
+            logger.error(f"POファイル読み込み失敗: {path} ({elapsed_time:.2f}秒)")
             logger.exception(e)
+            
+            # 一貫性を保つため、読み込み途中のデータをクリア
+            self._is_loaded = False
+            self.modified = False
+            self.metadata = {}
+            
+            # メモリ解放
+            entries_to_add.clear()
+            pofile = None
+            
+            # データベースとキャッシュのリセットを試みる
+            try:
+                self.db_accessor.clear_database()
+            except Exception as clear_error:
+                logger.error(f"エラー回復時のデータベースクリアに失敗: {clear_error}")
+            
+            try:
+                self.cache_manager.clear_all_cache()
+            except Exception as cache_error:
+                logger.error(f"エラー回復時のキャッシュクリアに失敗: {cache_error}")
+            
+            # 元の例外を再スロー
             raise
 
     def _load_all_basic_info(self) -> None:
