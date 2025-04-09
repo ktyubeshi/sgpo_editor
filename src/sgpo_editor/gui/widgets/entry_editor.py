@@ -170,14 +170,15 @@ class EntryEditor(QWidget):
 
     def _show_review_dialog(self, dialog_type: str) -> None:
         """レビュー関連ダイアログを表示"""
-        logger.debug(f"Show review dialog: {dialog_type}")
+        logger.debug(f"EntryEditor._show_review_dialog: ダイアログ種類={dialog_type}")
 
         if not self._current_entry:
-            logger.warning("Entry is not set. Cannot show review dialog.")
+            logger.warning("EntryEditor._show_review_dialog: エントリがセットされていないためダイアログを表示できません")
             return
 
         if dialog_type not in self._review_dialogs:
             # ダイアログが未作成の場合は新規作成
+            logger.debug(f"EntryEditor._show_review_dialog: 新規ダイアログを作成 dialog_type={dialog_type}")
             dialog = QDialog(self)
             dialog.setWindowTitle(f"対訳表示: {dialog_type}")
             # 常に最前面に表示されるようにウィンドウフラグを設定
@@ -209,36 +210,49 @@ class EntryEditor(QWidget):
                 widget.set_entry(self._current_entry)
 
                 # データベース参照を設定（対応するメソッドがある場合）
+                # 注意: 将来的にはファサードを介してデータにアクセスするように修正するべき
                 if hasattr(widget, "set_database") and self._database:
+                    logger.debug(f"EntryEditor._show_review_dialog: ウィジェットにデータベース参照を設定")
                     widget.set_database(self._database)
 
             # ダイアログを保存
             dialog.widget = widget  # ウィジェットへの参照を保持
             self._review_dialogs[dialog_type] = dialog
+            logger.debug(f"EntryEditor._show_review_dialog: ダイアログ作成完了 dialog_type={dialog_type}")
         else:
+            logger.debug(f"EntryEditor._show_review_dialog: 既存ダイアログを更新 dialog_type={dialog_type}")
             dialog = self._review_dialogs[dialog_type]
             # 現在のエントリを更新
             if hasattr(dialog.widget, "set_entry"):
                 dialog.widget.set_entry(self._current_entry)
 
             # データベース参照を更新（対応するメソッドがある場合）
+            # 注意: 将来的にはファサードを介してデータにアクセスするように修正するべき
             if hasattr(dialog.widget, "set_database") and self._database:
+                logger.debug(f"EntryEditor._show_review_dialog: ウィジェットのデータベース参照を更新")
                 dialog.widget.set_database(self._database)
 
         # ダイアログを表示
         dialog.show()
         dialog.raise_()  # 前面に表示
         dialog.activateWindow()  # ウィンドウをアクティブにする
+        logger.debug(f"EntryEditor._show_review_dialog: ダイアログ表示完了 dialog_type={dialog_type}")
 
     def _update_open_review_dialogs(self) -> None:
         """開いているすべてのレビューダイアログを更新"""
         if not self._current_entry:
+            logger.debug("EntryEditor._update_open_review_dialogs: current_entryがNoneのため更新しません")
             return
 
+        logger.debug(f"EntryEditor._update_open_review_dialogs: 開始 ダイアログ数={len(self._review_dialogs)}")
+        updated_count = 0
         for dialog_type, dialog in self._review_dialogs.items():
             if dialog.isVisible() and hasattr(dialog.widget, "set_entry"):
                 # ダイアログが表示中の場合のみ更新
+                logger.debug(f"EntryEditor._update_open_review_dialogs: ダイアログを更新 type={dialog_type}")
                 dialog.widget.set_entry(self._current_entry)
+                updated_count += 1
+        logger.debug(f"EntryEditor._update_open_review_dialogs: 完了 更新したダイアログ数={updated_count}")
 
     @property
     def current_entry(self) -> Optional[EntryModel]:
@@ -271,59 +285,14 @@ class EntryEditor(QWidget):
     def _on_apply_clicked(self) -> None:
         """適用ボタンクリック時の処理"""
         logger.debug("EntryEditor._on_apply_clicked: 開始")
-        logger.debug(
-            f"EntryEditor._on_apply_clicked: current_entry={self.current_entry is not None}, _database={self._database is not None}"
-        )
-        if self.current_entry:
-            logger.debug(
-                f"EntryEditor._on_apply_clicked: current_entry.key={self.current_entry.key}, position={self.current_entry.position}"
-            )
-        else:
-            logger.debug("EntryEditor._on_apply_clicked: current_entry is None")
-
-        if self._database:
-            logger.debug("EntryEditor._on_apply_clicked: _database is set")
-        else:
-            logger.debug("EntryEditor._on_apply_clicked: _database is None")
-
-        if not self.current_entry or not self._database:
-            logger.debug(
-                "EntryEditor._on_apply_clicked: エントリまたはデータベースがNoneのため終了"
-            )
+        
+        if not self.current_entry:
+            logger.debug("EntryEditor._on_apply_clicked: current_entryがNoneのため終了")
             return
-
-        # エントリを更新
-        entry = self.current_entry
-        logger.debug(
-            f"EntryEditor._on_apply_clicked: 更新するエントリ key={entry.key}, position={entry.position}"
-        )
-
-        # データベースの更新
-        logger.debug("EntryEditor._on_apply_clicked: データベース更新開始")
-        self._database.update_entry(entry.key, entry.to_dict())
-        logger.debug("EntryEditor._on_apply_clicked: データベース更新完了")
-
-        # 重要: ViewerPOFileのfiltered_entriesを強制的に更新するためのフラグを設定
-        # MainWindowを取得
-        logger.debug("EntryEditor._on_apply_clicked: MainWindowを検索")
-        main_window = self.parent()
-        while main_window and not hasattr(main_window, "_get_current_po"):
-            main_window = main_window.parent()
-
-        if main_window and hasattr(main_window, "_get_current_po"):
-            logger.debug("EntryEditor._on_apply_clicked: MainWindowを取得成功")
-            current_po = main_window._get_current_po()
-            if current_po:
-                logger.debug(
-                    "EntryEditor._on_apply_clicked: ViewerPOFileの_force_filter_updateフラグを設定"
-                )
-                # 次回のget_filtered_entriesで強制更新されるようにフラグを設定
-                current_po._force_filter_update = True
-        else:
-            logger.debug("EntryEditor._on_apply_clicked: MainWindowの取得に失敗")
-
-        logger.debug("EntryEditor._on_apply_clicked: text_changedシグナル発行")
-        self.text_changed.emit()
+            
+        # apply_clickedシグナルを発行
+        # このシグナルはEntryEditorFacadeによって監視され、
+        # ファサードがエントリの更新を処理
         logger.debug("EntryEditor._on_apply_clicked: apply_clickedシグナル発行")
         self.apply_clicked.emit()
         logger.debug("EntryEditor._on_apply_clicked: 完了")
@@ -361,23 +330,22 @@ class EntryEditor(QWidget):
 
     def _on_fuzzy_changed(self, state: int) -> None:
         """Fuzzyチェックボックスの状態が変更されたときの処理"""
-        if not self.fuzzy_checkbox or not self._current_entry or not self._database:
+        if not self.fuzzy_checkbox or not self._current_entry:
             return
 
         is_fuzzy = state == Qt.CheckState.Checked
         # エントリオブジェクトを更新
         self._current_entry.fuzzy = is_fuzzy
 
-        # データベースに即時反映
-        self._database.update_entry_field(self._current_entry.key, "fuzzy", is_fuzzy)
-
+        # テキスト変更を通知する（apply_clickedを使用して変更を保存するため）
         self.text_changed.emit()
 
     def set_entry(self, entry: Optional[EntryModel]) -> None:
         """エントリを設定"""
+        logger.debug(f"EntryEditor.set_entry: 開始 entry={entry is not None}")
         self._current_entry = entry
         if entry is None:
-            logger.debug("set_entry: entry is None")
+            logger.debug("EntryEditor.set_entry: エントリがNoneのため、UIをクリア")
             if self.msgid_edit:
                 self.msgid_edit.blockSignals(True)
                 self.msgid_edit.setPlainText("")
@@ -397,9 +365,10 @@ class EntryEditor(QWidget):
             self._update_open_review_dialogs()
 
             self.setEnabled(False)
+            logger.debug("EntryEditor.set_entry: UI要素を無効化")
             return
 
-        logger.debug("set_entry: entry.msgctxt='%s'", entry.msgctxt)
+        logger.debug(f"EntryEditor.set_entry: エントリ設定 key={entry.key}, msgctxt='{entry.msgctxt}'")
         self.setEnabled(True)
         if self.msgid_edit:
             self.msgid_edit.blockSignals(True)
@@ -415,13 +384,15 @@ class EntryEditor(QWidget):
             self.fuzzy_checkbox.blockSignals(False)
         if self.context_edit:
             context_text = entry.msgctxt if entry.msgctxt is not None else ""
-            logger.debug("set_entry: setting context_edit.text to '%s'", context_text)
+            logger.debug(f"EntryEditor.set_entry: コンテキスト設定 '{context_text}'")
             self.context_edit.setText(context_text)
 
         # 開いているダイアログがあれば更新
         self._update_open_review_dialogs()
 
+        logger.debug(f"EntryEditor.set_entry: シグナル発行 position={self.current_entry_number or -1}")
         self.entry_changed.emit(self.current_entry_number or -1)
+        logger.debug("EntryEditor.set_entry: 完了")
 
     @property
     def database(self) -> Optional[InMemoryEntryStore]:
