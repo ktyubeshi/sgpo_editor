@@ -103,9 +103,11 @@
 * [ ] **`src/sgpo_editor/core/viewer_po_file_stats.py` の `save` メソッド移動:**
     * ファイル保存ロジック [source:1548] を、ファイル操作の責務を持つ別のクラス (例: `POFilePersistenceService` (新規作成) や `src/sgpo_editor/gui/file_handler.py` [source:2449]) に移譲します。
     * 優先度: **中**
-* [ ] **`src/sgpo_editor/core/viewer_po_file_base.py` の非同期処理:** [source:2322]
-    * `load` メソッド内の `asyncio.to_thread` [source:3050] 使用箇所の例外処理とリソース解放が適切に行われているか確認・改善します。
-    * 優先度: **中**
+* [✅] **`src/sgpo_editor/core/viewer_po_file_base.py` の非同期処理:** [source:2322]
+    * `load` メソッド内の `asyncio.to_thread` [source:3050] 使用箇所の例外処理とリソース解放が適切に行われるように改善しました。
+    * 各処理ステップごとの詳細なログ出力とエラーハンドリングを追加し、デバッグ容易性を向上しました。
+    * 読み込み失敗時のクリーンアップ処理を徹底し、一貫性のある状態を維持するようにしました。
+    * 優先度: **中** (✅完了)
 * [✅] **`src/sgpo_editor/core/database_accessor.py` の役割強化:** [source:2180]
     * フィルタリング、ソート、検索ロジックを可能な限り `DatabaseAccessor` (および内部の `src/sgpo_editor/models/database.py` [source:2658]) に集約します。SQLレベルでの最適化とインデックスの有効活用を確認します。
     * advanced_search メソッドを強化し、より柔軟な検索条件（大文字小文字の区別、完全一致、検索対象フィールドの指定など）をサポートしました。
@@ -152,7 +154,7 @@
 ### 3.4. ファサードパターンの徹底 (優先度: 中)
 
 * [✅] **`src/sgpo_editor/gui/facades/entry_editor_facade.py` の拡張:** [source:1859]
-    * レビュー関連ダイアログ (`TranslatorCommentWidget`, `ReviewCommentWidget` など) の表示・操作もファサード経由で行えるように `show_review_dialog` [source:2250] などのメソッドを追加・活用済み。
+    * レビューダイアログ (`TranslatorCommentWidget`, `ReviewCommentWidget` など) の表示・操作もファサード経由で行えるように `show_review_dialog` [source:2250] などのメソッドを追加・活用済み。
     * データベース参照の設定・取得もファサード経由 (`set_database`, `get_database`) で行うように追加済み。
     * *残課題:* `apply_changes` が更新以外の処理を含んでいないか再確認。
     * 優先度: **完了済み** (残課題は中)
