@@ -88,10 +88,10 @@ class EntryCacheManager:
         self._basic_cache_misses: int = 0
         self._filter_cache_hits: int = 0
         self._filter_cache_misses: int = 0
-        
+
         # 時間計測用の変数
         self._last_performance_log_time: float = time.time()
-        
+
         # ログ間隔（秒）- デフォルトは60秒
         self._performance_log_interval: int = 60
 
@@ -109,7 +109,7 @@ class EntryCacheManager:
         self._filtered_entries_cache = []
         self._filtered_entries_cache_key = ""
         self._force_filter_update = True  # 次回のフィルタ処理で強制的に更新
-        
+
         # パフォーマンスカウンターもリセット
         self._reset_performance_counters()
 
@@ -130,12 +130,17 @@ class EntryCacheManager:
             seconds: ログ出力間隔（秒）
         """
         self._performance_log_interval = max(1, seconds)  # 最小1秒
-        logger.debug(f"パフォーマンスログ間隔を{self._performance_log_interval}秒に設定")
+        logger.debug(
+            f"パフォーマンスログ間隔を{self._performance_log_interval}秒に設定"
+        )
 
     def _check_and_log_performance(self) -> None:
         """パフォーマンス指標をチェックし、必要に応じてログに出力する"""
         current_time = time.time()
-        if current_time - self._last_performance_log_time >= self._performance_log_interval:
+        if (
+            current_time - self._last_performance_log_time
+            >= self._performance_log_interval
+        ):
             self._log_cache_performance()
             self._last_performance_log_time = current_time
 
@@ -143,20 +148,28 @@ class EntryCacheManager:
         """キャッシュのパフォーマンス指標をログに出力する"""
         # 完全キャッシュのヒット率
         complete_total = self._complete_cache_hits + self._complete_cache_misses
-        complete_hit_rate = 0.0 if complete_total == 0 else (self._complete_cache_hits / complete_total * 100)
-        
+        complete_hit_rate = (
+            0.0
+            if complete_total == 0
+            else (self._complete_cache_hits / complete_total * 100)
+        )
+
         # 基本情報キャッシュのヒット率
         basic_total = self._basic_cache_hits + self._basic_cache_misses
-        basic_hit_rate = 0.0 if basic_total == 0 else (self._basic_cache_hits / basic_total * 100)
-        
+        basic_hit_rate = (
+            0.0 if basic_total == 0 else (self._basic_cache_hits / basic_total * 100)
+        )
+
         # フィルタキャッシュのヒット率
         filter_total = self._filter_cache_hits + self._filter_cache_misses
-        filter_hit_rate = 0.0 if filter_total == 0 else (self._filter_cache_hits / filter_total * 100)
-        
+        filter_hit_rate = (
+            0.0 if filter_total == 0 else (self._filter_cache_hits / filter_total * 100)
+        )
+
         # キャッシュサイズ
         complete_size = len(self._complete_entry_cache)
         basic_size = len(self._entry_basic_info_cache)
-        
+
         logger.info(
             f"キャッシュパフォーマンス指標:\n"
             f"  完全キャッシュ: {complete_hit_rate:.1f}% ヒット ({self._complete_cache_hits}/{complete_total}), サイズ: {complete_size}\n"
@@ -172,16 +185,24 @@ class EntryCacheManager:
         """
         # 完全キャッシュのヒット率
         complete_total = self._complete_cache_hits + self._complete_cache_misses
-        complete_hit_rate = 0.0 if complete_total == 0 else (self._complete_cache_hits / complete_total * 100)
-        
+        complete_hit_rate = (
+            0.0
+            if complete_total == 0
+            else (self._complete_cache_hits / complete_total * 100)
+        )
+
         # 基本情報キャッシュのヒット率
         basic_total = self._basic_cache_hits + self._basic_cache_misses
-        basic_hit_rate = 0.0 if basic_total == 0 else (self._basic_cache_hits / basic_total * 100)
-        
+        basic_hit_rate = (
+            0.0 if basic_total == 0 else (self._basic_cache_hits / basic_total * 100)
+        )
+
         # フィルタキャッシュのヒット率
         filter_total = self._filter_cache_hits + self._filter_cache_misses
-        filter_hit_rate = 0.0 if filter_total == 0 else (self._filter_cache_hits / filter_total * 100)
-        
+        filter_hit_rate = (
+            0.0 if filter_total == 0 else (self._filter_cache_hits / filter_total * 100)
+        )
+
         return {
             "complete_cache": {
                 "hits": self._complete_cache_hits,
@@ -472,7 +493,7 @@ class EntryCacheManager:
         """
         # 辞書を正規化（キーでソート）
         conditions_sorted = {}
-        
+
         # 文字列と基本型のみを含む辞書に変換
         for key, value in conditions.items():
             # 関数やクラスインスタンスなど、JSONに変換できない型は除外
@@ -481,20 +502,22 @@ class EntryCacheManager:
             elif isinstance(value, dict):
                 # 入れ子の辞書も正規化
                 conditions_sorted[key] = {
-                    k: v for k, v in value.items() 
+                    k: v
+                    for k, v in value.items()
                     if isinstance(v, (str, int, float, bool, type(None)))
                 }
             elif isinstance(value, (list, tuple)):
                 # リストは単純なJSONに変換できる要素のみを含む新しいリストに変換
                 conditions_sorted[key] = [
-                    v for v in value 
+                    v
+                    for v in value
                     if isinstance(v, (str, int, float, bool, type(None)))
                 ]
-        
+
         # 正規化した条件をJSON形式に変換してハッシュ化
         conditions_str = json.dumps(conditions_sorted, sort_keys=True)
         return hashlib.md5(conditions_str.encode()).hexdigest()
-        
+
     def get_filtered_entries_cache(
         self, filter_conditions: Dict[str, Any]
     ) -> Optional[EntryModelList]:
@@ -516,19 +539,22 @@ class EntryCacheManager:
 
         # フィルタ条件からキャッシュキーを生成
         cache_key = self._generate_filter_cache_key(filter_conditions)
-        
+
         # 現在のキャッシュキーと一致すれば、キャッシュを返す
-        if cache_key == self._filtered_entries_cache_key and self._filtered_entries_cache:
+        if (
+            cache_key == self._filtered_entries_cache_key
+            and self._filtered_entries_cache
+        ):
             logger.debug(
                 f"EntryCacheManager.get_filtered_entries_cache: キャッシュヒット key={cache_key}"
             )
             self._filter_cache_hits += 1
             self._check_and_log_performance()
             return self._filtered_entries_cache
-            
+
         self._filter_cache_misses += 1
         return None
-        
+
     def cache_filtered_entries(
         self, filter_conditions: Dict[str, Any], entries: EntryModelList
     ) -> None:
@@ -545,10 +571,10 @@ class EntryCacheManager:
         """
         if not self._cache_enabled:
             return
-            
+
         # フィルタ条件からキャッシュキーを生成
         cache_key = self._generate_filter_cache_key(filter_conditions)
-        
+
         # キャッシュを更新
         logger.debug(
             f"EntryCacheManager.cache_filtered_entries: キャッシュ更新 key={cache_key}, "
@@ -560,10 +586,10 @@ class EntryCacheManager:
 
     def evaluate_cache_efficiency(self) -> Dict[str, Any]:
         """キャッシュ効率の評価情報を取得する
-        
+
         現在のキャッシュ状態と効率に関する情報を返します。
         これはキャッシュ戦略の最適化やデバッグに役立ちます。
-        
+
         Returns:
             キャッシュ効率情報の辞書
         """
@@ -574,21 +600,21 @@ class EntryCacheManager:
             "cache_enabled": self._cache_enabled,
             "force_filter_update": self._force_filter_update,
         }
-        
+
         if hasattr(self, "_row_key_map"):
             info["row_key_map_size"] = len(self._row_key_map)
-            
+
         # メモリ使用量の概算（将来的に実装）
-        
+
         return info
 
     # UI層との連携機能
 
     def add_row_key_mapping(self, row: int, key: str) -> None:
         """行インデックスとエントリキーのマッピングを追加する
-        
+
         UI層からのアクセスを効率化するために、テーブルの行インデックスと
-        エントリキーのマッピングを管理します。これにより、UI層（TableManager, 
+        エントリキーのマッピングを管理します。これにより、UI層（TableManager,
         EventHandler）の独自キャッシュを排除し、キャッシュ管理を一元化できます。
 
         Args:
@@ -622,7 +648,7 @@ class EntryCacheManager:
 
     def update_entry_in_ui_cache(self, entry: EntryModel) -> None:
         """エントリをUIキャッシュに反映する
-        
+
         エントリが更新された場合、UI層での表示に使われるキャッシュも更新します。
         これはTableManagerとEventHandlerの独自キャッシュを廃止し、
         中央キャッシュに一元化するための機能です。
@@ -633,13 +659,13 @@ class EntryCacheManager:
         logger.debug(f"EntryCacheManager.update_entry_in_ui_cache: key={entry.key}")
         # 完全なエントリキャッシュを更新
         self.cache_complete_entry(entry.key, entry)
-        
+
         # UI表示用イベント通知（将来的にオブザーバーパターンで拡張可能）
         self.notify_entry_updated(entry.key)
 
     def notify_entry_updated(self, key: str) -> None:
         """エントリ更新通知
-        
+
         このメソッドは将来的にオブザーバーパターンに拡張可能です。
         現在は内部処理のみ行います。
 
@@ -651,7 +677,7 @@ class EntryCacheManager:
 
     def prefetch_visible_entries(self, visible_keys: List[str]) -> None:
         """表示中のエントリをプリフェッチする
-        
+
         テーブルに表示されている（または表示されそうな）エントリを
         事前にキャッシュに読み込みます。これにより、スクロール時の
         エントリ表示をスムーズにします。
@@ -659,14 +685,15 @@ class EntryCacheManager:
         Args:
             visible_keys: 表示中または表示予定のエントリキーのリスト
         """
-        logger.debug(f"EntryCacheManager.prefetch_visible_entries: {len(visible_keys)}件")
+        logger.debug(
+            f"EntryCacheManager.prefetch_visible_entries: {len(visible_keys)}件"
+        )
         # すでにキャッシュにあるキーを除外
         keys_to_fetch = [
-            key for key in visible_keys 
-            if key not in self._complete_entry_cache
+            key for key in visible_keys if key not in self._complete_entry_cache
         ]
-        
+
         if not keys_to_fetch:
             return
-            
+
         # 将来的にはバックグラウンドでの非同期フェッチも検討
