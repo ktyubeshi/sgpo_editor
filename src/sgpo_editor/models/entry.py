@@ -2,10 +2,11 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast
 
 if TYPE_CHECKING:
     from sgpo_editor.types import EntryDict
+    from sgpo_editor.utils.metadata_utils import MetadataDict
 
 from polib import POEntry
 from pydantic import (
@@ -67,7 +68,7 @@ class EntryModel(BaseModel):
     _overall_quality_score: Optional[float] = PrivateAttr(default=None)  # 総合品質スコア
 
     # ユーザー定義メタデータ
-    metadata: Dict[str, Any] = Field(
+    metadata: Dict[str, Union[str, int, float, bool, List[str], Dict[str, str]]] = Field(
         default_factory=dict
     )  # 任意のメタデータを格納する辞書
 
@@ -418,7 +419,7 @@ class EntryModel(BaseModel):
         # flagsの更新
         try:
             if isinstance(self._po_entry.flags, str):
-                self._po_entry.flags = ", ".join(self.flags)
+                setattr(self._po_entry, "flags", ", ".join(self.flags))
             else:
                 setattr(self._po_entry, "flags", self.flags)
         except (AttributeError, TypeError):
@@ -663,8 +664,9 @@ class EntryModel(BaseModel):
             # メタデータをコメントに保存
             if self.metadata:
                 # 既存のコメントとメタデータを結合
+                from sgpo_editor.utils.metadata_utils import MetadataDict
                 combined_comment = create_comment_with_metadata(
-                    po_entry.comment, self.metadata
+                    po_entry.comment, cast(MetadataDict, self.metadata)
                 )
                 po_entry.comment = combined_comment
 
@@ -690,7 +692,8 @@ class EntryModel(BaseModel):
 
         # メタデータがある場合はコメントに保存
         if self.metadata:
-            combined_comment = create_comment_with_metadata(self.comment, self.metadata)
+            from sgpo_editor.utils.metadata_utils import MetadataDict
+            combined_comment = create_comment_with_metadata(self.comment, cast(MetadataDict, self.metadata))
             kwargs["comment"] = combined_comment
         elif self.comment:
             kwargs["comment"] = self.comment
