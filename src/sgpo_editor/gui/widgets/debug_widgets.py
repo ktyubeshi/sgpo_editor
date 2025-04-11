@@ -4,7 +4,9 @@
 """
 
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TypeAlias, cast
+
+from sgpo_editor.types import EntryDict
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -135,7 +137,7 @@ class EntryDebugWidget(QWidget):
             self._update_debug_display()
             self.expand_button.setText("すべて展開")
 
-    def _format_dict_as_text(self, data: Union[Dict[str, Any], List[Any], Any], indent: int = 0) -> str:
+    def _format_dict_as_text(self, data: Union[EntryDict, List[Any], Any], indent: int = 0) -> str:
         """辞書を階層的なテキスト形式にフォーマット
 
         Args:
