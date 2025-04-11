@@ -5,7 +5,7 @@
 
 import polib
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 from sgpo_editor.core.po_interface import POEntry, POFile, POFileFactory
 
@@ -13,7 +13,7 @@ from sgpo_editor.core.po_interface import POEntry, POFile, POFileFactory
 class PolibEntry(POEntry):
     """polibのPOEntryアダプター"""
 
-    def __init__(self, entry: polib.POEntry):
+    def __init__(self, entry: Any):  # type: ignore
         """初期化
 
         Args:
@@ -49,7 +49,7 @@ class PolibEntry(POEntry):
     @msgctxt.setter
     def msgctxt(self, value: Optional[str]) -> None:
         """メッセージコンテキストを設定"""
-        self._entry.msgctxt = value
+        self._entry.msgctxt = value  # type: ignore
 
     @property
     def flags(self) -> List[str]:
@@ -79,7 +79,7 @@ class PolibEntry(POEntry):
     @comment.setter
     def comment(self, value: Optional[str]) -> None:
         """コメントを設定"""
-        self._entry.comment = value
+        self._entry.comment = value  # type: ignore
 
     @property
     def tcomment(self) -> Optional[str]:
@@ -89,7 +89,7 @@ class PolibEntry(POEntry):
     @tcomment.setter
     def tcomment(self, value: Optional[str]) -> None:
         """翻訳者コメントを設定"""
-        self._entry.tcomment = value
+        self._entry.tcomment = value  # type: ignore
 
     @property
     def occurrences(self) -> List[tuple]:
@@ -122,7 +122,7 @@ class PolibEntry(POEntry):
     @msgid_plural.setter
     def msgid_plural(self, value: Optional[str]) -> None:
         """複数形のメッセージIDを設定"""
-        self._entry.msgid_plural = value
+        self._entry.msgid_plural = value  # type: ignore
 
     @property
     def msgstr_plural(self) -> Dict[int, str]:
@@ -204,7 +204,7 @@ class PolibFile(POFile):
         """エントリ数を取得"""
         return len(self._pofile)
 
-    def __iter__(self) -> Any:
+    def __iter__(self) -> Iterator[PolibEntry]:
         """イテレータ"""
         for entry in self._pofile:
             yield PolibEntry(entry)
