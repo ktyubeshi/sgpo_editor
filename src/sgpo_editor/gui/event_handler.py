@@ -4,13 +4,17 @@
 """
 
 import logging
-from typing import Any, Callable, Optional
+from typing import Callable, Dict, Optional, TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import QApplication, QMessageBox, QTableWidget
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
+from sgpo_editor.types import EntryModelMap
+
+if TYPE_CHECKING:
+    from sgpo_editor.models.entry import EntryModel
 
 logger = logging.getLogger(__name__)
 
@@ -93,9 +97,9 @@ class EventHandler(QObject):
         self._pending_row = -1
 
         # エントリキャッシュを初期化（キー：エントリキー、値：エントリオブジェクト）
-        self._entry_cache = {}
+        self._entry_cache: EntryModelMap = {}
         # 行インデックスとキーのマッピング（キー：行インデックス、値：エントリキー）
-        self._row_key_map = {}
+        self._row_key_map: Dict[int, str] = {}
 
         # プリフェッチタイマー
         self._prefetch_timer = QTimer()
@@ -420,10 +424,10 @@ class EventHandler(QObject):
         """
         self.entry_editor.change_layout(layout_type)
 
-    def get_current_entry(self) -> Optional[Any]:
+    def get_current_entry(self) -> Optional["EntryModel"]:
         """現在選択されているエントリを取得する
 
         Returns:
-            Optional[Any]: 現在選択されているエントリ（なければNone）
+            Optional[EntryModel]: 現在選択されているエントリ（なければNone）
         """
         return self.entry_editor.current_entry
