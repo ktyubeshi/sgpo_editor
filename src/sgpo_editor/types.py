@@ -161,6 +161,15 @@ class CachePerformanceType(TypedDict):
 
 CachePerformance: TypeAlias = CachePerformanceType
 
+class StatsDataDict(TypedDict, total=False):
+    """統計情報データの型定義"""
+    total: int
+    translated: int
+    untranslated: int
+    fuzzy: int
+    progress: float
+    file_name: str
+
 class FilterConditionsType(TypedDict, total=False):
     """フィルタ条件の型定義"""
     search_text: Optional[str]
