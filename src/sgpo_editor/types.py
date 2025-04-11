@@ -193,3 +193,5 @@ class StatsDict(TypedDict):
     fuzzy: int
     progress: float
     file_name: str
+
+MetadataValueType = Union[str, int, float, bool, List[Any], Dict[str, Any]]

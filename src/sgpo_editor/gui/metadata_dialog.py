@@ -2,9 +2,10 @@
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Dict, List, Optional, cast
 
 from PySide6.QtCore import Qt
+from sgpo_editor.types import MetadataValueType
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
@@ -31,7 +32,7 @@ class MetadataValueEditor(QDialog):
     """複雑なメタデータ値を編集するためのダイアログ"""
 
     def __init__(
-        self, value: Any, value_type: str, parent: Optional[QDialog] = None
+        self, value: MetadataValueType, value_type: str, parent: Optional[QDialog] = None
     ) -> None:
         """初期化
 
@@ -71,7 +72,7 @@ class MetadataValueEditor(QDialog):
 
         layout.addLayout(button_layout)
 
-    def get_value(self) -> Any:
+    def get_value(self) -> MetadataValueType:
         """編集された値を返す
 
         Returns:
@@ -203,7 +204,7 @@ class MetadataEditDialog(QDialog):
 
             self.metadata_table.setItem(row, 1, value_item)
 
-    def format_value_for_display(self, value: Any) -> str:
+    def format_value_for_display(self, value: MetadataValueType) -> str:
         """値を表示用にフォーマット
 
         Args:
@@ -216,7 +217,7 @@ class MetadataEditDialog(QDialog):
             return json.dumps(value, ensure_ascii=False)
         return str(value)
 
-    def get_value_type(self, value: Any) -> str:
+    def get_value_type(self, value: MetadataValueType) -> str:
         """値の型を判定
 
         Args:
@@ -262,7 +263,7 @@ class MetadataEditDialog(QDialog):
         self.key_edit.clear()
         self.value_edit.clear()
 
-    def convert_value(self, value_str: str, value_type: str) -> Any:
+    def convert_value(self, value_str: str, value_type: str) -> MetadataValueType:
         """文字列を指定された型に変換する
 
         Args:
