@@ -203,6 +203,7 @@ class ReviewCommentType(TypedDict, total=False):
     author: str
     comment: str
     created_at: str
+    language: Optional[str]
 
 class ReviewDataDict(TypedDict, total=False):
     """レビューデータの型定義"""
@@ -211,9 +212,14 @@ class ReviewDataDict(TypedDict, total=False):
     category_scores: Dict[str, float]
     check_results: List[Dict[str, Any]]
 
+LLMResponseMetricScores: TypeAlias = Dict[str, float]
+LLMResponseComments: TypeAlias = Dict[str, str]
+
 class EvaluationResultType(TypedDict):
     """翻訳評価結果の型定義"""
     overall_score: int
-    metric_scores: Dict[str, int]
+    metric_scores: LLMResponseMetricScores
+    comments: Optional[LLMResponseComments]
+    raw_response: Optional[str]
     
 EvaluationResult: TypeAlias = EvaluationResultType

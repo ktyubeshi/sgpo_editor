@@ -887,7 +887,7 @@ class MainWindow(QMainWindow):
                 exc_info=True,
             )
 
-    def _on_evaluation_completed(self, entry: EntryModel, result: Union[int, "EvaluationResult"]) -> None:
+    def _on_evaluation_completed(self, entry: EntryModel, result: Union[int, EvaluationResult]) -> None:
         """評価完了時の処理
 
         Args:
@@ -915,7 +915,7 @@ class MainWindow(QMainWindow):
             if isinstance(result, int):
                 score = result
             elif isinstance(result, dict):
-                score = result.get("overall_score", 0)
+                score = cast(Dict[str, int], result).get("overall_score", 0)
             else:
                 score = getattr(result, "overall_score", 0)
             

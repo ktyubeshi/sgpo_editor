@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union, TypedDict, cast
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -28,6 +28,8 @@ from PySide6.QtWidgets import (
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.models.evaluation_state import EvaluationState
 from sgpo_editor.models.database import InMemoryEntryStore
+from sgpo_editor.types import LLMResponseMetricScores
+from sgpo_editor.utils.llm_utils import LLMEvaluationResponse
 
 logger = logging.getLogger(__name__)
 
@@ -281,11 +283,11 @@ class TranslationEvaluateDialog(QDialog):
             entry.score = overall_score
 
             # 指標別スコアを設定
-            metric_scores = {}
+            metric_scores: LLMResponseMetricScores = {}
             for metric in metrics:
                 score = random.randint(60, 100)
                 entry.set_metric_score(metric, score)
-                metric_scores[metric] = score
+                metric_scores[metric] = float(score)
 
             # レビューコメントを追加（languageパラメータなし）
             if language == "日本語":
@@ -321,7 +323,7 @@ class TranslationEvaluateDialog(QDialog):
         self,
         entry: EntryModel,
         score: int,
-        metric_scores: Dict[str, int],
+        metric_scores: LLMResponseMetricScores,
         model: str,
         language: str,
     ) -> None:
@@ -352,10 +354,10 @@ class TranslationEvaluateDialog(QDialog):
         entry.add_metadata(METADATA_EVALUATION_DATE, datetime.now().isoformat())
 
         # レビューコメントをメタデータに保存（言語情報を含む）
-        comments = []
+        comments: List[Dict[str, str]] = []
         for comment in entry.review_comments:
             # コメントオブジェクトをコピー
-            comment_with_lang = comment.copy()
+            comment_with_lang = cast(Dict[str, str], comment.copy())
 
             # 言語情報を追加
             if "AI評価者" in comment.get("author", ""):
@@ -731,20 +733,20 @@ class TranslationEvaluationResultWindow(QMainWindow):
 
         # メタデータからコメントを取得
         metadata = self._entry.get_all_metadata()
-        comments = metadata.get(METADATA_EVALUATION_COMMENTS, [])
+        comments: List[Dict[str, str]] = cast(List[Dict[str, str]], metadata.get(METADATA_EVALUATION_COMMENTS, []))
 
         # メタデータになければエントリから直接取得
         if not comments:
             logger.debug(
                 "TranslationEvaluationResultWindow._update_comment_display: メタデータにコメントがないためエントリから直接取得"
             )
-            comments = self._entry.review_comments
+            comments = cast(List[Dict[str, str]], self._entry.review_comments)
 
         logger.debug(
             f"TranslationEvaluationResultWindow._update_comment_display: 取得したコメント数={len(comments)}"
         )
 
-        comment = None
+        comment: Optional[str] = None
         if language == "日本語":
             # 日本語のコメントを探す
             comment = next(
@@ -781,7 +783,7 @@ class TranslationEvaluationResultWindow(QMainWindow):
             logger.debug(
                 "TranslationEvaluationResultWindow._update_comment_display: 言語に一致するコメントがないため最初のコメントを使用"
             )
-            comment = comments[0].get("comment", "")
+            comment = cast(str, comments[0].get("comment", ""))
 
         self.comment_text.setText(comment if comment else "コメントはありません")
         logger.debug(
