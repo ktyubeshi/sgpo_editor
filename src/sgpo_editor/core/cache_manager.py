@@ -24,10 +24,16 @@ import time
 import asyncio
 import threading
 from collections import Counter
-from typing import Optional, List, Dict, Any, Set, Tuple
+from typing import Optional, List, Dict, Any, Set, Tuple, cast
 
 from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.types import EntryModelMap, EntryModelList
+from sgpo_editor.types import (
+    EntryModelMap, 
+    EntryModelList, 
+    CachePerformance, 
+    FilterConditions,
+    CacheEfficiency
+)
 
 logger = logging.getLogger(__name__)
 
@@ -206,11 +212,11 @@ class EntryCacheManager:
             f"  フィルタキャッシュ: {filter_hit_rate:.1f}% ヒット ({self._filter_cache_hits}/{filter_total})"
         )
 
-    def get_cache_performance(self) -> Dict[str, Any]:
+    def get_cache_performance(self) -> CachePerformance:
         """キャッシュのパフォーマンス指標を取得する
 
         Returns:
-            Dict[str, Any]: パフォーマンス指標を含む辞書
+            CachePerformance: キャッシュパフォーマンス指標を含む辞書
         """
         # 完全キャッシュのヒット率
         complete_total = self._complete_cache_hits + self._complete_cache_misses
@@ -232,7 +238,7 @@ class EntryCacheManager:
             0.0 if filter_total == 0 else (self._filter_cache_hits / filter_total * 100)
         )
 
-        return {
+        return cast(CachePerformance, {
             "complete_cache": {
                 "hits": self._complete_cache_hits,
                 "misses": self._complete_cache_misses,
@@ -253,7 +259,7 @@ class EntryCacheManager:
             },
             "cache_enabled": self._cache_enabled,
             "force_filter_update": self._force_filter_update,
-        }
+        })
 
     def clear_cache(self) -> None:
         """キャッシュをクリアする (互換性のため残している)
@@ -568,7 +574,7 @@ class EntryCacheManager:
         # フィルタ結果キャッシュを無効化
         self.set_force_filter_update(True)
 
-    def _generate_filter_cache_key(self, conditions: Dict[str, Any]) -> str:
+    def _generate_filter_cache_key(self, conditions: FilterConditions) -> str:
         """フィルタ条件からキャッシュキーを生成する
 
         フィルタ条件の辞書からユニークなキャッシュキーを生成します。
@@ -613,7 +619,7 @@ class EntryCacheManager:
         return hashlib.md5(conditions_str.encode()).hexdigest()
 
     def get_filtered_entries_cache(
-        self, filter_conditions: Dict[str, Any]
+        self, filter_conditions: FilterConditions
     ) -> Optional[EntryModelList]:
         """フィルタ条件に合致するフィルタ結果キャッシュを取得する
 
@@ -650,7 +656,7 @@ class EntryCacheManager:
         return None
 
     def cache_filtered_entries(
-        self, filter_conditions: Dict[str, Any], entries: EntryModelList
+        self, filter_conditions: FilterConditions, entries: EntryModelList
     ) -> None:
         """フィルタ結果をキャッシュに保存する
 
@@ -678,14 +684,14 @@ class EntryCacheManager:
         self._filtered_entries_cache_key = cache_key
         self._force_filter_update = False  # 強制更新フラグをクリア
 
-    def evaluate_cache_efficiency(self) -> Dict[str, Any]:
+    def evaluate_cache_efficiency(self) -> CacheEfficiency:
         """キャッシュ効率の評価情報を取得する
 
         現在のキャッシュ状態と効率に関する情報を返します。
         これはキャッシュ戦略の最適化やデバッグに役立ちます。
 
         Returns:
-            キャッシュ効率情報の辞書
+            CacheEfficiency: キャッシュ効率情報の辞書
         """
         info = {
             "complete_entry_cache_size": len(self._complete_entry_cache),
@@ -700,7 +706,7 @@ class EntryCacheManager:
 
         # メモリ使用量の概算（将来的に実装）
 
-        return info
+        return cast(CacheEfficiency, info)
 
     # UI層との連携機能
 

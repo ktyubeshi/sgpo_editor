@@ -132,3 +132,46 @@ class POEntryKwargsType(TypedDict, total=False):
     previous_msgctxt: Optional[str]
 
 POEntryKwargs: TypeAlias = POEntryKwargsType
+
+class CacheEfficiencyType(TypedDict, total=False):
+    """キャッシュ効率情報の型定義"""
+    complete_entry_cache_size: int
+    basic_info_cache_size: int
+    filtered_entries_cache_size: int
+    cache_enabled: bool
+    force_filter_update: bool
+    row_key_map_size: int
+
+CacheEfficiency: TypeAlias = CacheEfficiencyType
+
+class CacheStatsType(TypedDict):
+    """キャッシュ統計情報の型定義"""
+    hits: int
+    misses: int
+    hit_rate: float
+    size: int
+
+class CachePerformanceType(TypedDict):
+    """キャッシュパフォーマンス指標の型定義"""
+    complete_cache: CacheStatsType
+    basic_cache: CacheStatsType
+    filter_cache: CacheStatsType
+    cache_enabled: bool
+    force_filter_update: bool
+
+CachePerformance: TypeAlias = CachePerformanceType
+
+class FilterConditionsType(TypedDict, total=False):
+    """フィルタ条件の型定義"""
+    search_text: Optional[str]
+    search_fields: Optional[List[str]]
+    sort_column: Optional[str]
+    sort_order: Optional[str]
+    flag_conditions: Optional[FlagConditions]
+    translation_status: Optional[str]
+    exact_match: Optional[bool]
+    case_sensitive: Optional[bool]
+    limit: Optional[int]
+    offset: Optional[int]
+
+FilterConditions: TypeAlias = FilterConditionsType
