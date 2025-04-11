@@ -142,6 +142,19 @@ def test_entry_editor_state_entry_changes(entry_editor, mock_entry):
     new_entry.msgid = "new source text"
     new_entry.msgstr = "new translated text"
     new_entry.fuzzy = True
+    new_entry.key = "new_test_key"
+    new_entry.flags = []
+    new_entry.references = []
+    new_entry.review_comments = []
+    new_entry.check_results = []
+    new_entry.metric_scores = {}
+    new_entry.category_quality_scores = {}
+    new_entry.metadata = {}
+    new_entry.overall_quality_score = None
+    new_entry.score = None
+    
+    new_entry.__getitem__ = lambda self, key: getattr(self, key)
+    new_entry.__contains__ = lambda self, key: hasattr(self, key)
 
     # エントリを変更
     entry_editor.set_entry(new_entry)

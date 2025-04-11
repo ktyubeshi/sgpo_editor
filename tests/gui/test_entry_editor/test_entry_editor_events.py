@@ -46,6 +46,20 @@ def mock_entry() -> Mock:
     entry.check_result = "Check result"
     entry.debug_info = "Debug info"
     entry.review_comments = []
+    
+    entry.key = "test_key"
+    entry.flags = []
+    entry.references = []
+    entry.check_results = []
+    entry.metric_scores = {}
+    entry.category_quality_scores = {}
+    entry.metadata = {}
+    entry.overall_quality_score = None
+    entry.score = None
+    
+    entry.__getitem__ = lambda self, key: getattr(self, key)
+    entry.__contains__ = lambda self, key: hasattr(self, key)
+    
     return entry
 
 
