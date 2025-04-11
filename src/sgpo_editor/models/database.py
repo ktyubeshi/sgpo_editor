@@ -218,10 +218,10 @@ class InMemoryEntryStore:
             # エントリ一括挿入
             entry_data = [
                 (
-                    entry["key"],
+                    entry.get("key", ""),
                     entry.get("msgctxt"),
-                    entry["msgid"],
-                    entry["msgstr"],
+                    entry.get("msgid", ""),
+                    entry.get("msgstr", ""),
                     entry.get("fuzzy", False),
                     entry.get("obsolete", False),
                     entry.get("previous_msgid"),
@@ -251,14 +251,17 @@ class InMemoryEntryStore:
                 SELECT id, key FROM entries
                 WHERE key IN ({})
             """.format(",".join(["?"] * len(entries))),
-                [entry["key"] for entry in entries],
+                [entry.get("key", "") for entry in entries],
             )
 
             id_map = {key: id for id, key in cur.fetchall()}
 
             # エントリにIDを設定
+            updated_entries = []
             for entry in entries:
-                entry["id"] = id_map.get(entry["key"])
+                entry_dict = dict(entry)
+                entry_dict["id"] = id_map.get(entry.get("key", ""))
+                updated_entries.append(entry_dict)
 
             # リファレンス一括挿入
             references = []
@@ -305,7 +308,7 @@ class InMemoryEntryStore:
 
     def add_entry(self, entry: EntryDict) -> None:
         """エントリを追加"""
-        logger.debug("エントリ追加開始: %s", entry["key"])
+        logger.debug("エントリ追加開始: %s", entry.get("key", ""))
         with self.transaction() as cur:
             # エントリを追加
             cur.execute(
@@ -317,10 +320,10 @@ class InMemoryEntryStore:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    entry["key"],
+                    entry.get("key", ""),
                     entry.get("msgctxt"),
-                    entry["msgid"],
-                    entry["msgstr"],
+                    entry.get("msgid", ""),
+                    entry.get("msgstr", ""),
                     entry.get("fuzzy", False),
                     entry.get("obsolete", False),
                     entry.get("previous_msgid"),
@@ -351,7 +354,7 @@ class InMemoryEntryStore:
                 "INSERT INTO display_order (entry_id, position) VALUES (?, ?)",
                 (entry_id, entry.get("position", 0)),
             )
-        logger.debug("エントリ追加完了: %s", entry["key"])
+        logger.debug("エントリ追加完了: %s", entry.get("key", ""))
 
     def clear(self) -> None:
         """全てのデータを削除"""
@@ -395,7 +398,8 @@ class InMemoryEntryStore:
             # レビュー関連データを取得
             entry["review_data"] = self._get_review_data(entry_id)
 
-            return entry
+            from sgpo_editor.types import EntryDict
+            return entry  # type: ignore
 
     def get_entry_by_key(self, key: str) -> Optional[EntryDict]:
         """キーでエントリを取得"""
@@ -434,7 +438,8 @@ class InMemoryEntryStore:
             # レビュー関連データを取得
             entry["review_data"] = self._get_review_data(entry["id"])
 
-            return entry
+            from sgpo_editor.types import EntryDict
+            return entry  # type: ignore
             
     def get_entry_basic_info(self, key: str) -> Optional[Dict[str, Any]]:
         """エントリの基本情報のみを取得する
@@ -934,7 +939,8 @@ class InMemoryEntryStore:
         for entry in entries:
             entry["review_data"] = self._get_review_data(entry["id"])
 
-        return entries
+        from sgpo_editor.types import EntryDictList
+        return entries  # type: ignore
 
     def reorder_entries(self, entry_ids: List[int]) -> None:
         """エントリの表示順序を変更"""
