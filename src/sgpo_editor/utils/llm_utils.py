@@ -34,7 +34,7 @@ class EvaluationResult(BaseModel):
     """評価結果モデル"""
 
     overall_score: int = Field(..., ge=0, le=100)
-    metric_scores: Dict[str, int] = Field(default_factory=dict)
+    metric_scores: Dict[str, float] = Field(default_factory=dict)
     comments: Dict[str, str] = Field(default_factory=dict)
     raw_response: str = ""
 
