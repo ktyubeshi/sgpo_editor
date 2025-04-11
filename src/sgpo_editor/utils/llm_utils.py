@@ -6,11 +6,20 @@
 import json
 import logging
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, TypedDict, cast, TypeAlias
 
 import anthropic
 import openai
 from pydantic import BaseModel, Field
+
+LLMResponseMetricScores: TypeAlias = Dict[str, float]
+LLMResponseComments: TypeAlias = Dict[str, str]
+
+class LLMEvaluationResponse(TypedDict, total=False):
+    """LLM評価レスポンスの型定義"""
+    overall_score: int
+    metric_scores: Dict[str, float]
+    comments: Dict[str, str]
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +221,7 @@ class LLMEvaluator:
             logger.debug(f"レスポンス取得 (長さ: {len(content)}文字)")
 
             try:
-                result_json = json.loads(content)
+                result_json = cast(LLMEvaluationResponse, json.loads(content))
                 logger.debug("JSONパース成功")
             except json.JSONDecodeError as e:
                 logger.error(f"JSONパースエラー: {e}, コンテンツ: {content[:100]}...")
@@ -235,10 +244,16 @@ class LLMEvaluator:
         except Exception as e:
             logger.error(f"OpenAI APIエラー: {e}", exc_info=True)
             # エラー時は空の結果を返す
+            default_metric_scores: LLMResponseMetricScores = {
+                m.name: 0.0 for m in metrics
+            }
+            default_comments: LLMResponseComments = {
+                m.name: f"評価エラー: {str(e)}" for m in metrics
+            }
             return EvaluationResult(
                 overall_score=0,
-                metric_scores={m.name: 0 for m in metrics},
-                comments={m.name: f"評価エラー: {str(e)}" for m in metrics},
+                metric_scores=default_metric_scores,
+                comments=default_comments,
                 raw_response=str(e),
             )
 
@@ -281,11 +296,11 @@ class LLMEvaluator:
                 if json_start >= 0 and json_end > json_start:
                     logger.debug(f"JSONブロック検出: {json_start}～{json_end}")
                     json_text = content[json_start + 7 : json_end].strip()
-                    result_json = json.loads(json_text)
+                    result_json = cast(LLMEvaluationResponse, json.loads(json_text))
                 else:
                     # JSONブロックがない場合は直接パース
                     logger.debug("JSONブロックなし、直接パース試行")
-                    result_json = json.loads(content)
+                    result_json = cast(LLMEvaluationResponse, json.loads(content))
                 logger.debug("JSONパース成功")
             except json.JSONDecodeError as e:
                 logger.error(f"JSONパースエラー: {e}, コンテンツ: {content[:100]}...")
@@ -308,10 +323,16 @@ class LLMEvaluator:
         except Exception as e:
             logger.error(f"Anthropic APIエラー: {e}", exc_info=True)
             # エラー時は空の結果を返す
+            default_metric_scores: LLMResponseMetricScores = {
+                m.name: 0.0 for m in metrics
+            }
+            default_comments: LLMResponseComments = {
+                m.name: f"評価エラー: {str(e)}" for m in metrics
+            }
             return EvaluationResult(
                 overall_score=0,
-                metric_scores={m.name: 0 for m in metrics},
-                comments={m.name: f"評価エラー: {str(e)}" for m in metrics},
+                metric_scores=default_metric_scores,
+                comments=default_comments,
                 raw_response=str(e),
             )
 
