@@ -7,11 +7,11 @@ ViewerPOFileUpdaterを継承し、統計情報と保存に関連する機能を�
 import logging
 from collections import namedtuple
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, cast
 
 from sgpo_editor.core.po_factory import get_po_factory
 from sgpo_editor.core.viewer_po_file_updater import ViewerPOFileUpdater
-from sgpo_editor.types import POEntryKwargs
+from sgpo_editor.types import POEntryKwargs, StatsDict
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,11 @@ class ViewerPOFileStats(ViewerPOFileUpdater):
     このクラスは、ViewerPOFileUpdaterを継承し、統計情報と保存に関連する機能を実装します。
     """
 
-    def get_stats(self) -> Stats:
+    def get_stats(self) -> StatsDict:
         """統計情報を取得する
 
         Returns:
-            Stats: 統計情報を含むnamedtupleオブジェクト
+            StatsDict: 統計情報を含む辞書
         """
         logger.debug("ViewerPOFileStats.get_stats: 統計情報取得開始")
 
@@ -40,13 +40,14 @@ class ViewerPOFileStats(ViewerPOFileUpdater):
 
         # エントリがない場合は空の統計情報を返す
         if not entries:
-            return Stats(
-                total=0,
-                translated=0,
-                fuzzy=0,
-                untranslated=0,
-                progress=0.0,
-            )
+            return cast(StatsDict, {
+                "total": 0,
+                "translated": 0,
+                "fuzzy": 0,
+                "untranslated": 0,
+                "progress": 0.0,
+                "file_name": str(self.path.name) if self.path else "",
+            })
 
         total = len(entries)
         translated = 0
@@ -66,13 +67,14 @@ class ViewerPOFileStats(ViewerPOFileUpdater):
         # 進捗率を計算（パーセント表示）
         progress = (translated / total * 100) if total > 0 else 0.0
 
-        return Stats(
-            total=total,
-            translated=translated,
-            fuzzy=fuzzy,
-            untranslated=untranslated,
-            progress=progress,
-        )
+        return cast(StatsDict, {
+            "total": total,
+            "translated": translated,
+            "fuzzy": fuzzy,
+            "untranslated": untranslated,
+            "progress": progress,
+            "file_name": str(self.path.name) if self.path else "",
+        })
 
     def save(self, path: Optional[Union[str, Path]] = None) -> bool:
         """POファイルを保存する

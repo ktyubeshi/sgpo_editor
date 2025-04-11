@@ -184,3 +184,12 @@ class FilterConditionsType(TypedDict, total=False):
     offset: Optional[int]
 
 FilterConditions: TypeAlias = FilterConditionsType
+
+class StatsDict(TypedDict):
+    """統計情報の辞書型定義"""
+    total: int
+    translated: int
+    untranslated: int
+    fuzzy: int
+    progress: float
+    file_name: str

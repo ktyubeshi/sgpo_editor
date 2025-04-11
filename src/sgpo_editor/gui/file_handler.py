@@ -14,6 +14,7 @@ from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 
 from sgpo_editor.core import ViewerPOFile
+from sgpo_editor.types import StatsDict
 
 # 循環インポートを避けるために型アノテーションを文字列に変更
 
@@ -29,7 +30,7 @@ class FileHandler:
     def __init__(
         self,
         parent: QWidget,
-        update_stats_callback: Callable[[Any], None],
+        update_stats_callback: Callable[[StatsDict], None],
         update_table_callback: Callable[[], None],
         status_callback: Callable[[str, int], None],
     ) -> None:
