@@ -12,8 +12,7 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
     def setUp(self):
         """テスト前の準備"""
         self.viewer = ViewerPOFile()
-        # データベースをモック化
-        self.viewer.db = MagicMock()
+        self.viewer.db_accessor = MagicMock()
 
     def test_get_filtered_entries_with_direct_parameters(self):
         """get_filtered_entriesメソッドが直接パラメータを受け取れることを確認"""
@@ -23,11 +22,10 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
         # get_filtered_entriesを呼び出し
         self.viewer.get_filtered_entries(filter_keyword=filter_keyword)
 
-        # データベースのget_entriesが正しいパラメータで呼ばれることを確認
-        self.viewer.db.get_entries.assert_called_with(
+        self.viewer.db_accessor.get_filtered_entries.assert_called_with(
             search_text=filter_keyword,  # filter_keywordはsearch_textとして渡される
-            sort_column=self.viewer.sort_column,
-            sort_order=self.viewer.sort_order,
+            sort_column='position',  # デフォルト値
+            sort_order='ASC',  # デフォルト値
             flag_conditions=self.viewer.flag_conditions,
             translation_status=self.viewer.translation_status,
         )
@@ -40,11 +38,10 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
         # get_filtered_entriesを呼び出し（パラメータなし）
         self.viewer.get_filtered_entries()
 
-        # データベースのget_entriesが正しいパラメータで呼ばれることを確認
-        self.viewer.db.get_entries.assert_called_with(
+        self.viewer.db_accessor.get_filtered_entries.assert_called_with(
             search_text=self.viewer.search_text,
-            sort_column=self.viewer.sort_column,
-            sort_order=self.viewer.sort_order,
+            sort_column='position',  # デフォルト値
+            sort_order='ASC',  # デフォルト値
             flag_conditions=self.viewer.flag_conditions,
             translation_status=self.viewer.translation_status,
         )
@@ -70,16 +67,14 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
             # update_filter=Falseで呼び出されたことを確認
             mock_get_filtered.assert_called_with(update_filter=False)
 
-        # データベースのget_entriesが呼ばれないことを確認
-        self.viewer.db.get_entries.assert_not_called()
+        self.viewer.db_accessor.get_filtered_entries.assert_not_called()
 
         # update_filter=Trueの場合はデータベースが呼ばれることを確認
         # モックを解除して実際のメソッドを呼び出す
         self.viewer.get_filtered_entries = self.viewer.__class__.get_filtered_entries
         self.viewer.get_filtered_entries(self.viewer, update_filter=True)
 
-        # データベースのget_entriesが呼ばれることを確認
-        self.viewer.db.get_entries.assert_called_once()
+        self.viewer.db_accessor.get_filtered_entries.assert_called_once()
 
 
 if __name__ == "__main__":

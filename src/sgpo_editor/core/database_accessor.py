@@ -90,19 +90,43 @@ class DatabaseAccessor:
         logger.debug(f"DatabaseAccessor.get_entry_by_key: キー={key}のエントリを取得")
         return self.db.get_entry_by_key(key)
 
-    def get_entries_by_keys(self, keys: List[str]) -> Dict[str, EntryDict]:
+    def get_entries_by_keys(self, keys: List[str]) -> List[EntryDict]:
         """複数のキーに対応するエントリを一度に取得する
 
         Args:
             keys: 取得するエントリのキーのリスト
 
         Returns:
-            キーとエントリの辞書のマッピング
+            エントリの辞書のリスト
         """
         logger.debug(
             f"DatabaseAccessor.get_entries_by_keys: {len(keys)}件のエントリを一括取得"
         )
-        return self.db.get_entries_by_keys(keys)
+        
+        if not keys:
+            return []
+            
+        entries = []
+        with self.db.transaction() as cur:
+            placeholders = ", ".join(["?"] * len(keys))
+            
+            cur.execute(
+                f"""
+                SELECT
+                    e.*,
+                    d.position
+                FROM entries e
+                LEFT JOIN display_order d ON e.id = d.entry_id
+                WHERE e.key IN ({placeholders})
+                """,
+                keys
+            )
+            
+            for row in cur.fetchall():
+                entry_dict = self._row_to_entry_dict(row)
+                entries.append(entry_dict)
+                
+        return entries
 
     def get_all_entries_basic_info(self) -> Dict[str, EntryDict]:
         """すべてのエントリの基本情報を取得する
@@ -148,7 +172,29 @@ class DatabaseAccessor:
         logger.debug(
             f"DatabaseAccessor.get_entry_basic_info: キー={key}の基本情報を取得"
         )
-        return self.db.get_entry_basic_info(key)
+        
+        with self.db.transaction() as cur:
+            cur.execute(
+                """
+                SELECT
+                    e.key, e.msgid, e.msgstr, e.fuzzy, e.obsolete
+                FROM entries e
+                WHERE e.key = ?
+                """,
+                (key,)
+            )
+            row = cur.fetchone()
+            
+            if not row:
+                return None
+                
+            return {
+                "key": row["key"],
+                "msgid": row["msgid"],
+                "msgstr": row["msgstr"],
+                "fuzzy": bool(row["fuzzy"]),
+                "obsolete": bool(row["obsolete"]),
+            }
 
     def get_filtered_entries(
         self,
@@ -407,13 +453,86 @@ class DatabaseAccessor:
             else:
                 entries_dict[key] = entry
 
-        # データベースを更新
-        result = self.db.update_entries(entries_dict)
-        logger.debug(
-            f"DatabaseAccessor.update_entries: データベース更新結果 result={result}"
-        )
+        success = True
+        try:
+            with self.db.transaction() as cur:
+                for key, entry_data in entries_dict.items():
+                    cur.execute(
+                        """
+                        UPDATE entries SET
+                            msgctxt = ?,
+                            msgid = ?,
+                            msgstr = ?,
+                            fuzzy = ?,
+                            obsolete = ?,
+                            previous_msgid = ?,
+                            previous_msgid_plural = ?,
+                            previous_msgctxt = ?,
+                            comment = ?,
+                            tcomment = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE key = ?
+                        """,
+                        (
+                            entry_data.get("msgctxt"),
+                            entry_data.get("msgid"),
+                            entry_data.get("msgstr"),
+                            entry_data.get("fuzzy", 0),
+                            entry_data.get("obsolete", 0),
+                            entry_data.get("previous_msgid"),
+                            entry_data.get("previous_msgid_plural"),
+                            entry_data.get("previous_msgctxt"),
+                            entry_data.get("comment"),
+                            entry_data.get("tcomment"),
+                            key,
+                        ),
+                    )
 
-        return result
+                    cur.execute(
+                        "DELETE FROM entry_references WHERE entry_id IN (SELECT id FROM entries WHERE key = ?)",
+                        (key,),
+                    )
+                    references = entry_data.get("references", []) or []
+                    for ref in references:
+                        cur.execute(
+                            """
+                            INSERT INTO entry_references (entry_id, reference)
+                            SELECT id, ? FROM entries WHERE key = ?
+                            """,
+                            (ref, key),
+                        )
+
+                    cur.execute(
+                        "DELETE FROM entry_flags WHERE entry_id IN (SELECT id FROM entries WHERE key = ?)",
+                        (key,),
+                    )
+                    flags = entry_data.get("flags", []) or []
+                    for flag in flags:
+                        cur.execute(
+                            """
+                            INSERT INTO entry_flags (entry_id, flag)
+                            SELECT id, ? FROM entries WHERE key = ?
+                            """,
+                            (flag, key),
+                        )
+
+                    if "position" in entry_data:
+                        cur.execute(
+                            """
+                            UPDATE display_order SET
+                                position = ?
+                            WHERE entry_id IN (SELECT id FROM entries WHERE key = ?)
+                            """,
+                            (entry_data["position"], key),
+                        )
+        except Exception as e:
+            logger.error(f"DatabaseAccessor.update_entries: 更新エラー: {e}")
+            success = False
+
+        logger.debug(
+            f"DatabaseAccessor.update_entries: データベース更新結果 result={success}"
+        )
+        return success
 
     def import_entries(self, entries: EntryInputMap) -> bool:
         """エントリをインポートする（既存エントリの上書き）
@@ -435,13 +554,89 @@ class DatabaseAccessor:
                 entry.to_dict() if isinstance(entry, EntryModel) else entry
             )
 
-        # データベースにインポート
-        result = self.db.import_entries(entries_dict)
+        success = True
+        try:
+            with self.db.transaction() as cur:
+                entry_data = []
+                for key, entry in entries_dict.items():
+                    entry_data.append((
+                        key,
+                        entry.get("msgctxt"),
+                        entry.get("msgid"),
+                        entry.get("msgstr"),
+                        entry.get("fuzzy", False),
+                        entry.get("obsolete", False),
+                        entry.get("previous_msgid"),
+                        entry.get("previous_msgid_plural"),
+                        entry.get("previous_msgctxt"),
+                        entry.get("comment"),
+                        entry.get("tcomment"),
+                    ))
+                
+                cur.executemany(
+                    """
+                    INSERT INTO entries (
+                        key, msgctxt, msgid, msgstr, fuzzy, obsolete,
+                        previous_msgid, previous_msgid_plural, previous_msgctxt,
+                        comment, tcomment
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    entry_data,
+                )
+                
+                keys = list(entries_dict.keys())
+                placeholders = ", ".join(["?"] * len(keys))
+                cur.execute(
+                    f"""
+                    SELECT id, key FROM entries
+                    WHERE key IN ({placeholders})
+                    """,
+                    keys,
+                )
+                
+                id_map = {key: entry_id for entry_id, key in cur.fetchall()}
+                
+                references = []
+                flags = []
+                display_orders = []
+                
+                for key, entry in entries_dict.items():
+                    entry_id = id_map.get(key)
+                    if entry_id:
+                        for ref in entry.get("references", []) or []:
+                            references.append((entry_id, ref))
+                        
+                        for flag in entry.get("flags", []) or []:
+                            flags.append((entry_id, flag))
+                        
+                        display_orders.append((entry_id, entry.get("position", 0)))
+                
+                if references:
+                    cur.executemany(
+                        "INSERT INTO entry_references (entry_id, reference) VALUES (?, ?)",
+                        references,
+                    )
+                
+                if flags:
+                    cur.executemany(
+                        "INSERT INTO entry_flags (entry_id, flag) VALUES (?, ?)",
+                        flags,
+                    )
+                
+                if display_orders:
+                    cur.executemany(
+                        "INSERT INTO display_order (entry_id, position) VALUES (?, ?)",
+                        display_orders,
+                    )
+                
+        except Exception as e:
+            logger.error(f"DatabaseAccessor.import_entries: インポートエラー: {e}")
+            success = False
+            
         logger.debug(
-            f"DatabaseAccessor.import_entries: データベースインポート結果 result={result}"
+            f"DatabaseAccessor.import_entries: データベースインポート結果 result={success}"
         )
-
-        return result
+        return success
 
     def advanced_search(
         self,
@@ -694,7 +889,7 @@ class DatabaseAccessor:
         }
 
         # 有効なソート列かチェック
-        sort_column_sql = valid_sort_columns.get(sort_column, "d.position")
+        sort_column_sql = valid_sort_columns[sort_column] if sort_column in valid_sort_columns else "d.position"
 
         # ソート順のSQLインジェクション防止
         sort_order_sql = "ASC" if sort_order is None or sort_order.upper() != "DESC" else "DESC"
@@ -705,7 +900,7 @@ class DatabaseAccessor:
         # LIMIT と OFFSET の追加
         if limit is not None:
             query += f" LIMIT {limit}"
-            if offset > 0:
+            if offset is not None and offset > 0:
                 query += f" OFFSET {offset}"
 
         # クエリ実行と結果の取得

@@ -10,13 +10,21 @@
 
 これらのキャッシュは、ViewerPOFileクラスとDatabaseAccessorクラスと連携して動作し、
 データベースアクセスを最小限に抑えることでパフォーマンスを向上させます。
+
+最適化機能:
+1. 使用頻度ベースのキャッシュ保持: 頻繁にアクセスされるエントリを優先的に保持
+2. キャッシュサイズの自動調整: メモリ使用量に基づいてキャッシュサイズを動的に調整
+3. 非同期プリフェッチ: バックグラウンドでの先読みによるUI応答性の向上
 """
 
 import logging
 import hashlib
 import json
 import time
-from typing import Optional, List, Dict, Any
+import asyncio
+import threading
+from collections import Counter
+from typing import Optional, List, Dict, Any, Set, Tuple
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import EntryModelMap, EntryModelList
@@ -50,7 +58,16 @@ class EntryCacheManager:
     - エントリが更新されると、update_entry_in_cacheメソッドで関連するすべてのキャッシュを更新
     - フィルタ条件が変更されると、set_force_filter_updateメソッドでフィルタキャッシュを無効化
     - ファイル読み込み時などは、clear_all_cacheメソッドですべてのキャッシュをクリア
+
+    最適化機能:
+    - 使用頻度ベースのキャッシュ保持: アクセス頻度の高いエントリを優先的に保持
+    - キャッシュサイズの自動調整: メモリ使用量に基づいてキャッシュサイズを動的に調整
+    - 非同期プリフェッチ: バックグラウンドでの先読みによるUI応答性の向上
     """
+
+    DEFAULT_MAX_CACHE_SIZE = 10000
+    DEFAULT_LRU_SIZE = 1000
+    PREFETCH_BATCH_SIZE = 50
 
     def __init__(self):
         """キャッシュマネージャの初期化
@@ -94,6 +111,18 @@ class EntryCacheManager:
 
         # ログ間隔（秒）- デフォルトは60秒
         self._performance_log_interval: int = 60
+
+        self._access_counter: Counter = Counter()  # キーごとのアクセス回数
+        self._last_access_time: Dict[str, float] = {}  # キーごとの最終アクセス時間
+        
+        self._max_cache_size: int = self.DEFAULT_MAX_CACHE_SIZE
+        self._lru_size: int = self.DEFAULT_LRU_SIZE
+        
+        self._prefetch_lock = threading.RLock()
+        self._prefetch_queue: Set[str] = set()
+        self._prefetch_in_progress: bool = False
+        
+        self._row_key_map: Dict[int, str] = {}
 
         logger.debug("EntryCacheManager: 初期化完了")
 
@@ -358,6 +387,7 @@ class EntryCacheManager:
             # キャッシュヒット
             self._complete_cache_hits += 1
             self._check_and_log_performance()
+            self._update_access_stats(key)
             return entry
         else:
             # キャッシュミス
@@ -381,6 +411,7 @@ class EntryCacheManager:
             # キャッシュヒット
             self._basic_cache_hits += 1
             self._check_and_log_performance()
+            self._update_access_stats(key)
             return entry
         else:
             # キャッシュミス
@@ -675,7 +706,78 @@ class EntryCacheManager:
         logger.debug(f"EntryCacheManager.notify_entry_updated: key={key}")
         # 将来的にはオブザーバーに通知する実装に拡張可能
 
-    def prefetch_visible_entries(self, visible_keys: List[str]) -> None:
+    def set_max_cache_size(self, size: int) -> None:
+        """キャッシュの最大サイズを設定する
+
+        Args:
+            size: キャッシュの最大エントリ数
+        """
+        self._max_cache_size = max(100, size)  # 最小サイズは100
+        logger.debug(f"キャッシュ最大サイズを{self._max_cache_size}に設定")
+        self._trim_cache_if_needed()
+
+    def set_lru_size(self, size: int) -> None:
+        """LRUキャッシュサイズを設定する
+
+        Args:
+            size: 保持する最近使用されたエントリの数
+        """
+        self._lru_size = max(10, size)  # 最小サイズは10
+        logger.debug(f"LRUキャッシュサイズを{self._lru_size}に設定")
+
+    def _trim_cache_if_needed(self) -> None:
+        """必要に応じてキャッシュサイズを調整する
+
+        キャッシュサイズが上限を超えた場合、使用頻度の低いエントリを削除します。
+        ただし、最近使用されたエントリ（LRUキャッシュ）は保持します。
+        """
+        if len(self._complete_entry_cache) > self._max_cache_size:
+            logger.debug(
+                f"キャッシュサイズ調整: {len(self._complete_entry_cache)}→{self._max_cache_size}"
+            )
+            
+            entries_to_remove = len(self._complete_entry_cache) - self._max_cache_size
+            
+            protected_keys = set()
+            if self._last_access_time:
+                recent_keys = sorted(
+                    self._last_access_time.keys(),
+                    key=lambda k: self._last_access_time.get(k, 0),
+                    reverse=True
+                )[:self._lru_size]
+                protected_keys.update(recent_keys)
+            
+            if self._access_counter:
+                candidates = [
+                    k for k in self._complete_entry_cache.keys()
+                    if k not in protected_keys
+                ]
+                candidates.sort(key=lambda k: self._access_counter.get(k, 0))
+                
+                keys_to_remove = candidates[:entries_to_remove]
+                
+                for key in keys_to_remove:
+                    if key in self._complete_entry_cache:
+                        del self._complete_entry_cache[key]
+                    if key in self._entry_basic_info_cache:
+                        del self._entry_basic_info_cache[key]
+                    if key in self._access_counter:
+                        del self._access_counter[key]
+                    if key in self._last_access_time:
+                        del self._last_access_time[key]
+                
+                logger.debug(f"キャッシュから{len(keys_to_remove)}件のエントリを削除")
+
+    def _update_access_stats(self, key: str) -> None:
+        """エントリのアクセス統計を更新する
+
+        Args:
+            key: アクセスされたエントリのキー
+        """
+        self._access_counter[key] += 1
+        self._last_access_time[key] = time.time()
+
+    def prefetch_visible_entries(self, visible_keys: List[str], fetch_callback=None) -> None:
         """表示中のエントリをプリフェッチする
 
         テーブルに表示されている（または表示されそうな）エントリを
@@ -684,16 +786,82 @@ class EntryCacheManager:
 
         Args:
             visible_keys: 表示中または表示予定のエントリキーのリスト
+            fetch_callback: キーのリストを受け取り、EntryModelのリストを返すコールバック関数
+                           形式: callback([key1, key2, ...]) -> [entry1, entry2, ...]
         """
+        if not self._cache_enabled or not visible_keys:
+            return
+            
         logger.debug(
             f"EntryCacheManager.prefetch_visible_entries: {len(visible_keys)}件"
         )
+        
         # すでにキャッシュにあるキーを除外
         keys_to_fetch = [
             key for key in visible_keys if key not in self._complete_entry_cache
         ]
-
+        
         if not keys_to_fetch:
             return
+            
+        with self._prefetch_lock:
+            self._prefetch_queue.update(keys_to_fetch)
+            
+            if self._prefetch_in_progress:
+                return
+                
+            self._prefetch_in_progress = True
+            
+        threading.Thread(
+            target=self._async_prefetch, 
+            args=(fetch_callback,), 
+            daemon=True
+        ).start()
+        
+    def _async_prefetch(self, fetch_callback=None) -> None:
+        """バックグラウンドでエントリをプリフェッチする
 
-        # 将来的にはバックグラウンドでの非同期フェッチも検討
+        プリフェッチキューからバッチ単位でエントリを取得し、
+        キャッシュに読み込みます。これにより、UI応答性を維持しながら
+        キャッシュを効率的に構築できます。
+
+        Args:
+            fetch_callback: キーのリストを受け取り、EntryModelのリストを返すコールバック関数
+                           形式: callback([key1, key2, ...]) -> [entry1, entry2, ...]
+        """
+        try:
+            while True:
+                batch_keys = []
+                with self._prefetch_lock:
+                    if not self._prefetch_queue:
+                        self._prefetch_in_progress = False
+                        break
+                        
+                    batch_keys = list(self._prefetch_queue)[:self.PREFETCH_BATCH_SIZE]
+                    self._prefetch_queue.difference_update(batch_keys)
+                
+                if not batch_keys:
+                    continue
+                    
+                logger.debug(f"バックグラウンドプリフェッチ: {len(batch_keys)}件")
+                
+                if fetch_callback and callable(fetch_callback):
+                    try:
+                        entries = fetch_callback(batch_keys)
+                        if entries:
+                            for entry in entries:
+                                if entry and hasattr(entry, 'key'):
+                                    self.cache_complete_entry(entry.key, entry)
+                                    self._update_access_stats(entry.key)
+                            logger.debug(f"プリフェッチ完了: {len(entries)}件のエントリをキャッシュに追加")
+                    except Exception as e:
+                        logger.error(f"エントリフェッチ中にエラーが発生: {e}")
+                
+                self._trim_cache_if_needed()
+                
+                time.sleep(0.01)
+                
+        except Exception as e:
+            logger.error(f"プリフェッチ処理でエラーが発生: {e}")
+            with self._prefetch_lock:
+                self._prefetch_in_progress = False

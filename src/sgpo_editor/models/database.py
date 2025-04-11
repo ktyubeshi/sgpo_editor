@@ -435,6 +435,41 @@ class InMemoryEntryStore:
             entry["review_data"] = self._get_review_data(entry["id"])
 
             return entry
+            
+    def get_entry_basic_info(self, key: str) -> Optional[Dict[str, Any]]:
+        """エントリの基本情報のみを取得する
+        
+        Args:
+            key: 取得するエントリのキー
+            
+        Returns:
+            Dict[str, Any]: 基本情報のみを含むエントリ辞書（キー、msgid、msgstr、fuzzy、obsolete）
+            エントリが存在しない場合はNone
+        """
+        logger.debug(f"InMemoryEntryStore.get_entry_basic_info: キー={key}の基本情報を取得")
+        
+        with self.transaction() as cur:
+            cur.execute(
+                """
+                SELECT
+                    e.key, e.msgid, e.msgstr, e.fuzzy, e.obsolete
+                FROM entries e
+                WHERE e.key = ?
+                """,
+                (key,)
+            )
+            row = cur.fetchone()
+            
+            if not row:
+                return None
+                
+            return {
+                "key": row["key"],
+                "msgid": row["msgid"],
+                "msgstr": row["msgstr"],
+                "fuzzy": bool(row["fuzzy"]),
+                "obsolete": bool(row["obsolete"]),
+            }
 
     def update_entry(
         self,
@@ -457,8 +492,12 @@ class InMemoryEntryStore:
             entry_data = entry
         else:
             # 新しい形式: update_entry(entry_data)
-            entry_data = key_or_entry
-            key = entry_data.get("key")
+            if isinstance(key_or_entry, dict):
+                entry_data = key_or_entry
+                key = entry_data.get("key")
+            else:
+                logger.error("エントリの更新に失敗: エントリデータがありません")
+                return False
 
         if not key:
             logger.error("エントリの更新に失敗: キーがありません")
@@ -567,6 +606,60 @@ class InMemoryEntryStore:
             logger.error(f"エントリ更新エラー: {e}")
             return False
 
+    def get_entries_by_keys(self, keys: List[str]) -> List[EntryDict]:
+        """複数のキーに対応するエントリを一度に取得する
+
+        Args:
+            keys: 取得するエントリのキーのリスト
+
+        Returns:
+            List[EntryDict]: エントリの辞書のリスト
+        """
+        if not keys:
+            return []
+            
+        logger.debug(f"InMemoryEntryStore.get_entries_by_keys: {len(keys)}件のエントリを一括取得")
+        entries = []
+        
+        with self.transaction() as cur:
+            placeholders = ", ".join(["?"] * len(keys))
+            
+            cur.execute(
+                f"""
+                SELECT
+                    e.*,
+                    d.position
+                FROM entries e
+                LEFT JOIN display_order d ON e.id = d.entry_id
+                WHERE e.key IN ({placeholders})
+                """,
+                keys
+            )
+            
+            for row in cur.fetchall():
+                entry = dict(row)
+                
+                # リファレンスを取得
+                cur.execute(
+                    "SELECT reference FROM entry_references WHERE entry_id = ?",
+                    (entry["id"],)
+                )
+                entry["references"] = [r[0] for r in cur.fetchall()]
+                
+                # フラグを取得
+                cur.execute(
+                    "SELECT flag FROM entry_flags WHERE entry_id = ?", 
+                    (entry["id"],)
+                )
+                entry["flags"] = [r[0] for r in cur.fetchall()]
+                
+                # レビュー関連データを取得
+                entry["review_data"] = self._get_review_data(entry["id"])
+                
+                entries.append(entry)
+                
+        return entries
+        
     def get_entries(
         self,
         search_text: Optional[str] = None,

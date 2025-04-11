@@ -213,6 +213,44 @@ class ViewerPOFileRefactored(ViewerPOFileStats):
             self.cache_manager.set_force_filter_update(True)
             self.cache_manager.clear_cache()
         self.filtered_entries = []
+        
+    def prefetch_entries(self, keys: List[str]) -> None:
+        """指定されたキーのエントリをプリフェッチする
+        
+        Args:
+            keys: プリフェッチするエントリのキーのリスト
+        """
+        if not self.cache_manager or not self.db_accessor or not keys:
+            return
+            
+        logger.debug(f"ViewerPOFileRefactored.prefetch_entries: {len(keys)}件のエントリをプリフェッチ")
+        
+        self.cache_manager.prefetch_visible_entries(
+            keys,
+            fetch_callback=self._fetch_entries_by_keys
+        )
+        
+    def _fetch_entries_by_keys(self, keys: List[str]) -> List[EntryModel]:
+        """指定されたキーのエントリをデータベースから取得する
+        
+        Args:
+            keys: 取得するエントリのキーのリスト
+            
+        Returns:
+            List[EntryModel]: 取得したエントリのリスト
+        """
+        if not self.db_accessor or not keys:
+            return []
+            
+        try:
+            entries_dict = self.db_accessor.get_entries_by_keys(keys)
+            
+            entries = [EntryModel.from_dict(entry_dict) for entry_dict in entries_dict]
+            
+            return entries
+        except Exception as e:
+            logger.error(f"エントリ取得中にエラーが発生: {e}")
+            return []
 
     def get_unique_msgid_count(self) -> int:
         """一意のmsgid数を取得する
