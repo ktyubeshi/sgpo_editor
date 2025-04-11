@@ -18,6 +18,7 @@ dependencies = [
     "ruff>=0.9.10",
     "openai>=1.10.0", # OpenAI APIクライアント
     "anthropic>=0.15.0", # Claude APIクライアント
+    "pytest-asyncio>=0.24.0",
 ]
 
 [tool.setuptools]
