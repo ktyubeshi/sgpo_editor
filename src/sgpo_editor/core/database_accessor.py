@@ -62,7 +62,7 @@ class DatabaseAccessor:
         logger.debug("DatabaseAccessor.clear_database: データベースをクリア")
         self.db.clear()
 
-    def add_entries_bulk(self, entries: List[Dict[str, Any]]) -> None:
+    def add_entries_bulk(self, entries: EntryDictList) -> None:
         """複数のエントリを一括でデータベースに追加する
 
         Args:
@@ -408,7 +408,8 @@ class DatabaseAccessor:
         logger.debug(
             f"DatabaseAccessor.update_entry: データベース更新開始 key={entry_dict.get('key')}"
         )
-        result = self.db.update_entry(entry_dict)
+        from typing import cast
+        result = self.db.update_entry(cast(EntryDict, entry_dict))
         logger.debug(
             f"DatabaseAccessor.update_entry: データベース更新結果 result={result}"
         )
@@ -1059,7 +1060,9 @@ class DatabaseAccessor:
         Returns:
             EntryDict: 変換された辞書
         """
-        entry_dict = {
+        from typing import cast
+        
+        entry_dict: EntryDict = {
             "key": row["key"],
             "msgid": row["msgid"],
             "msgstr": row["msgstr"],
@@ -1104,7 +1107,7 @@ class DatabaseAccessor:
             )
             quality_score_row = cur.fetchone()
             if quality_score_row:
-                entry_dict["quality_score"] = quality_score_row["overall_score"]
+                entry_dict["overall_quality_score"] = quality_score_row["overall_score"]
 
                 # カテゴリースコアの取得
                 quality_score_id = quality_score_row["id"]
@@ -1116,6 +1119,6 @@ class DatabaseAccessor:
                     row["category"]: row["score"] for row in cur.fetchall()
                 }
                 if category_scores:
-                    entry_dict["category_scores"] = category_scores
+                    entry_dict["category_quality_scores"] = category_scores
 
-        return entry_dict
+        return cast(EntryDict, entry_dict)
