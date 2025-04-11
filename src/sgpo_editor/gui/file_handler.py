@@ -29,7 +29,7 @@ class FileHandler:
     def __init__(
         self,
         parent: QWidget,
-        update_stats_callback: Callable[[Dict[str, Any]], None],
+        update_stats_callback: Callable[[Any], None],
         update_table_callback: Callable[[], None],
         status_callback: Callable[[str, int], None],
     ) -> None:
