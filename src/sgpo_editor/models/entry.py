@@ -2,10 +2,10 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast, Literal, ForwardRef
 
 if TYPE_CHECKING:
-    from sgpo_editor.types import EntryDict
+    from sgpo_editor.types import CheckResults, EntryDict
     from sgpo_editor.utils.metadata_utils import MetadataDict
 
 from polib import POEntry
@@ -59,7 +59,7 @@ class EntryModel(BaseModel):
         default_factory=list
     )  # 多言語レビューコメント
     metric_scores: Dict[str, int] = Field(default_factory=dict)  # 評価指標ごとのスコア
-    check_results: List[Dict[str, Any]] = Field(
+    check_results: List[Dict[str, Union[str, int]]] = Field(
         default_factory=list
     )  # 自動チェック結果
     category_quality_scores: Dict[str, float] = Field(
@@ -578,16 +578,19 @@ class EntryModel(BaseModel):
             message: チェックメッセージ
             severity: 重大度（error, warning, info）
         """
-        self.check_results.append(
-            {
-                "code": code,
-                "message": message,
-                "severity": severity,
-                "timestamp": datetime.now().isoformat(),
-            }
-        )
+        valid_severity = "info"
+        if severity in ("error", "warning", "info"):
+            valid_severity = cast(Literal["error", "warning", "info"], severity)
+        
+        check_result: Dict[str, Union[str, int]] = {
+            "code": code,
+            "message": message,
+            "severity": valid_severity,
+            "timestamp": datetime.now().isoformat(),
+        }
+        self.check_results.append(check_result)
 
-    def remove_check_result(self, code: int) -> bool:
+    def remove_check_result(self, code: Union[str, int]) -> bool:
         """自動チェック結果を削除
 
         Args:
@@ -596,7 +599,7 @@ class EntryModel(BaseModel):
             bool: 削除に成功した場合True
         """
         original_length = len(self.check_results)
-        self.check_results = [r for r in self.check_results if r["code"] != code]
+        self.check_results = [r for r in self.check_results if "code" not in r or r["code"] != code]
         return len(self.check_results) < original_length
 
     def clear_check_results(self) -> None:
@@ -777,3 +780,6 @@ class EntryModel(BaseModel):
             return True
             
         return key in self.to_dict()
+
+
+EntryModel.model_rebuild()

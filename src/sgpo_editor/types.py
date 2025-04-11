@@ -4,9 +4,10 @@
 複雑な型に分かりやすい名前を付けることで、コードの可読性と保守性を向上させます。
 """
 
-from typing import Any, Dict, List, TypeAlias, Union, Tuple, Callable, Optional, Literal, TypedDict, Set
+from typing import Any, Dict, List, TypeAlias, Union, Tuple, Callable, Optional, Literal, TypedDict, Set, TYPE_CHECKING
 
-from sgpo_editor.models.entry import EntryModel
+if TYPE_CHECKING:
+    from sgpo_editor.models.entry import EntryModel
 
 class EntryDictType(TypedDict, total=False):
     """POエントリの辞書表現の型定義"""
@@ -41,13 +42,18 @@ EntryDict: TypeAlias = EntryDictType
 EntryDictList: TypeAlias = List[EntryDict]
 
 # キーからEntryModelへのマッピング
-EntryModelMap: TypeAlias = Dict[str, EntryModel]
-
-# EntryModelのリスト
-EntryModelList: TypeAlias = List[EntryModel]
-
-# フィルタリング済みEntryModelのリスト
-FilteredEntriesList: TypeAlias = List[EntryModel]
+if TYPE_CHECKING:
+    EntryModelMap: TypeAlias = Dict[str, "EntryModel"]
+    # EntryModelのリスト
+    EntryModelList: TypeAlias = List["EntryModel"]
+    # フィルタリング済みEntryModelのリスト
+    FilteredEntriesList: TypeAlias = List["EntryModel"]
+else:
+    EntryModelMap: TypeAlias = Dict[str, Any]
+    # EntryModelのリスト
+    EntryModelList: TypeAlias = List[Any]
+    # フィルタリング済みEntryModelのリスト
+    FilteredEntriesList: TypeAlias = List[Any]
 
 class FlagConditionsType(TypedDict, total=False):
     """フラグ条件を表す辞書の型定義"""
@@ -61,7 +67,10 @@ class FlagConditionsType(TypedDict, total=False):
 FlagConditions: TypeAlias = FlagConditionsType
 
 # 辞書またはEntryModelのいずれか
-EntryInput: TypeAlias = Union[EntryDict, EntryModel]
+if TYPE_CHECKING:
+    EntryInput: TypeAlias = Union[EntryDict, "EntryModel"]
+else:
+    EntryInput: TypeAlias = Union[EntryDict, Any]
 
 # キーからエントリ（辞書またはEntryModel）へのマッピング
 EntryInputMap: TypeAlias = Dict[str, EntryInput]
@@ -75,14 +84,13 @@ MetricScores: TypeAlias = Dict[str, float]
 # カテゴリ品質スコアの辞書
 CategoryScores: TypeAlias = Dict[str, float]
 
-class CheckResultType(TypedDict):
+class CheckResultType(TypedDict, total=False):
     """チェック結果の型定義"""
-    id: str
-    type: str
-    severity: Literal["error", "warning", "info"]
+    code: Union[str, int]
     message: str
-    details: Optional[str]
+    severity: Literal["error", "warning", "info"]
     timestamp: str
+    details: Optional[str]
 
 CheckResults: TypeAlias = List[CheckResultType]
 
