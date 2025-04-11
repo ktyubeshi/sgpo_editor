@@ -12,6 +12,7 @@ class TranslationStatus:
     TRANSLATED = "translated"
     UNTRANSLATED = "untranslated"
     FUZZY = "fuzzy"
+    FUZZY_OR_UNTRANSLATED = "fuzzy_or_untranslated"
     OBSOLETE = "obsolete"
 
 
@@ -21,4 +22,5 @@ TRANSLATION_STATUS_ORDER = [
     TranslationStatus.TRANSLATED,
     TranslationStatus.UNTRANSLATED,
     TranslationStatus.FUZZY,
+    TranslationStatus.FUZZY_OR_UNTRANSLATED,
 ]
