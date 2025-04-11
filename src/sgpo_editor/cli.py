@@ -20,12 +20,12 @@ def main():
     po_file = POFile(file_path)
     stats = po_file.get_stats()
 
-    print(f"ファイル: {stats.file_name}")
-    print(f"総数: {stats.total}")
-    print(f"翻訳済み: {stats.translated}")
-    print(f"未翻訳: {stats.untranslated}")
-    print(f"ファジー: {stats.fuzzy}")
-    print(f"進捗率: {stats.progress:.1f}%")
+    print(f"ファイル: {stats['file_name']}")
+    print(f"総数: {stats['total']}")
+    print(f"翻訳済み: {stats['translated']}")
+    print(f"未翻訳: {stats['untranslated']}")
+    print(f"ファジー: {stats['fuzzy']}")
+    print(f"進捗率: {stats['progress']:.1f}%")
 
     return 0
 

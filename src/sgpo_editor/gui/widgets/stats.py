@@ -35,8 +35,8 @@ class StatsWidget(QWidget):
 
     def update_stats(self, stats: StatsModel) -> None:
         """統計情報を更新"""
-        self.total_label.setText(f"全エントリ数: {stats.total}")
-        self.translated_label.setText(f"翻訳済み: {stats.translated}")
-        self.untranslated_label.setText(f"未翻訳: {stats.untranslated}")
-        self.fuzzy_label.setText(f"ファジー: {stats.fuzzy}")
-        self.progress_label.setText(f"進捗率: {stats.progress:.1f}%")
+        self.total_label.setText(f"全エントリ数: {stats['total']}")
+        self.translated_label.setText(f"翻訳済み: {stats['translated']}")
+        self.untranslated_label.setText(f"未翻訳: {stats['untranslated']}")
+        self.fuzzy_label.setText(f"ファジー: {stats['fuzzy']}")
+        self.progress_label.setText(f"進捗率: {stats['progress']:.1f}%")

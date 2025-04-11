@@ -152,9 +152,9 @@ def test_stats_model():
         total=100, translated=60, untranslated=30, fuzzy=10, file_name="test.po"
     )
 
-    assert stats.total == 100
-    assert stats.translated == 60
-    assert stats.untranslated == 30
-    assert stats.fuzzy == 10
-    assert stats.file_name == "test.po"
-    assert stats.progress == 60  # translated / total * 100
+    assert stats["total"] == 100
+    assert stats["translated"] == 60
+    assert stats["untranslated"] == 30
+    assert stats["fuzzy"] == 10
+    assert stats["file_name"] == "test.po"
+    assert stats["progress"] == 60  # translated / total * 100
