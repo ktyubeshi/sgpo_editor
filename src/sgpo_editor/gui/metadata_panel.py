@@ -1,7 +1,9 @@
 """メタデータ表示パネル"""
 
 import logging
-from typing import Any, Optional
+from typing import Optional
+
+from sgpo_editor.types import MetadataValueType
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
@@ -94,7 +96,7 @@ class MetadataPanel(QWidget):
         self.tree.expandAll()
 
     def add_metadata_item(
-        self, key: str, value: Any, parent: Optional[QTreeWidgetItem] = None
+        self, key: str, value: MetadataValueType, parent: Optional[QTreeWidgetItem] = None
     ) -> QTreeWidgetItem:
         """メタデータアイテムをツリーに追加
 
@@ -123,7 +125,7 @@ class MetadataPanel(QWidget):
 
         return item
 
-    def format_value(self, value: Any) -> str:
+    def format_value(self, value: MetadataValueType) -> str:
         """値を表示用にフォーマット
 
         Args:
