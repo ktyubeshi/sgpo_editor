@@ -6,7 +6,7 @@ sgpoとpolibの両方に対応できるようにするためのインターフ�
 
 import abc
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 
 class POEntry(abc.ABC):
@@ -203,7 +203,7 @@ class POFile(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def __iter__(self) -> Any:
+    def __iter__(self) -> Iterator[POEntry]:
         """イテレータ"""
         pass
 
