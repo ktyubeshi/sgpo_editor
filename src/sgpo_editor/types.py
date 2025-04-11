@@ -4,7 +4,7 @@
 複雑な型に分かりやすい名前を付けることで、コードの可読性と保守性を向上させます。
 """
 
-from typing import Any, Dict, List, TypeAlias, Union, Tuple, Callable, Optional, Literal, TypedDict
+from typing import Any, Dict, List, TypeAlias, Union, Tuple, Callable, Optional, Literal, TypedDict, Set
 
 from sgpo_editor.models.entry import EntryModel
 
@@ -105,3 +105,22 @@ FilterSettings: TypeAlias = FilterSettingsType
 
 # イベントハンドラコールバック
 EventCallback: TypeAlias = Callable[..., None]
+
+class POEntryKwargsType(TypedDict, total=False):
+    """POエントリ作成時の引数の型定義"""
+    msgid: str
+    msgstr: str
+    msgctxt: Optional[str]
+    flags: List[str]
+    obsolete: bool
+    comment: Optional[str]
+    tcomment: Optional[str]
+    occurrences: List[Union[str, tuple]]
+    fuzzy: bool
+    msgid_plural: Optional[str]
+    msgstr_plural: Dict[int, str]
+    previous_msgid: Optional[str]
+    previous_msgid_plural: Optional[str]
+    previous_msgctxt: Optional[str]
+
+POEntryKwargs: TypeAlias = POEntryKwargsType

@@ -7,10 +7,11 @@ ViewerPOFileUpdaterを継承し、統計情報と保存に関連する機能を�
 import logging
 from collections import namedtuple
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union
 
 from sgpo_editor.core.po_factory import get_po_factory
 from sgpo_editor.core.viewer_po_file_updater import ViewerPOFileUpdater
+from sgpo_editor.types import POEntryKwargs
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ class ViewerPOFileStats(ViewerPOFileUpdater):
 
             for entry_dict in entries:
                 # データベースの辞書形式のデータからPOEntryを作成
-                entry_kwargs: Dict[str, Any] = {
+                entry_kwargs: POEntryKwargs = {
                     "msgid": entry_dict.get("msgid", ""),
                     "msgstr": entry_dict.get("msgstr", ""),
                     "occurrences": entry_dict.get("references", []),
