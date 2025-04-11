@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.core.database_accessor import DatabaseAccessor
 from sgpo_editor.models.database import InMemoryEntryStore
 
 
@@ -14,12 +15,10 @@ class TestKeywordFilter(unittest.TestCase):
 
     def setUp(self):
         """各テストの前処理"""
-        # データベースのモック
-        self.mock_db = MagicMock(spec=InMemoryEntryStore)
+        self.mock_db_accessor = MagicMock(spec=DatabaseAccessor)
 
-        # ViewerPOFileのインスタンス作成とdbをモックに置き換え
         self.po_file = ViewerPOFile()
-        self.po_file.db = self.mock_db
+        self.po_file.db_accessor = self.mock_db_accessor
 
         # モックの戻り値を設定
         self.mock_entries = [
@@ -27,16 +26,15 @@ class TestKeywordFilter(unittest.TestCase):
             {"key": "2", "msgid": "test2", "msgstr": "テスト2", "position": 1},
             {"key": "3", "msgid": "keyword", "msgstr": "キーワード", "position": 2},
         ]
-        self.mock_db.get_entries.return_value = self.mock_entries
+        self.mock_db_accessor.get_filtered_entries.return_value = self.mock_entries
 
     def test_filter_keyword_is_passed_to_database(self):
         """キーワードフィルタがデータベースに正しく渡されることを確認するテスト"""
         # get_filtered_entriesを呼び出し
         self.po_file.get_filtered_entries(filter_keyword="keyword")
 
-        # get_entriesが正しいパラメータで呼び出されたことを確認
-        self.mock_db.get_entries.assert_called_once()
-        args, kwargs = self.mock_db.get_entries.call_args
+        self.mock_db_accessor.get_filtered_entries.assert_called_once()
+        args, kwargs = self.mock_db_accessor.get_filtered_entries.call_args
 
         # キーワードが正しく渡されていることを確認
         self.assertEqual(kwargs.get("search_text"), "keyword")
@@ -48,9 +46,8 @@ class TestKeywordFilter(unittest.TestCase):
         # get_filtered_entriesを呼び出し
         self.po_file.get_filtered_entries(filter_keyword="keyword", update_filter=True)
 
-        # get_entriesが正しいパラメータで呼び出されたことを確認
-        self.mock_db.get_entries.assert_called_once()
-        args, kwargs = self.mock_db.get_entries.call_args
+        self.mock_db_accessor.get_filtered_entries.assert_called_once()
+        args, kwargs = self.mock_db_accessor.get_filtered_entries.call_args
 
         # 翻訳ステータスとキーワードが正しく渡されていることを確認
         self.assertEqual(kwargs.get("translation_status"), "translated")

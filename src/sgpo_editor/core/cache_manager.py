@@ -321,6 +321,14 @@ class EntryCacheManager:
         self._cache_enabled = enabled
         if not enabled:
             self.clear_all_cache()
+            
+    def enable_cache(self, enabled: bool = True) -> None:
+        """キャッシュの有効/無効を設定する (set_cache_enabledのエイリアス)
+
+        Args:
+            enabled: キャッシュを有効にする場合はTrue、無効にする場合はFalse
+        """
+        self.set_cache_enabled(enabled)
 
     def is_cache_enabled(self) -> bool:
         """キャッシュが有効かどうかを返す
@@ -393,6 +401,19 @@ class EntryCacheManager:
             # キャッシュミス
             self._complete_cache_misses += 1
             return None
+            
+    def has_entry_in_cache(self, key: str) -> bool:
+        """完全なエントリキャッシュにエントリが存在するかを確認する
+
+        Args:
+            key: エントリのキー
+
+        Returns:
+            キャッシュに存在する場合はTrue、存在しない場合はFalse
+        """
+        if not self._cache_enabled:
+            return False
+        return key in self._complete_entry_cache
 
     def get_basic_info_entry(self, key: str) -> Optional[EntryModel]:
         """基本情報のみのエントリをキャッシュから取得する
@@ -417,6 +438,30 @@ class EntryCacheManager:
             # キャッシュミス
             self._basic_cache_misses += 1
             return None
+            
+    def has_basic_info_in_cache(self, key: str) -> bool:
+        """基本情報キャッシュにエントリが存在するかを確認する
+
+        Args:
+            key: エントリのキー
+
+        Returns:
+            キャッシュに存在する場合はTrue、存在しない場合はFalse
+        """
+        if not self._cache_enabled:
+            return False
+        return key in self._entry_basic_info_cache
+        
+    def get_basic_info_from_cache(self, key: str) -> Optional[EntryModel]:
+        """基本情報キャッシュからエントリを取得する (get_basic_info_entryのエイリアス)
+
+        Args:
+            key: エントリのキー
+
+        Returns:
+            キャッシュにある場合はEntryModelオブジェクト、ない場合はNone
+        """
+        return self.get_basic_info_entry(key)
 
     def cache_complete_entry(self, key: str, entry: EntryModel) -> None:
         """完全なエントリをキャッシュに保存する
@@ -432,6 +477,15 @@ class EntryCacheManager:
             f"EntryCacheManager.cache_complete_entry: キー={key}のエントリをキャッシュ"
         )
         self._complete_entry_cache[key] = entry
+        
+    def add_entry_to_cache(self, key: str, entry: EntryModel) -> None:
+        """完全なエントリをキャッシュに保存する (cache_complete_entryのエイリアス)
+
+        Args:
+            key: エントリのキー
+            entry: キャッシュするEntryModelオブジェクト
+        """
+        self.cache_complete_entry(key, entry)
 
     def cache_basic_info_entry(self, key: str, entry: EntryModel) -> None:
         """基本情報のみのエントリをキャッシュに保存する
@@ -447,6 +501,15 @@ class EntryCacheManager:
             f"EntryCacheManager.cache_basic_info_entry: キー={key}の基本情報をキャッシュ"
         )
         self._entry_basic_info_cache[key] = entry
+        
+    def add_basic_info_to_cache(self, key: str, entry: EntryModel) -> None:
+        """基本情報のみのエントリをキャッシュに保存する (cache_basic_info_entryのエイリアス)
+
+        Args:
+            key: エントリのキー
+            entry: キャッシュするEntryModelオブジェクト
+        """
+        self.cache_basic_info_entry(key, entry)
 
     def bulk_cache_entries(
         self, entries: EntryModelList, complete: bool = False

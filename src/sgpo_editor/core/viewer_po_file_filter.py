@@ -5,11 +5,12 @@ ViewerPOFileEntryRetrieverを継承し、フィルタリングに関連する機
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.core.constants import TranslationStatus
 from sgpo_editor.core.viewer_po_file_entry_retriever import ViewerPOFileEntryRetriever
+from sgpo_editor.types import FlagConditions
 
 logger = logging.getLogger(__name__)
 
@@ -31,31 +32,31 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         )
 
         # フラグ条件をリセット
-        self.flag_conditions = {}
+        self.flag_conditions = cast(FlagConditions, {})
 
         # ステータスに応じてフラグ条件を設定
         if status == TranslationStatus.TRANSLATED:
             # 翻訳済み: msgstrが空でなく、fuzzyでない
-            self.flag_conditions = {
+            self.flag_conditions = cast(FlagConditions, {
                 "msgstr_not_empty": True,
                 "fuzzy": False,
-            }
+            })
         elif status == TranslationStatus.UNTRANSLATED:
             # 未翻訳: msgstrが空で、fuzzyでない
-            self.flag_conditions = {
+            self.flag_conditions = cast(FlagConditions, {
                 "msgstr_empty": True,
                 "fuzzy": False,
-            }
+            })
         elif status == TranslationStatus.FUZZY:
             # fuzzy: fuzzyフラグがある
-            self.flag_conditions = {
+            self.flag_conditions = cast(FlagConditions, {
                 "fuzzy": True,
-            }
+            })
         elif status == TranslationStatus.FUZZY_OR_UNTRANSLATED:
             # fuzzyまたは未翻訳: fuzzyフラグがあるか、msgstrが空
-            self.flag_conditions = {
+            self.flag_conditions = cast(FlagConditions, {
                 "fuzzy_or_msgstr_empty": True,
-            }
+            })
         # ALL（すべて）の場合は条件なし
 
         # 翻訳ステータスを保存
@@ -134,11 +135,11 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             return self.filtered_entries
 
         # データベースからフィルタリングされたエントリを取得
-        db_filter_conditions = {}
+        db_filter_conditions = cast(FlagConditions, {})
 
         # 翻訳ステータスに応じたフィルタ条件を設定
         if self.flag_conditions:
-            db_filter_conditions.update(self.flag_conditions)
+            db_filter_conditions = cast(FlagConditions, dict(self.flag_conditions))
 
         # 検索キーワードがある場合は検索条件を追加
         search_text_param = None
@@ -158,7 +159,6 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             translation_status=self.translation_status,
         )
 
-        # リストからEntryModelオブジェクトのリストに変換
         filtered_entries = []
         for entry_dict in filtered_entries_dict:
             entry = EntryModel.from_dict(entry_dict)
@@ -178,7 +178,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         search_text: Optional[str] = None,
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
-        flag_conditions: Optional[Dict[str, Any]] = None,
+        flag_conditions: Optional[FlagConditions] = None,
         translation_status: Optional[str] = None,
     ) -> None:
         """フィルタを設定する
@@ -221,7 +221,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
 
         # フラグ条件
         if flag_conditions is not None and flag_conditions != self.flag_conditions:
-            self.flag_conditions = flag_conditions
+            self.flag_conditions = cast(FlagConditions, flag_conditions)
             update_needed = True
 
         # 変更があった場合はフィルタ更新フラグを設定

@@ -514,6 +514,8 @@ class EntryModel(BaseModel):
         category_quality_scores = data.pop("category_quality_scores", {})
         check_results = data.pop("check_results", [])
 
+        fuzzy = data.pop("fuzzy", False)
+
         # flagsフィールドの処理
         flags = data.get("flags", [])
         if isinstance(flags, str):
@@ -522,6 +524,11 @@ class EntryModel(BaseModel):
         elif not isinstance(flags, list):
             # リストでない場合は空リストにする
             data["flags"] = []
+            
+        flags_list = data.get("flags", [])
+        if fuzzy and "fuzzy" not in flags_list:
+            flags_list.append("fuzzy")
+            data["flags"] = flags_list
 
         # 基本モデルを作成
         model = cls(**data)

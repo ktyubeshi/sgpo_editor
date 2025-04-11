@@ -90,23 +90,23 @@ class DatabaseAccessor:
         logger.debug(f"DatabaseAccessor.get_entry_by_key: キー={key}のエントリを取得")
         return self.db.get_entry_by_key(key)
 
-    def get_entries_by_keys(self, keys: List[str]) -> List[EntryDict]:
+    def get_entries_by_keys(self, keys: List[str]) -> Dict[str, EntryDict]:
         """複数のキーに対応するエントリを一度に取得する
 
         Args:
             keys: 取得するエントリのキーのリスト
 
         Returns:
-            エントリの辞書のリスト
+            キーとエントリの辞書のマッピング
         """
         logger.debug(
             f"DatabaseAccessor.get_entries_by_keys: {len(keys)}件のエントリを一括取得"
         )
         
         if not keys:
-            return []
+            return {}
             
-        entries = []
+        entries_dict = {}
         with self.db.transaction() as cur:
             placeholders = ", ".join(["?"] * len(keys))
             
@@ -124,9 +124,11 @@ class DatabaseAccessor:
             
             for row in cur.fetchall():
                 entry_dict = self._row_to_entry_dict(row)
-                entries.append(entry_dict)
+                key = entry_dict.get("key", "")
+                if key:
+                    entries_dict[key] = entry_dict
                 
-        return entries
+        return entries_dict
 
     def get_all_entries_basic_info(self) -> Dict[str, EntryDict]:
         """すべてのエントリの基本情報を取得する
@@ -203,7 +205,7 @@ class DatabaseAccessor:
         sort_order: Optional[str] = None,
         flag_conditions: Optional[FlagConditions] = None,
         translation_status: Optional[str] = None,
-    ) -> EntryDictList:
+    ) -> List[EntryDict]:
         """フィルタ条件に合ったエントリを取得する
 
         このメソッドは、指定されたフィルタ条件に基づいてデータベースからエントリを検索します。
@@ -246,7 +248,7 @@ class DatabaseAccessor:
         query = """
             SELECT e.*, d.position AS position
             FROM entries e
-            JOIN display_order d ON e.id = d.entry_id
+            LEFT JOIN display_order d ON e.id = d.entry_id
         """
 
         # WHERE句の条件を格納するリスト
@@ -692,7 +694,7 @@ class DatabaseAccessor:
         query = """
             SELECT e.*, d.position AS position
             FROM entries e
-            JOIN display_order d ON e.id = d.entry_id
+            LEFT JOIN display_order d ON e.id = d.entry_id
         """
 
         # WHERE句の条件を格納するリスト
@@ -1063,7 +1065,7 @@ class DatabaseAccessor:
             "msgstr": row["msgstr"],
             "fuzzy": bool(row["fuzzy"]),
             "obsolete": bool(row["obsolete"]),
-            "position": row["position"],
+            "position": 0 if row["position"] is None else row["position"],
         }
 
         # オプションフィールドの追加
