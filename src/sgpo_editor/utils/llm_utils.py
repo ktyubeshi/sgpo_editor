@@ -6,7 +6,7 @@
 import json
 import logging
 from enum import Enum, auto
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import anthropic
 import openai

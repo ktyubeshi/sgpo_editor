@@ -6,15 +6,28 @@ POファイルのコメントとしてメタデータを保存・読み込みす
 import json
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union, List, TypedDict
 
 logger = logging.getLogger(__name__)
 
 # メタデータ識別用のプレフィックス
 METADATA_PREFIX = "#. metadata: "
 
+class MetadataDict(TypedDict, total=False):
+    """メタデータの型定義"""
+    author: str
+    date: str
+    version: str
+    status: str
+    priority: int
+    category: str
+    tags: List[str]
+    score: float
+    comments: List[Dict[str, str]]
+    custom: Dict[str, Union[str, int, float, bool, List[str]]]
 
-def extract_metadata_from_comment(comment: str) -> Optional[Dict[str, Any]]:
+
+def extract_metadata_from_comment(comment: str) -> Optional[MetadataDict]:
     """コメントからメタデータを抽出する
 
     Args:
@@ -41,7 +54,7 @@ def extract_metadata_from_comment(comment: str) -> Optional[Dict[str, Any]]:
 
 
 def create_comment_with_metadata(
-    original_comment: Optional[str], metadata: Dict[str, Any]
+    original_comment: Optional[str], metadata: MetadataDict
 ) -> str:
     """メタデータを含むコメントを作成する
 
