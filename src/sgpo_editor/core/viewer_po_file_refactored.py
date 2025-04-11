@@ -16,10 +16,11 @@ ViewerPOFileBase <- ViewerPOFileEntryRetriever <- ViewerPOFileFilter <- ViewerPO
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union, Set
+from typing import Dict, List, Optional, Union, Set, cast
 from pathlib import Path
 
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.types import EntryDict, EntryDictList, FilterSettings
 from sgpo_editor.core.po_factory import POLibraryType
 from sgpo_editor.core.viewer_po_file_stats import ViewerPOFileStats
 from sgpo_editor.core.cache_manager import EntryCacheManager
@@ -188,11 +189,11 @@ class ViewerPOFileRefactored(ViewerPOFileStats):
             return set()
         return self.db_accessor.get_all_flags()
 
-    def get_filters(self) -> Dict[str, Any]:
+    def get_filters(self) -> FilterSettings:
         """現在のフィルタ設定を取得する
 
         Returns:
-            Dict[str, Any]: 現在のフィルタ設定
+            FilterSettings: 現在のフィルタ設定
         """
         return {
             "search_text": self.search_text,
@@ -245,7 +246,7 @@ class ViewerPOFileRefactored(ViewerPOFileStats):
         try:
             entries_dict = self.db_accessor.get_entries_by_keys(keys)
             
-            entries = [EntryModel.from_dict(entry_dict) for entry_dict in entries_dict]
+            entries = [EntryModel.from_dict(cast(EntryDict, entry_dict)) for entry_dict in entries_dict]
             
             return entries
         except Exception as e:
