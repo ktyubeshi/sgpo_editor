@@ -1,6 +1,6 @@
 """フィルタリング用ウィジェット"""
 
-from typing import Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 
 from pydantic import BaseModel, ConfigDict
 from PySide6.QtCore import QTimer, Signal

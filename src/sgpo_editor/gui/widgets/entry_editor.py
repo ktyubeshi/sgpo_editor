@@ -2,7 +2,7 @@
 
 import logging
 from enum import Enum, auto
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, Union, List, cast
 
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
