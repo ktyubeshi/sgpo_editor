@@ -7,9 +7,10 @@
 import logging
 import re
 import html
-from typing import Optional, Any
+from typing import Optional
 
 from PySide6.QtCore import Qt
+from sgpo_editor.gui.event_handler import EventHandler
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox,
@@ -277,7 +278,7 @@ class PreviewDialog(QDialog):
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)
 
-    def set_event_handler(self, event_handler: Any) -> None:
+    def set_event_handler(self, event_handler: EventHandler) -> None:
         """イベントハンドラーを設定し、エントリ選択変更イベントを接続する
 
         Args:
