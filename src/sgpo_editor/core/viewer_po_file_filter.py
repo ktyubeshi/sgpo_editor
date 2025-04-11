@@ -141,8 +141,9 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             db_filter_conditions.update(self.flag_conditions)
 
         # 検索キーワードがある場合は検索条件を追加
+        search_text_param = None
         if self.search_text:
-            db_filter_conditions["search_text"] = self.search_text
+            search_text_param = self.search_text
 
         # ソート条件
         sort_column = self.sort_column or "position"
@@ -150,6 +151,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
 
         # データベースからフィルタリングされたエントリを取得
         filtered_entries_dict = self.db_accessor.get_filtered_entries(
+            search_text=search_text_param,
             flag_conditions=db_filter_conditions,
             sort_column=sort_column,
             sort_order=sort_order,
