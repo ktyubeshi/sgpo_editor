@@ -2,7 +2,9 @@
 
 import logging
 import sys
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Union, cast
+
+from sgpo_editor.types import StatsDict, StatsDataDict, EvaluationResult
 
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QAction
@@ -232,16 +234,16 @@ class MainWindow(QMainWindow):
         """名前を付けて保存する"""
         self.file_handler.save_file_as()
 
-    def _update_stats(self, stats: Any) -> None:
+    def _update_stats(self, stats: Union[StatsDict, Dict[str, Any]]) -> None:
         """統計情報を更新する
 
         Args:
             stats: 統計情報
         """
         from sgpo_editor.models import StatsModel
+        from sgpo_editor.types import StatsDataDict
 
-        # namedtupleを辞書に変換
-        if hasattr(stats, "_asdict"):
+        if hasattr(stats, "_asdict") and callable(getattr(stats, "_asdict")):
             # namedtupleの場合は_asdictメソッドで辞書に変換
             stats_dict = stats._asdict()
             logger.debug(f"統計情報を辞書に変換します: {stats_dict}")
@@ -254,7 +256,19 @@ class MainWindow(QMainWindow):
             stats_dict = {}
 
         # StatsModelを作成してウィジェットを更新
-        stats_model = StatsModel(**stats_dict)
+        default_stats: StatsDataDict = {
+            "total": 0,
+            "translated": 0,
+            "untranslated": 0,
+            "fuzzy": 0,
+            "progress": 0.0,
+            "file_name": ""
+        }
+        for key in default_stats:
+            if key in stats_dict:
+                default_stats[key] = stats_dict[key]
+                
+        stats_model = StatsModel(**default_stats)
         self.stats_widget.update_stats(stats_model)
 
     def _update_table(self) -> None:
@@ -857,12 +871,12 @@ class MainWindow(QMainWindow):
                 exc_info=True,
             )
 
-    def _on_evaluation_completed(self, entry: EntryModel, result: Any) -> None:
+    def _on_evaluation_completed(self, entry: EntryModel, result: Union[int, "EvaluationResult"]) -> None:
         """評価完了時の処理
 
         Args:
             entry: 評価されたエントリ
-            result: 評価結果
+            result: 評価結果（整数またはEvaluationResultオブジェクト）
         """
         logger.debug(f"MainWindow._on_evaluation_completed: 評価完了 entry={entry.key}")
 
@@ -882,8 +896,15 @@ class MainWindow(QMainWindow):
                 self._evaluation_result_window.set_entry(entry)
 
             # ステータスバーに表示
+            if isinstance(result, int):
+                score = result
+            elif isinstance(result, dict):
+                score = result.get("overall_score", 0)
+            else:
+                score = getattr(result, "overall_score", 0)
+            
             self.statusBar().showMessage(
-                f"翻訳評価が完了しました。総合スコア: {result.overall_score}"
+                f"翻訳評価が完了しました。総合スコア: {score}"
             )
 
             # ファイルの変更フラグを設定

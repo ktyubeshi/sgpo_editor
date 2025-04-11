@@ -164,11 +164,11 @@ CachePerformance: TypeAlias = CachePerformanceType
 
 class StatsDataDict(TypedDict, total=False):
     """統計情報データの型定義"""
-    total: int
-    translated: int
-    untranslated: int
-    fuzzy: int
-    progress: float
+    total: Union[int, str]
+    translated: Union[int, str]
+    untranslated: Union[int, str]
+    fuzzy: Union[int, str]
+    progress: Union[float, str]
     file_name: str
 
 class FilterConditionsType(TypedDict, total=False):
@@ -188,11 +188,11 @@ FilterConditions: TypeAlias = FilterConditionsType
 
 class StatsDict(TypedDict):
     """統計情報の辞書型定義"""
-    total: int
-    translated: int
-    untranslated: int
-    fuzzy: int
-    progress: float
+    total: Union[int, str]
+    translated: Union[int, str]
+    untranslated: Union[int, str]
+    fuzzy: Union[int, str]
+    progress: Union[float, str]
     file_name: str
 
 MetadataValueType = Union[str, int, float, bool, List[Any], Dict[str, Any]]
@@ -210,3 +210,10 @@ class ReviewDataDict(TypedDict, total=False):
     quality_score: Optional[float]
     category_scores: Dict[str, float]
     check_results: List[Dict[str, Any]]
+
+class EvaluationResultType(TypedDict):
+    """翻訳評価結果の型定義"""
+    overall_score: int
+    metric_scores: Dict[str, int]
+    
+EvaluationResult: TypeAlias = EvaluationResultType
