@@ -52,6 +52,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 pythonpath = ["src"]
 addopts = ["--cov=sgpo_editor", "--cov-report=term-missing", "--import-mode=importlib"]
+env = [
+    "QT_QPA_PLATFORM=offscreen",
+]
 
 [tool.hatch.envs.test]
 dependencies = [

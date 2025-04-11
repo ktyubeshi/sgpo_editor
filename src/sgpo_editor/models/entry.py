@@ -2,7 +2,10 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from sgpo_editor.types import EntryDict
 
 from polib import POEntry
 from pydantic import (
@@ -31,7 +34,7 @@ class EntryModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     _po_entry: Optional[POEntry] = PrivateAttr(default=None)  # 元のPOEntryへの参照
-    _score: Optional[int] = PrivateAttr(default=None)  # 総合スコア
+    _score: Optional[float] = PrivateAttr(default=None)  # 総合スコア
     _evaluation_state: EvaluationState = PrivateAttr(
         default=EvaluationState.NOT_EVALUATED
     )  # 評価状態
@@ -58,10 +61,10 @@ class EntryModel(BaseModel):
     check_results: List[Dict[str, Any]] = Field(
         default_factory=list
     )  # 自動チェック結果
-    category_quality_scores: Dict[str, int] = Field(
+    category_quality_scores: Dict[str, float] = Field(
         default_factory=dict
     )  # カテゴリ別品質スコア
-    _overall_quality_score: Optional[int] = PrivateAttr(default=None)  # 総合品質スコア
+    _overall_quality_score: Optional[float] = PrivateAttr(default=None)  # 総合品質スコア
 
     # ユーザー定義メタデータ
     metadata: Dict[str, Any] = Field(
@@ -137,7 +140,7 @@ class EntryModel(BaseModel):
             return TranslationStatus.TRANSLATED
 
     @property
-    def score(self) -> Optional[int]:
+    def score(self) -> Optional[float]:
         """総合スコアを取得
         スコアが明示的に設定されていない場合は、以下の優先順位で値を返す
         1. 明示的に設定されたスコア (_score)
@@ -146,7 +149,7 @@ class EntryModel(BaseModel):
         4. None (スコアなし)
 
         Returns:
-            Optional[int]: 総合スコア（0-100）または未設定の場合はNone
+            Optional[float]: 総合スコア（0-100）または未設定の場合はNone
         """
         # 明示的に設定されたスコアがある場合はそれを返す
         if self._score is not None:
@@ -158,13 +161,13 @@ class EntryModel(BaseModel):
 
         # 指標スコアがある場合はその平均値を返す
         if self.metric_scores:
-            return sum(self.metric_scores.values()) // len(self.metric_scores)
+            return sum(self.metric_scores.values()) / len(self.metric_scores)
 
         # スコアがない場合はNoneを返す
         return None
 
     @score.setter
-    def score(self, value: Optional[int]) -> None:
+    def score(self, value: Optional[float]) -> None:
         """総合スコアを設定
 
         Args:
@@ -256,7 +259,7 @@ class EntryModel(BaseModel):
         """
         self.set_overall_quality_score(score)
 
-    def set_category_score(self, category: str, score: int) -> None:
+    def set_category_score(self, category: str, score: float) -> None:
         """カテゴリ別スコアを設定（後方互換性のため）
 
         Args:
@@ -271,23 +274,23 @@ class EntryModel(BaseModel):
         self.category_quality_scores[category] = score
 
     @property
-    def overall_quality_score(self) -> Optional[int]:
+    def overall_quality_score(self) -> Optional[float]:
         """総合品質スコアを取得"""
         return self._overall_quality_score
 
     @overall_quality_score.setter
-    def overall_quality_score(self, score: int) -> None:
+    def overall_quality_score(self, score: Optional[float]) -> None:
         """総合品質スコアを設定
 
         Args:
-            score: スコア値（0-100）
+            score: スコア値（0-100）またはNone
 
         Raises:
             ValueError: スコアが0-100の範囲外の場合
         """
         self.set_overall_quality_score(score)
 
-    def set_overall_quality_score(self, score: int) -> None:
+    def set_overall_quality_score(self, score: Optional[float]) -> None:
         """総合品質スコアを設定
 
         Args:
@@ -296,7 +299,7 @@ class EntryModel(BaseModel):
         Raises:
             ValueError: スコアが0-100の範囲外の場合
         """
-        if score < 0 or score > 100:
+        if score is not None and (score < 0 or score > 100):
             raise ValueError("スコアは0から100の範囲で指定してください")
         self._overall_quality_score = score
 
@@ -503,7 +506,7 @@ class EntryModel(BaseModel):
         return model
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "EntryModel":
+    def from_dict(cls, data: "EntryDict") -> "EntryModel":
         """辞書からインスタンスを生成"""
         # 拡張フィールドを処理
         review_comments = data.pop("review_comments", [])
@@ -559,11 +562,11 @@ class EntryModel(BaseModel):
             self.flags.remove(flag)
 
     # 自動チェック結果の追加
-    def add_check_result(self, code: int, message: str, severity: str) -> None:
+    def add_check_result(self, code: Union[str, int], message: str, severity: str) -> None:
         """自動チェック結果を追加
 
         Args:
-            code: チェックコード
+            code: チェックコード（文字列または整数）
             message: チェックメッセージ
             severity: 重大度（error, warning, info）
         """

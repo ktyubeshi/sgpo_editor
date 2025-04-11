@@ -5,10 +5,11 @@ ViewerPOFileFilterを継承し、エントリ更新に関連する機能を実�
 """
 
 import logging
-from typing import Any, Dict, Union
+from typing import Dict, Union
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.core.viewer_po_file_filter import ViewerPOFileFilter
+from sgpo_editor.types import EntryDict, EntryInput, EntryInputMap
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
     """
 
     def _entry_needs_update(
-        self, entry_obj: EntryModel, entry_dict: Dict[str, Any]
+        self, entry_obj: EntryModel, entry_dict: EntryDict
     ) -> bool:
         """エントリオブジェクトが更新を必要とするかどうかを判断する
 
@@ -38,7 +39,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             or entry_obj.fuzzy != ("fuzzy" in entry_dict.get("flags", []))
         )
 
-    def update_entry(self, entry: Union[Dict[str, Any], EntryModel]) -> bool:
+    def update_entry(self, entry: EntryInput) -> bool:
         """エントリを更新する
 
         Args:
@@ -98,7 +99,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             return False
 
     def update_entries(
-        self, entries: Dict[str, Union[Dict[str, Any], EntryModel]]
+        self, entries: EntryInputMap
     ) -> bool:
         """複数のエントリを一括更新する
 
@@ -131,7 +132,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                     )
 
                     # キャッシュマネージャを使用してキャッシュを更新
-                    self.cache_manager.add_entry_to_cache(key, entry_obj)
+                    self.cache_manager.cache_complete_entry(key, entry_obj)
 
                     # 基本情報キャッシュも更新
                     basic_info = EntryModel(
@@ -142,7 +143,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                         fuzzy=entry_obj.fuzzy,
                         obsolete=entry_obj.obsolete,
                     )
-                    self.cache_manager.add_basic_info_to_cache(key, basic_info)
+                    self.cache_manager.cache_basic_info_entry(key, basic_info)
 
                 # 変更フラグを設定
                 self.modified = True
@@ -158,7 +159,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             return False
 
     def import_entries(
-        self, entries: Dict[str, Union[Dict[str, Any], EntryModel]]
+        self, entries: EntryInputMap
     ) -> bool:
         """エントリをインポートする（既存エントリの上書き）
 
@@ -193,7 +194,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                     )
 
                     # キャッシュマネージャを使用してキャッシュを更新
-                    self.cache_manager.add_entry_to_cache(key, entry_obj)
+                    self.cache_manager.cache_complete_entry(key, entry_obj)
 
                     # 基本情報キャッシュも更新
                     basic_info = EntryModel(
@@ -204,7 +205,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                         fuzzy=entry_obj.fuzzy,
                         obsolete=entry_obj.obsolete,
                     )
-                    self.cache_manager.add_basic_info_to_cache(key, basic_info)
+                    self.cache_manager.cache_basic_info_entry(key, basic_info)
 
                 # 変更フラグを設定
                 self.modified = True
