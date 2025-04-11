@@ -5,15 +5,29 @@
 
 import sgpo
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Iterator, Protocol
 
 from sgpo_editor.core.po_interface import POEntry, POFile, POFileFactory
+
+
+class SGPOEntryProtocol(Protocol):
+    """sgpoのPOEntryオブジェクトのプロトコル"""
+    msgid: str
+    msgstr: str
+    msgctxt: Optional[str]
+    flags: List[str]
+    obsolete: bool
+    occurrences: List[tuple]
+    msgid_plural: Optional[str]
+    msgstr_plural: Dict[int, str]
+    comment: Optional[str]
+    tcomment: Optional[str]
 
 
 class SgpoEntry(POEntry):
     """sgpoのPOEntryアダプター"""
 
-    def __init__(self, entry: Any):
+    def __init__(self, entry: Any):  # type: ignore
         """初期化
 
         Args:
@@ -134,7 +148,7 @@ class SgpoEntry(POEntry):
         """複数形の翻訳文を設定"""
         self._entry.msgstr_plural = value
 
-    def get_native_entry(self) -> Any:
+    def get_native_entry(self) -> SGPOEntryProtocol:
         """ネイティブのPOEntryオブジェクトを取得"""
         return self._entry
 
@@ -163,7 +177,8 @@ class SgpoFile(POFile):
     def append(self, entry: POEntry) -> None:
         """エントリを追加"""
         if isinstance(entry, SgpoEntry):
-            self._pofile.append(entry.get_native_entry())
+            native_entry = entry.get_native_entry()  # type: ignore
+            self._pofile.append(native_entry)  # type: ignore
         else:
             # 他の実装からのエントリを変換する必要がある場合
             # ここで変換処理を行う
@@ -208,7 +223,7 @@ class SgpoFile(POFile):
         """エントリ数を取得"""
         return len(self._pofile)
 
-    def __iter__(self) -> Any:
+    def __iter__(self) -> Iterator[SgpoEntry]:
         """イテレータ"""
         for entry in self._pofile:
             yield SgpoEntry(entry)
