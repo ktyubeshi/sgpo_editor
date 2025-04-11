@@ -651,7 +651,12 @@ class CheckResultWidget(QWidget):
 
         # データベースに即時反映
         try:
-            self._db.add_check_result(self._current_entry.key, code, message, severity)
+            check_result = {
+                "code": code,
+                "message": message,
+                "severity": severity,
+            }
+            self._db.add_check_result(self._current_entry.key, check_result)
             logger.debug(f"チェック結果を追加しました: {code} - {message}")
         except Exception as e:
             logger.error(f"チェック結果追加エラー: {e}")
@@ -710,7 +715,7 @@ class CheckResultWidget(QWidget):
                 message = message_item.text()
 
                 # データベースから削除
-                self._db.remove_check_result(self._current_entry.key, code, message)
+                self._db.remove_check_result(self._current_entry.key, str(code))
                 logger.debug(f"チェック結果を削除しました: {code} - {message}")
 
                 # エントリオブジェクトからも削除
@@ -753,8 +758,12 @@ class CheckResultWidget(QWidget):
             return
 
         try:
-            # データベースから削除
-            self._db.clear_check_results(self._current_entry.key)
+            if self._current_entry.check_results:
+                for result in list(self._current_entry.check_results):
+                    code = result.get("code", "")
+                    if code:
+                        self._db.remove_check_result(self._current_entry.key, str(code))
+            
             logger.debug(f"チェック結果をクリアしました: {self._current_entry.key}")
 
             # エントリオブジェクトからも削除
