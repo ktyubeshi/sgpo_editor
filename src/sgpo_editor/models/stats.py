@@ -22,6 +22,10 @@ class StatsModel(BaseModel):
     def __init__(self, **data: StatsDataDict):
         super().__init__(**cast(Dict[str, object], data))
         self.update_progress()
+        
+    def __getitem__(self, key: str) -> object:
+        """辞書形式でのアクセスをサポート"""
+        return getattr(self, key)
 
     def update_progress(self) -> None:
         """進捗率を更新（パーセント表示）"""
