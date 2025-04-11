@@ -7,10 +7,11 @@ import json
 import logging
 import os
 import sqlite3
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union, cast
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.models.evaluation_state import EvaluationState
+from sgpo_editor.types import ReviewCommentType, ReviewDataDict, EvaluationResult, MetricScores, CategoryScores
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class EvaluationDatabase:
         """
         self.po_file_path = po_file_path
         self.db_path = self._get_db_path(po_file_path)
-        self.conn = None
+        self.conn: Optional[sqlite3.Connection] = None
         self.initialized = False
 
     def _get_db_path(self, po_file_path: str) -> str:
@@ -204,7 +205,14 @@ class EvaluationDatabase:
             (entry.msgctxt, entry.msgid, entry_key),
         )
         self.conn.commit()
-        return cursor.lastrowid
+        lastrowid = cursor.lastrowid
+        if lastrowid is None:
+            cursor.execute("SELECT id FROM entries WHERE entry_key = ?", (entry_key,))
+            result = cursor.fetchone()
+            if result:
+                return result["id"]
+            raise ValueError(f"Failed to create entry ID for {entry_key}")
+        return lastrowid
 
     def save_evaluation_state(self, entry: EntryModel, state: EvaluationState) -> None:
         """評価状態を保存
@@ -345,14 +353,14 @@ class EvaluationDatabase:
             self.conn.rollback()
             raise
 
-    def get_metric_scores(self, entry: EntryModel) -> Dict[str, int]:
+    def get_metric_scores(self, entry: EntryModel) -> MetricScores:
         """評価指標スコアを取得
 
         Args:
             entry: エントリモデル
 
         Returns:
-            Dict[str, int]: 評価指標名とスコア値のマップ
+            MetricScores: 評価指標名とスコア値のマップ
         """
         if not self.conn:
             self.connect()
@@ -370,7 +378,7 @@ class EvaluationDatabase:
         )
         results = cursor.fetchall()
 
-        return {row["metric_name"]: row["score"] for row in results}
+        return {row["metric_name"]: float(row["score"]) for row in results}
 
     def save_review_comment(
         self,
@@ -412,7 +420,7 @@ class EvaluationDatabase:
 
     def get_review_comments(
         self, entry: EntryModel, language: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ReviewCommentType]:
         """レビューコメントを取得
 
         Args:
@@ -420,7 +428,7 @@ class EvaluationDatabase:
             language: 言語コード（指定がない場合は全言語）
 
         Returns:
-            List[Dict[str, Any]]: レビューコメントのリスト
+            List[ReviewCommentType]: レビューコメントのリスト
         """
         if not self.conn:
             self.connect()
@@ -450,7 +458,7 @@ class EvaluationDatabase:
             )
 
         results = cursor.fetchall()
-        comments = []
+        comments: List[ReviewCommentType] = []
 
         for row in results:
             comments.append(
@@ -496,14 +504,14 @@ class EvaluationDatabase:
             self.conn.rollback()
             raise
 
-    def get_category_scores(self, entry: EntryModel) -> Dict[str, int]:
+    def get_category_scores(self, entry: EntryModel) -> CategoryScores:
         """カテゴリ別スコアを取得
 
         Args:
             entry: エントリモデル
 
         Returns:
-            Dict[str, int]: カテゴリ名とスコア値のマップ
+            CategoryScores: カテゴリ名とスコア値のマップ
         """
         if not self.conn:
             self.connect()
@@ -521,9 +529,9 @@ class EvaluationDatabase:
         )
         results = cursor.fetchall()
 
-        return {row["category_name"]: row["score"] for row in results}
+        return {row["category_name"]: float(row["score"]) for row in results}
 
-    def save_evaluation_history(self, entry: EntryModel, data: Dict[str, Any]) -> None:
+    def save_evaluation_history(self, entry: EntryModel, data: ReviewDataDict) -> None:
         """評価履歴を保存
 
         Args:
@@ -552,14 +560,14 @@ class EvaluationDatabase:
             self.conn.rollback()
             raise
 
-    def get_evaluation_history(self, entry: EntryModel) -> List[Dict[str, Any]]:
+    def get_evaluation_history(self, entry: EntryModel) -> List[ReviewDataDict]:
         """評価履歴を取得
 
         Args:
             entry: エントリモデル
 
         Returns:
-            List[Dict[str, Any]]: 評価履歴のリスト
+            List[ReviewDataDict]: 評価履歴のリスト
         """
         if not self.conn:
             self.connect()
@@ -577,10 +585,10 @@ class EvaluationDatabase:
             (entry_id,),
         )
         results = cursor.fetchall()
-        history = []
+        history: List[ReviewDataDict] = []
 
         for row in results:
-            data = json.loads(row["evaluation_data"])
+            data = cast(ReviewDataDict, json.loads(row["evaluation_data"]))
             data["created_at"] = row["created_at"]
             history.append(data)
 
