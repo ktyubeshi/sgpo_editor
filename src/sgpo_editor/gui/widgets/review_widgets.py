@@ -227,10 +227,15 @@ class ReviewCommentWidget(QWidget):
 
         if comment_obj:
             # データベースにも即時反映
-            self._db.update_entry_field(
+            comment_dict = {
+                "id": comment_obj.get("id", ""),
+                "author": author,
+                "comment": comment,
+                "timestamp": comment_obj.get("timestamp", ""),
+            }
+            self._db.add_review_comment(
                 self._current_entry.key,
-                "review_comments",
-                self._current_entry.review_comments,
+                comment_dict
             )
 
         # UIを更新
@@ -264,10 +269,9 @@ class ReviewCommentWidget(QWidget):
             self._current_entry.remove_review_comment(comment_id)
 
             # データベースからも即時削除
-            self._db.update_entry_field(
+            self._db.remove_review_comment(
                 self._current_entry.key,
-                "review_comments",
-                self._current_entry.review_comments,
+                comment_id
             )
 
             # UIを更新
@@ -298,10 +302,15 @@ class ReviewCommentWidget(QWidget):
         self._current_entry.review_comments.append(comment_obj)
 
         # データベースにも即時反映
-        self._db.update_entry_field(
+        comment_dict = {
+            "id": comment_obj["id"],
+            "author": author,
+            "comment": comment,
+            "timestamp": comment_obj["timestamp"]
+        }
+        self._db.add_review_comment(
             self._current_entry.key,
-            "review_comments",
-            self._current_entry.review_comments,
+            comment_dict
         )
 
         # UIを更新
@@ -630,7 +639,7 @@ class CheckResultWidget(QWidget):
             return
 
         code = self.code_spinner.value()
-        message = self.message_edit.text().strip()
+        message = self.message_edit.toPlainText().strip()
         severity = self.severity_combo.currentText()
 
         if not message:
