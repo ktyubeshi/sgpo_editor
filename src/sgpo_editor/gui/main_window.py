@@ -234,7 +234,7 @@ class MainWindow(QMainWindow):
         """名前を付けて保存する"""
         self.file_handler.save_file_as()
 
-    def _update_stats(self, stats: Union[StatsDict, Dict[str, Any]]) -> None:
+    def _update_stats(self, stats: Union[StatsDict, Dict[str, Any], object]) -> None:
         """統計情報を更新する
 
         Args:
@@ -245,11 +245,11 @@ class MainWindow(QMainWindow):
 
         if hasattr(stats, "_asdict") and callable(getattr(stats, "_asdict")):
             # namedtupleの場合は_asdictメソッドで辞書に変換
-            stats_dict = stats._asdict()
+            stats_dict = cast(Dict[str, Any], getattr(stats, "_asdict")())
             logger.debug(f"統計情報を辞書に変換します: {stats_dict}")
         elif isinstance(stats, dict):
             # すでに辞書型の場合はそのまま使用
-            stats_dict = stats
+            stats_dict = cast(Dict[str, Any], stats)
         else:
             # その他の型の場合はエラーログを出力して空の辞書を使用
             logger.error(f"統計情報の型が不正です: {type(stats)}, {stats}")
@@ -264,9 +264,25 @@ class MainWindow(QMainWindow):
             "progress": 0.0,
             "file_name": ""
         }
+        
         for key in default_stats:
             if key in stats_dict:
-                default_stats[key] = stats_dict[key]
+                value = stats_dict[key]
+                if key in ["total", "translated", "untranslated", "fuzzy"]:
+                    if isinstance(value, (int, str)):
+                        try:
+                            default_stats[key] = int(value)
+                        except (ValueError, TypeError):
+                            default_stats[key] = 0
+                elif key == "progress":
+                    if isinstance(value, (float, int, str)):
+                        try:
+                            default_stats[key] = float(value)
+                        except (ValueError, TypeError):
+                            default_stats[key] = 0.0
+                elif key == "file_name":
+                    if value is not None:
+                        default_stats[key] = str(value)
                 
         stats_model = StatsModel(**default_stats)
         self.stats_widget.update_stats(stats_model)

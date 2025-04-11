@@ -151,7 +151,7 @@ class UIManager:
             )
             window_menu.addAction(action)
 
-    def setup_menubar(self, callbacks: Dict[str, Callable[..., Any]]) -> None:
+    def setup_menubar(self, callbacks: Dict[str, Any]) -> None:
         """メニューバーの設定
 
         Args:
@@ -180,8 +180,9 @@ class UIManager:
 
         # 最近使用した項目を開く
         self.recent_files_menu = QMenu("最近使用した項目を開く", self.main_window)
-        self.recent_files_menu.setObjectName("recent_files_menu")
-        file_menu.addMenu(self.recent_files_menu)
+        if self.recent_files_menu:
+            self.recent_files_menu.setObjectName("recent_files_menu")
+            file_menu.addMenu(self.recent_files_menu)
 
         # 最近使用したファイルアクションのリストを作成
         self.update_recent_files_menu(callbacks.get("open_recent_file"))
@@ -218,22 +219,24 @@ class UIManager:
 
         # レイアウト1
         self.layout1_action = QAction("レイアウト1", self.main_window)
-        self.layout1_action.setObjectName("layout1_action")
-        self.layout1_action.setCheckable(True)
-        self.layout1_action.setChecked(True)
-        self.layout1_action.triggered.connect(
-            lambda: callbacks["change_layout"](LayoutType.LAYOUT1)
-        )
-        entry_edit_menu.addAction(self.layout1_action)
+        if self.layout1_action:
+            self.layout1_action.setObjectName("layout1_action")
+            self.layout1_action.setCheckable(True)
+            self.layout1_action.setChecked(True)
+            self.layout1_action.triggered.connect(
+                lambda: callbacks["change_layout"](LayoutType.LAYOUT1)
+            )
+            entry_edit_menu.addAction(self.layout1_action)
 
         # レイアウト2
         self.layout2_action = QAction("レイアウト2", self.main_window)
-        self.layout2_action.setObjectName("layout2_action")
-        self.layout2_action.setCheckable(True)
-        self.layout2_action.triggered.connect(
-            lambda: callbacks["change_layout"](LayoutType.LAYOUT2)
-        )
-        entry_edit_menu.addAction(self.layout2_action)
+        if self.layout2_action:
+            self.layout2_action.setObjectName("layout2_action")
+            self.layout2_action.setCheckable(True)
+            self.layout2_action.triggered.connect(
+                lambda: callbacks["change_layout"](LayoutType.LAYOUT2)
+            )
+            entry_edit_menu.addAction(self.layout2_action)
 
         # アクショングループの作成（排他的選択）
         layout_group = QActionGroup(self.main_window)
@@ -243,7 +246,8 @@ class UIManager:
 
         # 列表示設定サブメニュー
         self.column_visibility_menu = display_menu.addMenu("表示列の設定")
-        self.column_visibility_menu.setObjectName("column_visibility_menu")
+        if self.column_visibility_menu:
+            self.column_visibility_menu.setObjectName("column_visibility_menu")
 
         # テーブルマネージャが提供されている場合は列表示設定を構成
         if callbacks.get("table_manager") and callbacks.get("toggle_column_visibility"):
@@ -360,11 +364,11 @@ class UIManager:
         print(f"Menu clicked for column {index}")
         toggle_callback(index)
 
-    def update_recent_files_menu(self, callback: Callable[[str], None]) -> None:
+    def update_recent_files_menu(self, callback: Optional[Callable[[str], Any]]) -> None:
         """最近使用したファイルメニューの更新
 
         Args:
-            callback: 最近使用したファイルを開くためのコールバック
+            callback: 最近使用したファイルを開くためのコールバック（非同期関数も可）
         """
         # 既存のメニューをクリア
         if self.recent_files_menu:
@@ -407,7 +411,7 @@ class UIManager:
             # 非同期メソッド対応
             action.triggered.connect(
                 lambda checked, path=filepath: run_async(
-                    lambda: self.open_recent_file_callback(path)
+                    lambda: self.open_recent_file_callback(path) if self.open_recent_file_callback else None
                 )
             )
 
