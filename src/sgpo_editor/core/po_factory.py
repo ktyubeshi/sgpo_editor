@@ -5,7 +5,7 @@
 
 import logging
 from enum import Enum
-from typing import Optional
+from typing import Dict, Optional
 
 from sgpo_editor.core.po_interface import POFileFactory
 from sgpo_editor.core.polib_adapter import PolibFactory
@@ -28,7 +28,7 @@ DEFAULT_PO_LIBRARY = POLibraryType.SGPO
 _current_po_library = None
 
 # ファクトリのインスタンス
-_factory_instances = {
+_factory_instances: Dict[POLibraryType, Optional[POFileFactory]] = {
     POLibraryType.POLIB: None,
     POLibraryType.SGPO: None,
 }
@@ -66,7 +66,11 @@ def get_po_factory(library_type: Optional[POLibraryType] = None) -> POFileFactor
 
         logger.info(f"POファイルファクトリを作成しました: {library_type}")
 
-    return _factory_instances[library_type]
+    factory = _factory_instances[library_type]
+    if factory is None:
+        raise RuntimeError(f"POファイルファクトリの作成に失敗しました: {library_type}")
+        
+    return factory
 
 
 def _get_default_library_from_config() -> POLibraryType:
