@@ -413,10 +413,13 @@ class EntryModel(BaseModel):
         self._po_entry.msgstr = self.msgstr
 
         # flagsの更新
-        if isinstance(self._po_entry.flags, str):
-            self._po_entry.flags = ", ".join(self.flags)
-        else:
-            self._po_entry.flags = self.flags
+        try:
+            if isinstance(self._po_entry.flags, str):
+                self._po_entry.flags = ", ".join(self.flags)
+            else:
+                setattr(self._po_entry, "flags", self.flags)
+        except (AttributeError, TypeError):
+            logger.warning("POEntryのflagsを更新できませんでした。読み取り専用の可能性があります。")
 
     def __eq__(self, other: object) -> bool:
         """等価性を判定"""
@@ -483,9 +486,10 @@ class EntryModel(BaseModel):
 
         # referencesの変換
         occurrences = safe_getattr(po_entry, "occurrences", [])
-        for occ in occurrences:
-            if isinstance(occ, tuple) and len(occ) == 2:
-                model.references.append(f"{occ[0]}:{occ[1]}")
+        if occurrences is not None:
+            for occ in occurrences:
+                if isinstance(occ, tuple) and len(occ) == 2:
+                    model.references.append(f"{occ[0]}:{occ[1]}")
 
         # コメントからメタデータを抽出
         comment = safe_getattr(po_entry, "comment", None)
@@ -715,22 +719,27 @@ class EntryModel(BaseModel):
         Raises:
             KeyError: キーが存在しない場合
         """
-        if key == "key":
-            return self.key
-        elif key == "msgid":
-            return self.msgid
-        elif key == "msgstr":
-            return self.msgstr
-        elif key == "flags":
-            return self.flags
-        elif key == "msgctxt":
-            return self.msgctxt
-        elif key == "obsolete":
-            return self.obsolete
-        elif key == "position":
-            return self.position
-        else:
-            raise KeyError(f"キー '{key}' は存在しません")
+        if hasattr(self, key):
+            return getattr(self, key)
+            
+        if key == "fuzzy":
+            return self.fuzzy
+        elif key == "is_translated":
+            return self.is_translated
+        elif key == "is_untranslated":
+            return self.is_untranslated
+        elif key == "score":
+            return self.score
+        elif key == "overall_quality_score":
+            return self.overall_quality_score
+        elif key == "evaluation_state":
+            return self.evaluation_state
+            
+        dict_result = self.to_dict()
+        if key in dict_result:
+            return dict_result[key]
+            
+        raise KeyError(f"キー '{key}' は存在しません")
 
     def __contains__(self, key: str) -> bool:
         """キーが存在するかどうかを確認するためのメソッド
@@ -741,12 +750,17 @@ class EntryModel(BaseModel):
         Returns:
             キーが存在する場合はTrue、そうでない場合はFalse
         """
-        return key in [
-            "key",
-            "msgid",
-            "msgstr",
-            "flags",
-            "msgctxt",
-            "obsolete",
-            "position",
-        ]
+        if hasattr(self, key):
+            return True
+            
+        if key in [
+            "fuzzy", 
+            "is_translated", 
+            "is_untranslated", 
+            "score", 
+            "overall_quality_score", 
+            "evaluation_state"
+        ]:
+            return True
+            
+        return key in self.to_dict()
