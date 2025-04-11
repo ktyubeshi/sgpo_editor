@@ -34,6 +34,7 @@ class EntryDictType(TypedDict, total=False):
     metadata: Dict[str, str]
     overall_quality_score: Optional[float]
     category_quality_scores: Dict[str, float]
+    id: Optional[int]
 
 # POエントリの辞書表現
 EntryDict: TypeAlias = EntryDictType
@@ -195,3 +196,17 @@ class StatsDict(TypedDict):
     file_name: str
 
 MetadataValueType = Union[str, int, float, bool, List[Any], Dict[str, Any]]
+
+class ReviewCommentType(TypedDict, total=False):
+    """レビューコメントの型定義"""
+    id: str
+    author: str
+    comment: str
+    created_at: str
+
+class ReviewDataDict(TypedDict, total=False):
+    """レビューデータの型定義"""
+    review_comments: List[Dict[str, Any]]
+    quality_score: Optional[float]
+    category_scores: Dict[str, float]
+    check_results: List[Dict[str, Any]]

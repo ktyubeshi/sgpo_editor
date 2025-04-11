@@ -139,10 +139,10 @@ async def test_get_stats(test_po_file):
     assert len(entries) == 3, f"エントリ数が期待値と異なります: {len(entries)} != 3"
     
     stats = test_po_file.get_stats()
-    assert stats.total == 3
-    assert stats.translated == 1  # test1のみ翻訳済み
-    assert stats.fuzzy == 1  # test2はfuzzy
-    assert stats.untranslated == 1  # test3は未翻訳
+    assert stats["total"] == 3
+    assert stats["translated"] == 1  # test1のみ翻訳済み
+    assert stats["fuzzy"] == 1  # test2はfuzzy
+    assert stats["untranslated"] == 1  # test3は未翻訳
 
 
 @pytest.mark.asyncio

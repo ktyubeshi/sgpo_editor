@@ -119,10 +119,10 @@ async def test_search_entries(test_po_file):
 async def test_get_stats(test_po_file):
     """統計情報を取得できることを確認する"""
     stats = test_po_file.get_stats()
-    assert stats.total == 3
-    assert stats.translated == 1
-    assert stats.fuzzy == 1
-    assert stats.untranslated == 1
+    assert stats["total"] == 3
+    assert stats["translated"] == 1
+    assert stats["fuzzy"] == 1
+    assert stats["untranslated"] == 1
 
 
 @pytest.mark.asyncio

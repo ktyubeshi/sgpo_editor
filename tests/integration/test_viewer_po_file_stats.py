@@ -35,7 +35,7 @@ class TestViewerPOFileStats(unittest.TestCase):
 
         # progress属性が存在することを確認
         self.assertTrue(
-            hasattr(stats, "progress"), "統計情報オブジェクトにprogress属性がありません"
+            "progress" in stats, "統計情報オブジェクトにprogress属性がありません"
         )
 
     def test_get_stats_calculates_progress_correctly(self):
@@ -52,7 +52,7 @@ class TestViewerPOFileStats(unittest.TestCase):
         self.viewer.get_filtered_entries = MagicMock(return_value=mock_entries1)
         stats1 = self.viewer.get_stats()
         # 進捗率 = 翻訳済み / 全体 * 100 = 1 / 3 * 100 = 33.33...%
-        self.assertAlmostEqual(stats1.progress, 33.33, delta=0.01)
+        self.assertAlmostEqual(stats1["progress"], 33.33, delta=0.01)
 
         # ケース2: すべて翻訳済みの場合
         mock_entries2 = [
@@ -62,13 +62,13 @@ class TestViewerPOFileStats(unittest.TestCase):
         self.viewer.get_filtered_entries = MagicMock(return_value=mock_entries2)
         stats2 = self.viewer.get_stats()
         # 進捗率 = 翻訳済み / 全体 * 100 = 2 / 2 * 100 = 100%
-        self.assertEqual(stats2.progress, 100.0)
+        self.assertEqual(stats2["progress"], 100.0)
 
         # ケース3: エントリがない場合
         self.viewer.get_filtered_entries = MagicMock(return_value=[])
         stats3 = self.viewer.get_stats()
         # エントリがない場合は進捗率0%
-        self.assertEqual(stats3.progress, 0.0)
+        self.assertEqual(stats3["progress"], 0.0)
 
 
 if __name__ == "__main__":

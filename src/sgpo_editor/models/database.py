@@ -8,9 +8,12 @@ import logging
 import sqlite3
 import threading
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union, cast
 
-from sgpo_editor.types import EntryDict, EntryDictList, FlagConditions
+from sgpo_editor.types import (
+    EntryDict, EntryDictList, FlagConditions, CheckResultType,
+    MetadataValueType, ReviewDataDict, ReviewCommentType
+)
 
 
 logger = logging.getLogger(__name__)
@@ -441,14 +444,14 @@ class InMemoryEntryStore:
             from sgpo_editor.types import EntryDict
             return entry  # type: ignore
             
-    def get_entry_basic_info(self, key: str) -> Optional[Dict[str, Any]]:
+    def get_entry_basic_info(self, key: str) -> Optional[EntryDict]:
         """エントリの基本情報のみを取得する
         
         Args:
             key: 取得するエントリのキー
             
         Returns:
-            Dict[str, Any]: 基本情報のみを含むエントリ辞書（キー、msgid、msgstr、fuzzy、obsolete）
+            EntryDict: 基本情報のみを含むエントリ辞書（キー、msgid、msgstr、fuzzy、obsolete）
             エントリが存在しない場合はNone
         """
         logger.debug(f"InMemoryEntryStore.get_entry_basic_info: キー={key}の基本情報を取得")
@@ -937,10 +940,12 @@ class InMemoryEntryStore:
 
         # レビュー関連データを取得
         for entry in entries:
-            entry["review_data"] = self._get_review_data(entry["id"])
+            if entry.get("id") is not None:
+                entry_dict = cast(Dict[str, Any], entry)
+                entry_dict["review_data"] = self._get_review_data(cast(int, entry_dict["id"]))
 
         from sgpo_editor.types import EntryDictList
-        return entries  # type: ignore
+        return cast(EntryDictList, entries)
 
     def reorder_entries(self, entry_ids: List[int]) -> None:
         """エントリの表示順序を変更"""
@@ -961,7 +966,7 @@ class InMemoryEntryStore:
                 # 制約を有効化
                 cur.execute("PRAGMA foreign_keys = ON")
 
-    def _row_to_dict(self, row: sqlite3.Row) -> Dict[str, Any]:
+    def _row_to_dict(self, row: sqlite3.Row) -> EntryDict:
         """SQLiteの行を辞書に変換"""
         result = dict(row)
 
@@ -971,16 +976,16 @@ class InMemoryEntryStore:
         else:
             result["flags"] = []
 
-        return result
+        return cast(EntryDict, result)
 
-    def _get_review_data(self, entry_id: int) -> Dict[str, Any]:
+    def _get_review_data(self, entry_id: int) -> ReviewDataDict:
         """エントリのレビュー関連データを取得"""
-        review_data = {
+        review_data = cast(ReviewDataDict, {
             "review_comments": [],
             "quality_score": None,
             "category_scores": {},
             "check_results": [],
-        }
+        })
 
         with self.transaction() as cur:
             # レビューコメントを取得
@@ -994,13 +999,14 @@ class InMemoryEntryStore:
             )
 
             for row in cur.fetchall():
-                review_data["review_comments"].append(
-                    {
+                review_comments = cast(List[ReviewCommentType], review_data["review_comments"])
+                review_comments.append(
+                    cast(ReviewCommentType, {
                         "id": row[0],
                         "author": row[1],
                         "comment": row[2],
                         "created_at": row[3],
-                    }
+                    })
                 )
 
             # 品質スコアを取得
@@ -1043,18 +1049,18 @@ class InMemoryEntryStore:
 
             for row in cur.fetchall():
                 review_data["check_results"].append(
-                    {
+                    cast(CheckResultType, {
                         "code": row[0],
                         "message": row[1],
                         "severity": row[2],
                         "created_at": row[3],
-                    }
+                    })
                 )
 
         return review_data
 
     def _save_review_data_in_transaction(
-        self, cur, entry_id: int, review_data: Dict[str, Any]
+        self, cur, entry_id: int, review_data: ReviewDataDict
     ) -> None:
         """トランザクション内でエントリのレビュー関連データを保存する
 
@@ -1069,7 +1075,9 @@ class InMemoryEntryStore:
             cur.execute("DELETE FROM review_comments WHERE entry_id = ?", (entry_id,))
 
             # 新しいレビューコメントを保存
-            for comment in review_data["review_comments"]:
+            review_comments = cast(List[ReviewCommentType], review_data["review_comments"])
+            for comment in review_comments:
+                comment_dict = cast(Dict[str, Any], comment)
                 cur.execute(
                     """
                     INSERT INTO review_comments
@@ -1078,10 +1086,10 @@ class InMemoryEntryStore:
                 """,
                     (
                         entry_id,
-                        comment["id"],
-                        comment.get("author"),
-                        comment["comment"],
-                        comment.get("created_at"),
+                        comment_dict.get("id"),
+                        comment_dict.get("author"),
+                        comment_dict.get("comment"),
+                        comment_dict.get("created_at"),
                     ),
                 )
 
@@ -1122,7 +1130,9 @@ class InMemoryEntryStore:
             cur.execute("DELETE FROM check_results WHERE entry_id = ?", (entry_id,))
 
             # 新しいチェック結果を保存
-            for result in review_data["check_results"]:
+            check_results = cast(List[CheckResultType], review_data["check_results"])
+            for result in check_results:
+                result_dict = cast(Dict[str, Any], result)
                 cur.execute(
                     """
                     INSERT INTO check_results
@@ -1131,19 +1141,19 @@ class InMemoryEntryStore:
                 """,
                     (
                         entry_id,
-                        result["code"],
-                        result["message"],
-                        result["severity"],
-                        result.get("created_at"),
+                        result_dict.get("code"),
+                        result_dict.get("message"),
+                        result_dict.get("severity"),
+                        result_dict.get("created_at"),
                     ),
                 )
 
-    def _save_review_data(self, entry_id: int, review_data: Dict[str, Any]) -> None:
+    def _save_review_data(self, entry_id: int, review_data: ReviewDataDict) -> None:
         """エントリのレビュー関連データを保存"""
         with self.transaction() as cur:
             self._save_review_data_in_transaction(cur, entry_id, review_data)
 
-    def update_entry_field(self, key: str, field: str, value: Any) -> bool:
+    def update_entry_field(self, key: str, field: str, value: MetadataValueType) -> bool:
         """エントリの特定フィールドのみを更新する
 
         Args:
@@ -1202,7 +1212,7 @@ class InMemoryEntryStore:
             logger.error("エントリフィールド更新エラー: %s", e, exc_info=True)
             return False
 
-    def update_entry_review_data(self, key: str, field: str, value: Any) -> bool:
+    def update_entry_review_data(self, key: str, field: str, value: MetadataValueType) -> bool:
         """エントリのレビュー関連データを部分的に更新する
 
         Args:
@@ -1232,7 +1242,7 @@ class InMemoryEntryStore:
             logger.error("エントリレビューデータ更新エラー: %s", e, exc_info=True)
             return False
 
-    def add_review_comment(self, key: str, comment: Dict[str, Any]) -> bool:
+    def add_review_comment(self, key: str, comment: ReviewCommentType) -> bool:
         """エントリにレビューコメントを追加する
 
         Args:
@@ -1252,7 +1262,8 @@ class InMemoryEntryStore:
             review_data = self._get_review_data(entry_id)
 
             # コメントを追加
-            review_data["review_comments"].append(comment)
+            review_comments = cast(List[ReviewCommentType], review_data["review_comments"])
+            review_comments.append(comment)
 
             # 更新したレビューデータを保存
             self._save_review_data(entry_id, review_data)
@@ -1281,8 +1292,9 @@ class InMemoryEntryStore:
             review_data = self._get_review_data(entry_id)
 
             # コメントを削除
+            review_comments = cast(List[ReviewCommentType], review_data["review_comments"])
             review_data["review_comments"] = [
-                c for c in review_data["review_comments"] if c["id"] != comment_id
+                c for c in review_comments if cast(Dict[str, str], c).get("id") != comment_id
             ]
 
             # 更新したレビューデータを保存
@@ -1292,7 +1304,7 @@ class InMemoryEntryStore:
             logger.error("レビューコメント削除エラー: %s", e, exc_info=True)
             return False
 
-    def add_check_result(self, key: str, check_result: Dict[str, Any]) -> bool:
+    def add_check_result(self, key: str, check_result: CheckResultType) -> bool:
         """エントリにチェック結果を追加する
 
         Args:
@@ -1312,7 +1324,8 @@ class InMemoryEntryStore:
             review_data = self._get_review_data(entry_id)
 
             # チェック結果を追加
-            review_data["check_results"].append(check_result)
+            check_results = cast(List[CheckResultType], review_data["check_results"])
+            check_results.append(check_result)
 
             # 更新したレビューデータを保存
             self._save_review_data(entry_id, review_data)
@@ -1341,8 +1354,9 @@ class InMemoryEntryStore:
             review_data = self._get_review_data(entry_id)
 
             # チェック結果を削除
+            check_results = cast(List[CheckResultType], review_data["check_results"])
             review_data["check_results"] = [
-                r for r in review_data["check_results"] if r["code"] != code
+                r for r in check_results if cast(Dict[str, Any], r).get("code") != code
             ]
 
             # 更新したレビューデータを保存
