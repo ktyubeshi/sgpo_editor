@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import traceback
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union, cast
 
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
