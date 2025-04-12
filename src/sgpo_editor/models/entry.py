@@ -44,7 +44,7 @@ class EntryModel(BaseModel):
     msgstr: str = ""
     msgctxt: Optional[str] = None
     obsolete: bool = False
-    position: int = 0
+    position: Optional[int] = 0
     flags: List[str] = Field(default_factory=list)
     previous_msgid: Optional[str] = None
     previous_msgid_plural: Optional[str] = None
