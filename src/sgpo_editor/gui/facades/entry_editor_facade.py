@@ -10,7 +10,7 @@ from typing import Any, Callable, Optional, Dict
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QWidget
 
-from sgpo_editor.gui.widgets.entry_editor import EntryEditor
+from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.models.entry import EntryModel
 
 logger = logging.getLogger(__name__)
@@ -222,21 +222,59 @@ class EntryEditorFacade(QObject):
         self._entry_editor.text_changed.connect(self._on_text_changed)
         self._entry_editor.apply_clicked.connect(self.apply_changes)
 
+    def display_entry(self, entry: Optional[EntryModel]) -> None:
+        """指定されたエントリをエディタに表示する
+
+        Args:
+            entry: 表示するエントリ
+        """
+        logger.debug(f"EntryEditorFacade.display_entry: エントリ {entry.key if entry else 'None'} を表示します")
+        self._entry_editor.set_entry(entry)
+
     def set_entry(self, entry: Optional[EntryModel]) -> None:
-        """エントリをエディタにセット
+        """エントリをエディタにセット (display_entry のエイリアス)
 
         Args:
             entry: セットするエントリ
         """
-        self._entry_editor.set_entry(entry)
+        self.display_entry(entry)
 
     def get_current_entry(self) -> Optional[EntryModel]:
-        """現在エディタで編集中のエントリを取得
+        """現在エディタに表示されているエントリを取得する"""
+        return self._entry_editor.get_entry()
 
-        Returns:
-            現在のエントリ
+    def display_entry_by_key(self, key: str) -> None:
+        """指定されたキーのエントリを取得して表示する"""
+        logger.debug(f"EntryEditorFacade.display_entry_by_key: key={key}")
+        current_po = self._get_current_po()
+        if not current_po:
+            logger.warning("EntryEditorFacade.display_entry_by_key: POファイルが読み込まれていません")
+            self._entry_editor.set_entry(None)
+            return
+
+        entry = current_po.get_entry_by_key(key)
+        if entry is None:
+            logger.warning(f"EntryEditorFacade.display_entry_by_key: key='{key}' のエントリが見つかりません")
+            self._entry_editor.set_entry(None)
+            return
+
+        # msgidがNoneの場合の対処（EventHandlerにあったロジックを移植）
+        if not hasattr(entry, "msgid") or entry.msgid is None:
+            entry.msgid = ""
+        elif not isinstance(entry.msgid, str):
+            entry.msgid = str(entry.msgid)
+
+        logger.debug(f"EntryEditorFacade.display_entry_by_key: エディタにエントリを表示 key={key}")
+        self._entry_editor.set_entry(entry)
+
+    def change_layout(self, layout_type: LayoutType) -> None:
+        """エディタのレイアウトを変更する
+
+        Args:
+            layout_type: 新しいレイアウトタイプ
         """
-        return self._entry_editor.current_entry
+        logger.debug(f"EntryEditorFacade.change_layout: レイアウトを {layout_type} に変更します")
+        self._entry_editor.change_layout(layout_type)
 
     def apply_changes(self) -> bool:
         """エントリの変更を適用する

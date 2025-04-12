@@ -7,9 +7,11 @@
 import logging
 from typing import Callable, Optional
 
-from PySide6.QtCore import QObject, Signal, Qt
+from PySide6.QtCore import QObject, Signal, Qt, QTimer
 from PySide6.QtWidgets import QTableWidget, QApplication
 
+from sgpo_editor.core.cache_manager import EntryCacheManager
+from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.widgets.search import SearchWidget
 
@@ -58,7 +60,8 @@ class EntryListFacade(QObject):
         table: QTableWidget,
         table_manager: TableManager,
         search_widget: SearchWidget,
-        get_current_po: Callable,
+        entry_cache_manager: EntryCacheManager,
+        get_current_po: Callable[[], Optional[ViewerPOFile]],
     ) -> None:
         """初期化
 
@@ -66,37 +69,37 @@ class EntryListFacade(QObject):
             table: テーブルウィジェット
             table_manager: テーブル管理クラス
             search_widget: 検索ウィジェット
+            entry_cache_manager: エントリキャッシュマネージャー
             get_current_po: 現在のPOファイルを取得する関数
         """
         super().__init__()
         self._table = table
         self._table_manager = table_manager
         self._search_widget = search_widget
+        self._entry_cache_manager = entry_cache_manager
         self._get_current_po = get_current_po
+
+        # プリフェッチタイマー
+        self._prefetch_timer = QTimer()
+        self._prefetch_timer.setSingleShot(True)
+        self._prefetch_timer.timeout.connect(self._prefetch_visible_entries)
 
         # テーブルのセル選択シグナルを接続
         self._table.cellClicked.connect(self._on_cell_clicked)
 
-        # 検索ウィジェットのシグナルを置き換え
-        self._search_widget.filter_changed.connect(self.update_filter)
+        # テーブルのスクロールイベントを接続してプリフェッチをトリガー
+        self._table.verticalScrollBar().valueChanged.connect(
+            lambda: self._prefetch_timer.start(100) # スクロール完了後にプリフェッチ
+        )
+
+        # 検索ウィジェットのシグナルを接続 (update_filter は不要になり、直接 update_table を呼ぶ)
+        self._search_widget.filter_changed.connect(self.update_table) # update_table に接続
 
     def update_table(self) -> None:
         """テーブルを最新の状態に更新する
 
-        このメソッドは、POファイルからフィルタリングされたエントリを取得し、
-        テーブルを更新します。
-
-        キャッシュ管理:
-            1. POファイルの get_filtered_entries を update_filter=True で呼び出すことで、
-               ViewerPOFile 内の _force_filter_update フラグがセットされていてもキャッシュが更新される
-            2. TableManager.update_table にエントリリストを渡し、TableManager内の
-               _entry_cache が更新される（これはGUIコンポーネント用の一時的なキャッシュ）
-            3. 最終的にこのメソッドは ViewerPOFile のキャッシュと TableManager のキャッシュを
-               同期させることで、表示の一貫性を保つ役割を果たす
-
-        Note:
-            このメソッドはテーブル更新関連のキャッシュを強制的に更新するため、
-            パフォーマンスを考慮して必要な時のみ呼び出すこと
+        POファイルからフィルタリング/ソートされたエントリを取得し、
+        キャッシュマッピングを更新し、テーブルを表示し、ソートインジケータを更新する。
         """
         logger.debug("EntryListFacade.update_table: 開始")
         current_po = self._get_current_po()
@@ -104,59 +107,64 @@ class EntryListFacade(QObject):
             logger.debug(
                 "EntryListFacade.update_table: POファイルが読み込まれていないため、テーブル更新をスキップします"
             )
+            # テーブルクリア処理を追加しても良いかもしれない
+            self._table_manager.update_table([], None) # 空リストでクリア
             return
 
         try:
             # フィルタ条件を取得
             criteria = self._search_widget.get_search_criteria()
-            filter_text = criteria.filter
-            filter_keyword = criteria.filter_keyword
+            logger.debug(f"EntryListFacade.update_table: フィルタ条件: {criteria}")
 
-            logger.debug(
-                f"EntryListFacade.update_table: フィルタ条件 filter_text={filter_text}, filter_keyword={filter_keyword}"
-            )
+            # POファイルからフィルタリング＆ソート済みのエントリを取得
+            # get_filtered_entries は内部で現在のソート条件を使用する
+            logger.debug("EntryListFacade.update_table: POファイルからエントリ取得開始")
+            sorted_entries = current_po.get_filtered_entries(criteria)
+            logger.debug(f"EntryListFacade.update_table: 取得したエントリ数: {len(sorted_entries)}件")
 
-            # POファイルからフィルタ条件に合ったエントリを取得
-            logger.debug(
-                f"EntryListFacade.update_table: POファイルからエントリ取得開始 _force_filter_update={current_po._force_filter_update}"
-            )
-            entries = current_po.get_filtered_entries(
-                update_filter=True,  # 強制的に更新
-                filter_text=filter_text,
-                filter_keyword=filter_keyword,
-            )
+            # EntryCacheManager の行マッピングをクリア＆再構築
+            logger.debug("EntryListFacade.update_table: EntryCacheManager の行マッピングを更新")
+            self._entry_cache_manager.clear_row_key_mappings()
+            for i, entry in enumerate(sorted_entries):
+                self._entry_cache_manager.add_row_key_mapping(i, entry.key)
+            logger.debug(f"EntryListFacade.update_table: EntryCacheManager に新しい行マッピングを追加: {len(sorted_entries)}件")
 
-            logger.debug(
-                f"EntryListFacade.update_table: 取得したエントリ数: {len(entries)}件"
-            )
+            # テーブルを更新（ソート済みリストとフィルタ条件を渡す）
+            logger.debug("EntryListFacade.update_table: TableManagerのupdate_table呼び出し")
+            displayed_entries = self._table_manager.update_table(sorted_entries, criteria)
+            logger.debug(f"EntryListFacade.update_table: テーブル更新完了: {len(displayed_entries)}件表示")
 
-            # テーブルを更新（フィルタ条件を渡す）
-            logger.debug(
-                "EntryListFacade.update_table: TableManagerのupdate_table呼び出し"
-            )
-            sorted_entries = self._table_manager.update_table(entries, criteria)
+            # ソートインジケータを更新
+            sort_column_name = current_po.get_sort_column()
+            sort_order_str = current_po.get_sort_order()
+            logger.debug(f"EntryListFacade.update_table: 現在のソート条件: column='{sort_column_name}', order='{sort_order_str}'")
+            logical_index = self._table_manager.get_column_index(sort_column_name)
+            if logical_index is not None:
+                qt_sort_order = (
+                    Qt.SortOrder.AscendingOrder
+                    if sort_order_str == "ASC"
+                    else Qt.SortOrder.DescendingOrder
+                )
+                logger.debug(f"EntryListFacade.update_table: ソートインジケータを更新: index={logical_index}, order={qt_sort_order}")
+                self._table.horizontalHeader().setSortIndicator(logical_index, qt_sort_order)
+            else:
+                logger.warning(f"EntryListFacade.update_table: ソート列名 '{sort_column_name}' に対応するインデックスが見つかりません")
 
-            logger.debug(
-                f"EntryListFacade.update_table: テーブル更新完了: {len(sorted_entries) if sorted_entries else 0}件表示"
-            )
-
-            # テーブルの表示を強制的に更新
+            # テーブルの表示を強制的に更新 (必要に応じて維持)
             logger.debug("EntryListFacade.update_table: テーブルの表示を強制的に更新")
             self._table.viewport().update()
             self._table.updateGeometry()
             self._table.repaint()
 
-            # イベントループを処理して表示を更新
-            logger.debug(
-                "EntryListFacade.update_table: イベントループを処理して表示を更新"
-            )
-            QApplication.processEvents()
+            # イベントループを処理して表示を更新 (必要な場合)
+            # logger.debug("EntryListFacade.update_table: イベントループを処理して表示を更新")
+            # QApplication.processEvents()
 
             logger.debug("EntryListFacade.update_table: 完了")
 
         except Exception as e:
-            logger.error(f"EntryListFacade.update_table: エラー発生 {e}")
-            logger.error(f"テーブル更新エラー: {e}")
+            logger.error(f"EntryListFacade.update_table: エラー発生 {e}", exc_info=True)
+            # 必要に応じてステータスバー等でユーザーに通知
 
     def select_entry_by_key(self, key: str) -> bool:
         """指定されたキーを持つエントリをテーブルで選択する
@@ -214,11 +222,18 @@ class EntryListFacade(QObject):
 
         return item.data(Qt.ItemDataRole.UserRole)
 
-    def update_filter(self) -> None:
-        """検索フィルタが変更された時の処理"""
-        logger.debug("フィルタ条件が変更されました")
-        self.update_table()
-        self.filter_changed.emit()
+    def update_table_and_reselect(self, key: str) -> None:
+        """テーブルを更新し、指定されたキーのエントリを再選択する
+
+        Args:
+            key: 再選択するエントリのキー
+        """
+        logger.debug(f"EntryListFacade.update_table_and_reselect: 開始 key={key}")
+        self.update_table() # テーブルを更新
+        if key:
+            logger.debug(f"EntryListFacade.update_table_and_reselect: 再選択 key={key}")
+            self.select_entry_by_key(key) # キーで再選択
+        logger.debug("EntryListFacade.update_table_and_reselect: 完了")
 
     def _on_cell_clicked(self, row: int, column: int) -> None:
         """テーブルのセルがクリックされた時の処理
@@ -278,3 +293,58 @@ class EntryListFacade(QObject):
             列が表示されているかどうか
         """
         return self._table_manager.is_column_visible(column_index)
+
+    def _prefetch_visible_entries(self) -> None:
+        """現在表示されている行周辺のエントリをプリフェッチする"""
+        try:
+            current_po = self._get_current_po()
+            if not current_po or not current_po.cache_manager:
+                return
+
+            # 現在表示されている行の範囲を取得
+            scroll_bar = self._table.verticalScrollBar()
+            scroll_value = scroll_bar.value()
+
+            # テーブルの表示領域の行数を推定
+            visible_height = self._table.viewport().height()
+            row_height = self._table.rowHeight(0) if self._table.rowCount() > 0 else 20
+            visible_rows = max(1, visible_height // row_height)
+
+            # スクロール位置から表示されている行の範囲を計算
+            first_visible_row = max(
+                0, scroll_value // row_height - 5
+            )  # 上に余裕を持たせる
+            last_visible_row = min(
+                self._table.rowCount() - 1, first_visible_row + visible_rows + 10
+            )  # 下にも余裕を持たせる
+
+            # 表示されている行のエントリキーを収集（キャッシュにないもののみ）
+            keys_to_prefetch = []
+            for row in range(first_visible_row, last_visible_row + 1):
+                if row < 0 or row >= self._table.rowCount():
+                    continue
+
+                item = self._table.item(row, 0)
+                if item is None:
+                    continue
+
+                key = item.data(Qt.ItemDataRole.UserRole)
+                # CacheManager を ViewerPOFile から取得して使用
+                if key and not current_po.cache_manager.has_entry_in_cache(key):
+                    # プリフェッチ中でもないことを確認
+                    if not current_po.cache_manager.is_key_being_prefetched(key):
+                        keys_to_prefetch.append(key)
+
+            if not keys_to_prefetch:
+                return
+
+            logger.debug(f"EntryListFacade: プリフェッチ対象: {len(keys_to_prefetch)}件 (表示範囲: {first_visible_row}-{last_visible_row})")
+
+            # EntryCacheManagerのプリフェッチ機能を使用 (ViewerPOFile経由)
+            current_po.cache_manager.prefetch_visible_entries(
+                keys_to_prefetch,
+                fetch_callback=current_po.get_entries_by_keys # ViewerPOFileRefactored のメソッドを渡す
+            )
+
+        except Exception as e:
+            logger.exception(f"EntryListFacade: プリフェッチ中にエラー: {e}")
