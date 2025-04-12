@@ -2,11 +2,9 @@
 
 import json
 import logging
-from typing import Dict, List, Optional, cast
+from typing import Dict, List, Optional, Any, Union, cast
 
-from PySide6.QtCore import Qt
-from sgpo_editor.types import MetadataValueType
-from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -23,8 +21,10 @@ from PySide6.QtWidgets import (
     QMenu,
     QWidget,
 )
+from PySide6.QtGui import QAction
 
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.types import MetadataValueType
 
 logger = logging.getLogger(__name__)
 
@@ -105,20 +105,29 @@ class MetadataEditDialog(QDialog):
     """メタデータ編集ダイアログ"""
 
     def __init__(
-        self, parent: Optional[QWidget] = None, metadata: Optional[Dict[str, str]] = None
+        self, 
+        entry_or_parent: Union[EntryModel, QWidget], 
+        parent: Optional[QWidget] = None, 
+        metadata: Optional[Dict[str, str]] = None
     ):
         """初期化
 
         Args:
-            parent: 親ウィジェット
-            metadata: 初期メタデータ
+            entry_or_parent: EntryModelまたは親ウィジェット
+            parent: 親ウィジェット (entry_or_parentがEntryModelの場合)
+            metadata: 初期メタデータ (任意、entry_or_parentがEntryModelの場合は使用されない)
         """
-        super().__init__(parent)
+        # 引数の型に応じて適切に処理
+        if isinstance(entry_or_parent, EntryModel):
+            actual_parent = parent
+            self._metadata = entry_or_parent.metadata.copy() if hasattr(entry_or_parent, 'metadata') else {}
+        else:
+            actual_parent = entry_or_parent
+            self._metadata = metadata.copy() if metadata else {}
+        
+        super().__init__(actual_parent)
         self.setWindowTitle(self.tr("メタデータ編集"))
         self.resize(600, 400)
-
-        # メタデータを保存
-        self._metadata: Dict[str, str] = metadata.copy() if metadata else {}
         
         # UI要素を初期化（インスペクションエラー回避のため）
         self.metadata_table = None

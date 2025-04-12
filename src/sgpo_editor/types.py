@@ -63,6 +63,13 @@ class FlagConditionsType(TypedDict, total=False):
     translated: bool
     untranslated: bool
     fuzzy_or_untranslated: bool
+    msgstr_empty: bool
+    msgstr_not_empty: bool
+    fuzzy_or_msgstr_empty: bool
+    include_flags: List[str]
+    exclude_flags: List[str]
+    only_fuzzy: bool
+    obsolete_only: bool
 
 # フラグ条件を表す辞書
 FlagConditions: TypeAlias = FlagConditionsType

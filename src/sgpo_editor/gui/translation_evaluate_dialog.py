@@ -225,7 +225,13 @@ class TranslationEvaluateDialog(QDialog):
             ]
 
         if not target_entries:
-            QMessageBox.information(self, "情報", "評価対象のエントリがありません")
+            QMessageBox.information(
+                self, 
+                "情報", 
+                "評価対象のエントリがありません", 
+                QMessageBox.StandardButton.Ok,
+                QMessageBox.StandardButton.Ok
+            )
             return
 
         # 評価指標の取得
@@ -243,7 +249,11 @@ class TranslationEvaluateDialog(QDialog):
 
         if not metrics:
             QMessageBox.warning(
-                self, "警告", "少なくとも1つの評価指標を選択してください"
+                self, 
+                "警告", 
+                "少なくとも1つの評価指標を選択してください", 
+                QMessageBox.StandardButton.Ok,
+                QMessageBox.StandardButton.Ok
             )
             return
 
@@ -269,6 +279,8 @@ class TranslationEvaluateDialog(QDialog):
             f"- モデル: {model}\n"
             f"- 指標: {', '.join(metrics)}\n"
             f"- 言語: {language}",
+            QMessageBox.StandardButton.Ok,
+            QMessageBox.StandardButton.Ok
         )
 
         # モック評価の実行

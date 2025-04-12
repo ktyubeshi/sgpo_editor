@@ -216,7 +216,6 @@ class EntryRetrieverComponent:
     def get_all_entries(self) -> List[EntryModel]:
         """すべてのエントリを取得する
 
-        データベースから全エントリを位置順に取得し、EntryModelリストとして返します。
         キャッシュは使用せず、常に最新のデータを返します。
 
         Returns:
@@ -224,13 +223,17 @@ class EntryRetrieverComponent:
         """
         # データベースからすべてのエントリを取得
         entries_dict = self.db_accessor.get_filtered_entries(
-            sort_column="position", sort_order="ASC"
+            filter_text="すべて",
+            filter_keyword=None,
+            match_mode="部分一致",
+            case_sensitive=False,
+            filter_status=None,
+            filter_obsolete=True,
+            search_text=None
         )
 
-        # リストからEntryModelオブジェクトのリストに変換
-        entries = [EntryModel.from_dict(entry_dict) for entry_dict in entries_dict]
-
-        return entries
+        # 既にEntryModelのリストが返されるので変換は不要
+        return entries_dict
 
     def count_entries(self) -> int:
         """全エントリ数を取得する

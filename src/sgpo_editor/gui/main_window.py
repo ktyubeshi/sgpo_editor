@@ -2,7 +2,7 @@
 
 import logging
 import sys
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 from sgpo_editor.types import StatsDict, StatsDataDict, EvaluationResult
 
@@ -16,6 +16,10 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QMessageBox,
     QDialog,
+    QMenu,
+    QMenuBar,
+    QStatusBar,
+    QTableWidgetItem,
 )
 
 from sgpo_editor.gui.metadata_dialog import MetadataEditDialog
@@ -532,19 +536,21 @@ class MainWindow(QMainWindow):
         """メタデータ編集ダイアログを表示
 
         Args:
-            entry: 編集対象のエントリ（指定がない場合はエディタ表示中のエントリ）
+            entry: 対象エントリ（Noneの場合は現在のエントリを使用）
         """
-        if entry is None:
-            # エディタに表示中のエントリを取得 (Facade経由)
-            current_entry = self.entry_editor_facade.get_current_entry()
-            if not current_entry:
-                self.statusBar().showMessage(
-                    "メタデータを編集するエントリが選択/表示されていません"
-                )
-                return
+        # 現在のエントリを使用
+        current_entry = self.entry_editor_facade.get_current_entry()
+        if entry is None and current_entry is not None:
             entry = current_entry
+        
+        if entry is None:
+            self.statusBar().showMessage(
+                "メタデータを編集するエントリが選択/表示されていません"
+            )
+            return
 
-        dialog = MetadataEditDialog(entry, self)
+        # 修正: ダイアログのコンストラクタの引数順序を修正
+        dialog = MetadataEditDialog(entry_or_parent=entry, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.update_metadata_panel()
             self.file_handler.set_modified(True)
@@ -565,13 +571,14 @@ class MainWindow(QMainWindow):
                 self,
                 "警告",
                 "エントリが選択されていません。先にエントリを選択してください。",
+                QMessageBox.StandardButton.Ok
             )
             return
 
         # 現在のPOファイルを取得
         current_po = self._get_current_po()
         if not current_po:
-            QMessageBox.warning(self, "警告", "POファイルが読み込まれていません。")
+            QMessageBox.warning(self, "警告", "POファイルが読み込まれていません。", QMessageBox.StandardButton.Ok)
             return
 
         try:
@@ -579,7 +586,7 @@ class MainWindow(QMainWindow):
             current_entry = current_po.get_entry_by_key(current_entry_key)
             if not current_entry:
                 QMessageBox.warning(
-                    self, "警告", "選択されたエントリを取得できませんでした。"
+                    self, "警告", "選択されたエントリを取得できませんでした。", QMessageBox.StandardButton.Ok
                 )
                 return
 
@@ -620,6 +627,7 @@ class MainWindow(QMainWindow):
                 self,
                 "エラー",
                 f"翻訳品質評価ダイアログの表示中にエラーが発生しました: {e}",
+                QMessageBox.StandardButton.Ok
             )
 
     def _update_evaluation_result_window(self, entry_number: int) -> None:

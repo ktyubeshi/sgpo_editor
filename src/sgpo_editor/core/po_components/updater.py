@@ -48,6 +48,10 @@ class UpdaterComponent:
         """
         logger.debug(f"UpdaterComponent.update_entry: key={key}, field={field}")
 
+        if not self.db_accessor:
+            logger.error("データベースアクセサが設定されていません")
+            return False
+
         # フィールド名がEntryModelの有効なフィールドか確認
         valid_fields = [
             "msgid", "msgstr", "msgctxt", "flags", "obsolete",
@@ -67,7 +71,7 @@ class UpdaterComponent:
 
         # エントリを更新
         entry_dict[field] = value
-        self.db_accessor.update_entry(key, entry_dict)
+        self.db_accessor.update_entry(entry_dict)
 
         # キャッシュから削除して次回アクセス時に再取得
         self.cache_manager.invalidate_entry(key)
@@ -106,7 +110,7 @@ class UpdaterComponent:
         entry_dict = entry.model_dump()
 
         # データベースを更新
-        success = self.db_accessor.update_entry(entry.key, entry_dict)
+        success = self.db_accessor.update_entry(entry_dict)
         if not success:
             logger.error(f"キー {entry.key} のエントリの更新に失敗しました")
             return False
@@ -150,7 +154,7 @@ class UpdaterComponent:
 
         # エントリを更新
         entry_dict["flags"] = list(flags)
-        self.db_accessor.update_entry(key, entry_dict)
+        self.db_accessor.update_entry(entry_dict)
 
         # キャッシュから削除して次回アクセス時に再取得
         self.cache_manager.invalidate_entry(key)
@@ -190,7 +194,7 @@ class UpdaterComponent:
 
         # エントリを更新
         entry_dict["flags"] = list(flags)
-        self.db_accessor.update_entry(key, entry_dict)
+        self.db_accessor.update_entry(entry_dict)
 
         # キャッシュから削除して次回アクセス時に再取得
         self.cache_manager.invalidate_entry(key)

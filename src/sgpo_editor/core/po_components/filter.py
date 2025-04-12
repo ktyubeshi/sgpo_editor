@@ -275,17 +275,17 @@ class FilterComponent:
         
         # データベースからエントリを取得
         entries_dict = self.db_accessor.get_filtered_entries(
-            search_condition=search_condition,
-            status_condition=status_condition,
-            flag_conditions=flag_conditions,
-            sort_column=self.sort_column,
-            sort_order=self.sort_order
+            filter_text=search_condition,
+            filter_keyword=None,  # filter_keywordは使用しない
+            match_mode="部分一致",
+            case_sensitive=False,
+            filter_status=status_condition,
+            filter_obsolete=True,
+            search_text=search_condition
         )
         
-        # 辞書リストからEntryModelリストに変換
-        entries = [EntryModel.from_dict(entry_dict) for entry_dict in entries_dict]
-        
-        return entries
+        # 既にEntryModelのリストが返されるので変換は不要
+        return entries_dict
 
     def get_available_flags(self) -> Set[str]:
         """利用可能なすべてのフラグのセットを取得する

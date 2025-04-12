@@ -318,15 +318,10 @@ class EntryEditorFacade(QObject):
         self.entry_changed.emit()
 
     def show_review_dialog(self, dialog_type: str) -> None:
-        """レビュー関連ダイアログを表示
+        """レビューダイアログを表示
 
         Args:
             dialog_type: ダイアログの種類
-                "translator_comment": 翻訳者コメント
-                "review_comment": レビューコメント
-                "quality_score": 品質スコア
-                "check_result": チェック結果
-                "debug": デバッグ情報
         """
         logger.debug(
             f"EntryEditorFacade.show_review_dialog: 開始 dialog_type={dialog_type}"
@@ -336,7 +331,8 @@ class EntryEditorFacade(QObject):
         dialog = self._entry_editor._show_review_dialog(dialog_type)
 
         # ダイアログをReviewDialogFacadeに登録
-        if dialog:
+        # 修正: dialogがNoneでない場合のみ登録処理を行う
+        if dialog is not None:
             self._review_dialog_facade.register_dialog(dialog_type, dialog)
 
         logger.debug("EntryEditorFacade.show_review_dialog: 完了")

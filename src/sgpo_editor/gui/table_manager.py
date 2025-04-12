@@ -620,9 +620,6 @@ class TableManager:
                 item5.setFlags(item5.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.table.setItem(row, 5, item5)
 
-                # 行とキーのマッピングを CacheManager に登録
-                self.entry_cache_manager.add_row_key_mapping(row, entry.key)
-
             # 列幅の自動調整 (必要に応じて)
             # self.table.resizeColumnsToContents()
 

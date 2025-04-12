@@ -2,68 +2,29 @@
 <project version="4">
   <component name="AnalysisUIOptions">
     <option name="SPLITTER_PROPORTION" value="0.55346537" />
+    <option name="SCOPE_TYPE" value="8" />
+    <option name="CUSTOM_SCOPE_NAME" value="Git の追跡対象プロジェクトファイル" />
   </component>
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="839a3ece-7d0e-4aa6-9209-4399dd5eea63" name="変更" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/sgpo_editor.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/sgpo_editor.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/_doc/2_architecture_design.md" beforeDir="false" afterPath="$PROJECT_DIR$/_doc/2_architecture_design.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/_doc/3_data_model_design.md" beforeDir="false" afterPath="$PROJECT_DIR$/_doc/3_data_model_design.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/_doc/facade_pattern.md" beforeDir="false" afterPath="$PROJECT_DIR$/_doc/facade_pattern.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/_doc/todo.md" beforeDir="false" afterPath="$PROJECT_DIR$/_doc/todo.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/cache_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/cache_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/database_accessor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/database_accessor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/viewer_po_file.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/viewer_po_file.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/viewer_po_file_refactored.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/viewer_po_file_refactored.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/viewer_po_file_stats.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/viewer_po_file_stats.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/event_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/event_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/__init__.pyi" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/__init__.pyi" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/filter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/retriever.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/retriever.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/updater.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/updater.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/evaluation_dialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/evaluation_dialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/facades/entry_editor_facade.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/facades/entry_editor_facade.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/facades/entry_list_facade.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/facades/entry_list_facade.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/file_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/file_handler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/main_window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/metadata_dialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/metadata_dialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/table_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/table_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/ui_setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/ui_setup.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/preview_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/preview_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/search.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/search.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/models/entry.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/models/entry.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/keyword_filter/test_keyword_filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/keyword_filter/test_keyword_filter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/main_window/test_main_window_column_visibility.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/main_window/test_main_window_column_visibility.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/main_window/test_main_window_keyboard.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/main_window/test_main_window_keyboard.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/main_window/test_main_window_sort_filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/main_window/test_main_window_sort_filter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/table/test_table_gui_sync.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/table/test_table_gui_sync.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/table/test_table_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/table/test_table_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/table/test_table_manager_column_visibility.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/table/test_table_manager_column_visibility.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/table/test_table_manager_update.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/table/test_table_manager_update.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/table/test_table_score_display.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/table/test_table_score_display.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/table/test_table_status_display.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/table/test_table_status_display.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/table/test_table_update_issue.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/table/test_table_update_issue.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_database_keyword_handling.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_database_keyword_handling.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_filter_debug.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_filter_debug.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_filter_reset.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_filter_reset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_filter_reset_advanced.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_filter_reset_basic.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_filter_reset_basic.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_keyword_filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_keyword_filter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_main_window_filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/test_keyword_filter/test_main_window_filter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/integration/test_viewer_po_file.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/test_viewer_po_file.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/integration/test_viewer_po_file_filtered_entries.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/test_viewer_po_file_filtered_entries.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/integration/test_viewer_po_file_stats.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/test_viewer_po_file_stats.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/mock_helpers.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/mock_helpers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/models/entry/test_entry_list_events.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/models/entry/test_entry_list_events.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/models/entry/test_entry_list_filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/models/entry/test_entry_list_filter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/models/entry/test_entry_list_integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/models/entry/test_entry_list_integration.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/models/entry/test_entry_list_selection.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/models/entry/test_entry_list_selection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/models/entry/test_entry_list_sort.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/models/entry/test_entry_list_sort.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/models/entry/test_entry_structure.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/models/entry/test_entry_structure.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/utils/test_recent_files.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/utils/test_recent_files.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/translation_evaluate_dialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/translation_evaluate_dialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/po_format_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/po_format_editor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/models/evaluation_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/models/evaluation_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/types.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/types.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -123,7 +84,7 @@
       <workItem from="1740835697729" duration="4243000" />
       <workItem from="1741799885881" duration="83000" />
       <workItem from="1741799977632" duration="1000" />
-      <workItem from="1744457993395" duration="3399000" />
+      <workItem from="1744457993395" duration="5511000" />
     </task>
     <servers />
   </component>

@@ -640,15 +640,21 @@ class EvaluationDatabase:
 
         # 総合スコアを保存
         if entry.overall_quality_score is not None:
-            self.save_overall_score(entry, entry.overall_quality_score)
+            # float型からint型に変換
+            overall_score = int(entry.overall_quality_score)
+            self.save_overall_score(entry, overall_score)
 
         # 評価指標スコアを保存
         for metric_name, score in entry.metric_scores.items():
-            self.save_metric_score(entry, metric_name, score)
+            # float型からint型に変換
+            metric_score = int(score)
+            self.save_metric_score(entry, metric_name, metric_score)
 
         # カテゴリ別スコアを保存
         for category_name, score in entry.category_quality_scores.items():
-            self.save_category_score(entry, category_name, score)
+            # float型からint型に変換
+            category_score = int(score)
+            self.save_category_score(entry, category_name, category_score)
 
         # レビューコメントを保存
         for comment in entry.review_comments:
