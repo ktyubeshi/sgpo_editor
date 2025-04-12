@@ -1,6 +1,6 @@
 ---
 created: 2025-03-15T16:53
-updated: 2025-03-15T16:53
+updated: 2025-04-15T12:00
 ---
 # SGPOエディタ ファサードパターン実装ガイド
 
@@ -25,10 +25,17 @@ SGPOエディタでは、以下のファサードクラスを実装していま�
 1. **EntryEditorFacade**: エントリ編集機能に関するファサード
    - エントリの編集操作（テキスト更新、メタデータ編集など）を提供
    - 編集状態の管理と変更通知を担当
+   - ReviewDialogFacadeと連携してLLM評価関連の機能も提供
 
 2. **EntryListFacade**: エントリリスト管理機能に関するファサード
    - エントリの一覧表示、フィルタリング、ソート機能を提供
    - 選択状態の管理と変更通知を担当
+   - テーブル更新とキャッシュ管理の連携を担当
+
+3. **ReviewDialogFacade**: レビュー関連機能に関するファサード
+   - レビューダイアログの表示と管理
+   - レビューデータの保存と取得
+   - 評価データベースとの連携
 
 ### 3.2 ファイル構成
 
@@ -36,7 +43,8 @@ SGPOエディタでは、以下のファサードクラスを実装していま�
 src/sgpo_editor/gui/facades/
 ├── __init__.py       # ファサードモジュールの初期化
 ├── entry_editor_facade.py   # EntryEditorFacadeの実装
-└── entry_list_facade.py     # EntryListFacadeの実装
+├── entry_list_facade.py     # EntryListFacadeの実装
+└── review_dialog_facade.py  # ReviewDialogFacadeの実装（EntryEditorFacade内で定義されている場合もあり）
 ```
 
 ## 4. EntryModelクラスとの連携
@@ -115,18 +123,42 @@ class EntryEditorFacade(QObject):
 
 ### 6.1 完了した実装
 
-- EntryModelクラスの実装
-- EntryEditorFacadeとEntryListFacadeの実装
-- TableManagerクラスのEntryModel対応
-- ViewerPOFileクラスのEntryModel対応
-- テストコードの更新
+- EntryModelクラスの実装と基本機能
+- キャッシュ管理の一元化（EntryCacheManager）
+- ViewerPOFileの責務分割リファクタリング
+  - ViewerPOFileBase: 基本的な初期化とファイル読み込み
+  - ViewerPOFileEntryRetriever: エントリ取得機能
+  - ViewerPOFileFilter: フィルタリング機能
+  - ViewerPOFileUpdater: エントリ更新機能
+  - ViewerPOFileStats: 統計情報と保存機能
+- EntryEditorFacadeの実装と連携
+  - メソッド: set_entry, get_current_entry, apply_changes, show_review_dialog
+  - シグナル: entry_applied, entry_changed
+- ReviewDialogFacadeの実装
+  - メソッド: register_dialog, set_database, update_entry_field
+  - シグナル: comment_added, score_updated など
+- EntryListFacadeの基本実装
+  - メソッド: update_table, get_selected_entry_key, update_filter, maintain_selection
+  - シグナル: selection_changed, filter_changed
 
-### 6.2 今後の課題
+### 6.2 進行中の実装
 
-- 残りのコンポーネントのEntryModel対応
-- 型アノテーションの完全な更新
-- テストカバレッジの向上
-- ドキュメントの継続的な更新
+- TableManagerとEntryListFacadeの完全統合
+  - テーブル操作を直接EntryListFacadeで行うよう変更
+  - TableManagerの責務を表示に特化させる
+- EventHandlerのファサードへの移行
+  - EventHandler内のロジックをファサードに移行
+  - EventHandlerを接続管理に特化または廃止の検討
+- キャッシュ管理の一元化完了
+  - TableManagerの独自キャッシュを完全に排除
+  - EntryCacheManagerとの連携強化
+
+### 6.3 今後の計画
+
+- FileHandlerファサード: ファイル操作の抽象化
+- StatisticsまたはMetricsファサード: 統計情報管理の抽象化
+- ConfigファサードとSettingsファサード: 設定管理の抽象化
+- ダイアログ管理ファサード: アプリケーション全体のダイアログ表示管理
 
 ## 7. ファサードの利用ガイドライン
 
@@ -185,8 +217,8 @@ def test_update_translation_emits_signal():
 今後、以下のファサードの追加を検討しています：
 
 1. **FileOperationFacade**: ファイル操作（開く、保存、エクスポートなど）を抽象化
-2. **ReviewFacade**: レビュー機能に関する操作を抽象化
-3. **StatisticsFacade**: 統計情報の収集と表示を抽象化
+2. **StatisticsFacade**: 統計情報の収集と表示を抽象化
+3. **SettingsFacade**: アプリケーション設定管理を抽象化
 
 ### 9.2 リファクタリング計画
 

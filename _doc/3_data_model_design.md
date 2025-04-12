@@ -1,6 +1,6 @@
 ---
 created: 2025-03-12T16:44
-updated: 2025-03-12T16:44
+updated: 2025-04-15T11:00
 ---
 # SGPO Editor データモデル設計
 
@@ -34,88 +34,153 @@ POファイルは翻訳リソースのコンテナであり、複数の翻訳エ
 └───────────────────────────────────────┘
 ```
 
-### 2.2 クラス構造
+### 2.2 EntryModel クラス
 
-#### PoFile クラス
-
-基本的なPOファイル操作を提供するクラスです。
+翻訳エントリを表現するための統一的なデータモデルです。Pydanticを使用した型安全なモデルとして実装されています。
 
 ```python
-class PoFile:
-    """POファイルを扱うクラス"""
+class EntryModel(BaseModel):
+    """翻訳エントリのデータモデル
     
-    def __init__(self, file_path: str | Path):
-        """
-        POファイルを読み込む
+    POエントリのデータを表現するPydanticモデル。
+    型安全性と検証機能を提供します。
+    """
+    
+    key: str
+    position: int
+    msgid: str
+    msgstr: str = ""
+    msgctxt: Optional[str] = None
+    fuzzy: bool = False
+    obsolete: bool = False
+    flags: List[str] = []
+    comment: Optional[str] = None
+    tcomment: Optional[str] = None
+    references: List[Tuple[str, str]] = []
+    
+    # 複数形関連
+    msgid_plural: Optional[str] = None
+    msgstr_plural: Dict[int, str] = {}
+    
+    # LLM評価関連
+    quality_score: Optional[float] = None
+    review_comments: Dict[str, str] = {}
+    check_results: Dict[str, Any] = {}
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "EntryModel":
+        """辞書からEntryModelを作成する"""
+        # 実装詳細...
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """EntryModelを辞書に変換する"""
+        # 実装詳細...
+```
+
+### 2.3 クラス構造
+
+#### POInterface と POEntry インターフェース
+PO操作ライブラリ（sgpo, polib）の違いを抽象化するインターフェース層です。
+
+```python
+class POEntry(Protocol):
+    """POエントリのインターフェース
+    
+    異なるPOライブラリのエントリを統一的に扱うためのプロトコル。
+    """
+    
+    msgid: str
+    msgstr: str
+    msgctxt: Optional[str]
+    flags: List[str]
+    obsolete: bool
+    comment: Optional[str]
+    tcomment: Optional[str]
+    occurrences: List[Tuple[str, str]]
+    
+    # 複数形サポート
+    msgid_plural: Optional[str]
+    msgstr_plural: Dict[int, str]
+```
+
+#### ViewerPOFile クラス階層
+リファクタリングにより、責務ごとに分割された複数のクラスで構成されています。
+
+```
+┌─────────────────────────────────┐ 
+│       ViewerPOFileRefactored     │ ← ViewerPOFileとしてエクスポート
+└─────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐ 
+│        ViewerPOFileStats        │ ← 統計情報と保存機能を担当
+└─────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐ 
+│       ViewerPOFileUpdater       │ ← エントリの更新管理
+└─────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐ 
+│       ViewerPOFileFilter        │ ← フィルタリング機能
+└─────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐ 
+│    ViewerPOFileEntryRetriever   │ ← エントリ取得機能
+└─────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐ 
+│       ViewerPOFileBase          │ ← 基本初期化とファイル読込
+└─────────────────────────────────┘
+```
+
+```python
+class ViewerPOFileBase:
+    """POファイルを読み込み、表示するための基本クラス
+    
+    このクラスは、キャッシュ管理とデータベースアクセスの責務を分離し、
+    EntryCacheManagerとDatabaseAccessorを利用して実装されています。
+    
+    主な機能:
+    1. POファイルの非同期読み込み: asyncioを使用してUIの応答性を向上
+    2. エントリの取得と管理: キャッシュとデータベースを連携してエントリを効率的に管理
+    """
+    
+    def __init__(
+        self,
+        cache_manager: Optional[EntryCacheManager] = None,
+        db_accessor: Optional[DatabaseAccessor] = None,
+    ):
+        """初期化
         
         Args:
-            file_path: POファイルのパス
+            cache_manager: キャッシュマネージャ（Noneの場合は新規作成）
+            db_accessor: データベースアクセサ（Noneの場合はDBなし）
         """
-        self.file_path = Path(file_path)
-        self.po = sgpo.pofile(str(self.file_path))
-        self._modified = False
-    
-    @property
-    def modified(self) -> bool:
-        """変更されているかどうか"""
-        return self._modified
-    
-    def save(self, file_path: str | Path | None = None) -> None:
-        """POファイルを保存する"""
-        # 実装詳細...
-    
-    def set_msgstr(self, entry, msgstr: str) -> None:
-        """翻訳文を設定する"""
-        # 実装詳細...
+        self.path = None
+        self.library_type = POLibraryType.SGPO
+        
+        # 依存性注入によるキャッシュとデータベースの連携
+        self.cache_manager = cache_manager or EntryCacheManager()
+        self.db_accessor = db_accessor
+        
+        # データベースがない場合は新規作成して接続
+        if not self.db_accessor:
+            db = InMemoryEntryStore()
+            self.db_accessor = DatabaseAccessor(db)
 ```
 
-#### ViewerPOFile クラス
+### 2.4 データベースクラス構造
 
-UIと連携するためのPOファイル表示モデル。エントリのフィルタリングや検索機能を提供します。
+#### InMemoryEntryStore クラス
 
-```python
-class ViewerPOFile:
-    """UI表示用のPOファイルモデル"""
-    
-    def __init__(self, po_file: PoFile):
-        """初期化"""
-        self.po_file = po_file
-        self.entries = self._prepare_entries()
-    
-    def get_entries(self):
-        """すべてのエントリを取得"""
-        return self.entries
-    
-    def get_filtered_entries(self, filter_text: str, search_text: str, match_mode: str):
-        """フィルタと検索条件に基づいてエントリをフィルタリング"""
-        # 実装詳細...
-    
-    def get_stats(self):
-        """翻訳の統計情報を取得"""
-        # 実装詳細...
-```
-
-**注: ViewerPOFileはファイル読み込み、データベース操作（キャッシュ）、フィルタリング、ソート、統計計算など多くの責務を持っており、単一責任の原則から考えると機能が肥大化しています。今後の改善として、キャッシュ管理を`EntryCacheManager`クラスに、データベースアクセスを`DatabaseAccessor`クラスに分割することを検討すべきです。**
-
-#### POEntry クラス
-
-個々の翻訳エントリを表すクラス（sgpoライブラリで提供）。
-
-主な属性:
-- `msgid`: 翻訳元の文字列
-- `msgstr`: 翻訳後の文字列
-- `msgctxt`: 翻訳コンテキスト
-- `obsolete`: 廃止されたエントリかどうか
-- `flags`: 特殊フラグ（fuzzy等）
-
-### 2.3 データベースクラス構造
-
-#### Database クラス
-
-**重要: このクラスはインメモリデータストアとして機能し、ViewerPOFileの内部キャッシュ層として使用されます。アプリケーション終了時にデータは消失します。永続化はPOファイルへの保存で行われます。**
+ViewerPOFileの内部キャッシュとして機能するインメモリSQLiteデータベースを提供します。
 
 ```python
-class Database:
+class InMemoryEntryStore:
     """インメモリSQLiteデータベースを使用したデータストア
     
     このクラスはViewerPOFileの内部キャッシュとして機能し、
@@ -141,9 +206,62 @@ class Database:
         # 実装詳細...
 ```
 
+#### DatabaseAccessor クラス
+
+インメモリデータベースとのインタラクションを抽象化し、より高レベルの操作を提供します。
+
+```python
+class DatabaseAccessor:
+    """データベースアクセスを抽象化するクラス
+    
+    InMemoryEntryStoreへのアクセスを提供し、
+    SQLクエリの構築や結果の変換などを担当します。
+    """
+    
+    def __init__(self, database: InMemoryEntryStore):
+        """初期化
+        
+        Args:
+            database: データベースインスタンス
+        """
+        self.database = database
+    
+    def get_entries_by_filter(self, conditions: FilterConditions) -> List[Dict[str, Any]]:
+        """フィルタ条件に一致するエントリを取得
+        
+        Args:
+            conditions: フィルタ条件
+            
+        Returns:
+            条件に一致するエントリのリスト（辞書形式）
+        """
+        # 検索条件からSQL式を構築
+        # 実装詳細...
+    
+    def advanced_search(
+        self, 
+        search_text: str, 
+        fields: List[str], 
+        case_sensitive: bool = False,
+        exact_match: bool = False
+    ) -> List[Dict[str, Any]]:
+        """高度な検索機能
+        
+        Args:
+            search_text: 検索テキスト
+            fields: 検索対象フィールド
+            case_sensitive: 大文字/小文字を区別するか
+            exact_match: 完全一致検索か
+            
+        Returns:
+            検索結果のエントリリスト
+        """
+        # 実装詳細...
+```
+
 #### EvaluationDatabase クラス
 
-**重要: このクラスはLLM評価データをSQLiteファイルに永続化するサイドカーデータベースとして機能します。POファイルと同じディレクトリに.evaldb拡張子で保存され、アプリケーション再起動後も評価データを保持します。**
+LLM評価データを永続化するサイドカーデータベースとして機能します。
 
 ```python
 class EvaluationDatabase:
@@ -174,120 +292,335 @@ class EvaluationDatabase:
         # 実装詳細...
 ```
 
-## 3. データフロー
+## 3. キャッシュ管理システム
 
-### 3.1 POファイル読み込み
+### 3.1 EntryCacheManager クラス
 
-1. FileHandlerがPOファイルのパスを取得
-2. PoFileクラスのインスタンスを作成し、ファイルを読み込む
-3. ViewerPOFileクラスがPoFileを受け取り、UI表示用データに変換
-4. ViewerPOFileがデータをインメモリのDatabaseに格納
-5. TableManagerがViewerPOFileからエントリリストを取得し、テーブルを構築
-
-```
-ファイルパス → PoFile → ViewerPOFile → Database(インメモリ) → TableManager → UI表示
-```
-
-### 3.2 POエントリ編集
-
-1. ユーザーがテーブルでエントリを選択
-2. MainWindowがViewerPOFileから選択されたエントリ情報を取得
-3. EntryEditorにエントリデータを表示
-4. ユーザーが編集を実行
-5. EntryEditorが変更内容をMainWindowに通知
-6. MainWindowがViewerPOFileを通じてエントリを更新
-7. ViewerPOFileはインメモリDatabaseとPoFileの両方を更新
-8. TableManagerがテーブルを更新
-
-```
-ユーザー操作 → EntryEditor → MainWindow → ViewerPOFile → Database(インメモリ)/PoFile → 保存
-```
-
-### 3.3 検索・フィルタリング
-
-1. ユーザーがSearchWidgetで検索条件を入力
-2. SearchWidgetが変更を通知
-3. MainWindowが新しい検索条件をViewerPOFileに渡す
-4. ViewerPOFileがインメモリDatabaseにフィルタリング条件を渡す
-5. Databaseがフィルタリングしたエントリリストを返す
-6. ViewerPOFileがエントリオブジェクトをキャッシュからロードまたは新規作成
-7. TableManagerがテーブルを更新
-
-```
-検索条件 → ViewerPOFile → Database(フィルタリング) → キャッシュ → TableManager → UI表示
-```
-
-### 3.4 LLM評価と永続化
-
-1. ユーザーがLLM評価を実行
-2. EvaluationDialogがLLM APIを呼び出し
-3. 評価結果をEntryModelに設定
-4. ViewerPOFileを通じてEntryModelを更新
-5. EvaluationDatabaseに評価データを永続化
-
-```
-ユーザー操作 → EvaluationDialog → LLM API → EntryModel → ViewerPOFile → EvaluationDatabase(永続化)
-```
-
-## 4. 状態管理
-
-### 4.1 翻訳エントリの状態
-
-エントリ状態は以下のように定義されています：
-
-- **未翻訳**: `msgstr`が空
-- **翻訳済み**: `msgstr`に値が設定済み
-- **要確認 (fuzzy)**: `fuzzy`フラグが設定されている
-- **廃止 (obsolete)**: `obsolete`属性が`True`
-
-### 4.2 ファイル状態の管理
-
-`PoFile`クラスは内部的に`_modified`フラグを管理し、ファイルが変更されたかどうかを追跡します。これにより、未保存の変更がある場合に適切な警告を表示できます。
-
-## 5. データバリデーション
-
-エントリ編集時に以下のバリデーションが実行されます：
-
-1. プレースホルダーの一致チェック（`%s`、`{0}`などのフォーマット指定子）
-2. 末尾の空白や改行などの一致
-3. HTMLタグの整合性（存在する場合）
-
-## 6. データ永続化
-
-### 6.1 ファイル保存
-
-PoFileクラスのsaveメソッドを使用して、POファイルへの変更を永続化します：
+エントリデータのキャッシュを一元管理し、パフォーマンスを向上させるためのクラスです。
 
 ```python
-def save(self, file_path: str | Path | None = None) -> None:
-    """POファイルを保存する
+class EntryCacheManager:
+    """POエントリのキャッシュを管理するクラス
     
-    Args:
-        file_path: 保存先のパス。Noneの場合は元のファイルに上書き保存
+    このクラスは、POエントリの各種キャッシュを管理し、キャッシュの一貫性を保つための
+    機能を提供します。主に以下の3種類のキャッシュを管理します：
+    
+    1. complete_entry_cache: 完全なEntryModelオブジェクトのキャッシュ
+       - 用途: エントリの詳細情報が必要な場合（編集時など）に使用
+       - キー: エントリのキー（通常は位置を表す文字列）
+       - 値: 完全なEntryModelオブジェクト（すべてのフィールドを含む）
+    
+    2. entry_basic_info_cache: 基本情報のみのEntryModelオブジェクトのキャッシュ
+       - 用途: エントリのリスト表示など、基本情報のみが必要な場合に使用
+       - キー: エントリのキー
+       - 値: 基本情報のみを含むEntryModelオブジェクト
+    
+    3. filtered_entries_cache: フィルタリング結果のキャッシュ
+       - 用途: 同じフィルタ条件での再検索を高速化
+       - キー: フィルタ条件を表す文字列（_filtered_entries_cache_key）
+       - 値: フィルタ条件に一致するEntryModelオブジェクトのリスト
+       
+    最適化機能:
+    - 使用頻度ベースのキャッシュ保持: アクセス頻度の高いエントリを優先的に保持
+    - キャッシュサイズの自動調整: メモリ使用量に基づいてキャッシュサイズを動的に調整
+    - 非同期プリフェッチ: バックグラウンドでの先読みによるUI応答性の向上
     """
-    save_path = Path(file_path) if file_path else self.file_path
-    self.po.save(str(save_path))
-    self._modified = False
     
-    # 別名で保存した場合は、そのファイルを新しい作業ファイルとする
-    if file_path:
-        self.file_path = save_path
+    DEFAULT_MAX_CACHE_SIZE = 10000
+    DEFAULT_LRU_SIZE = 1000
+    PREFETCH_BATCH_SIZE = 50
+    
+    def __init__(self):
+        """キャッシュマネージャの初期化"""
+        # 完全なEntryModelオブジェクトのキャッシュ
+        self._complete_entry_cache: EntryModelMap = {}
+        
+        # 基本情報のみのキャッシュ
+        self._entry_basic_info_cache: EntryModelMap = {}
+        
+        # フィルタ結果のキャッシュ
+        self._filtered_entries_cache: EntryModelList = []
+        self._filtered_entries_cache_key: str = ""
+        
+        # キャッシュ制御フラグ
+        self._cache_enabled: bool = True
+        self._force_filter_update: bool = False
+        
+        # パフォーマンス計測用カウンター
+        self._complete_cache_hits: int = 0
+        self._complete_cache_misses: int = 0
+        self._basic_cache_hits: int = 0
+        self._basic_cache_misses: int = 0
+        self._filter_cache_hits: int = 0
+        self._filter_cache_misses: int = 0
+        
+        # 最適化関連
+        self._access_counter: Counter = Counter()
+        self._last_access_time: Dict[str, float] = {}
+        self._max_cache_size: int = self.DEFAULT_MAX_CACHE_SIZE
+        self._lru_size: int = self.DEFAULT_LRU_SIZE
+        
+        # 非同期プリフェッチ関連
+        self._prefetch_lock = threading.RLock()
+        self._prefetch_queue: Set[str] = set()
+        self._prefetch_in_progress: bool = False
+        
+        # UI連携用マッピング
+        self._row_key_map: Dict[int, str] = {}
 ```
 
-### 6.2 バックアップ戦略
+### 3.2 キャッシュ基本操作
 
-変更を保存する前に、自動的にバックアップファイル（元のファイル名 + `.bak`）を作成します。これにより、保存操作が失敗した場合でもデータ損失を防ぎます。
+```python
+# EntryCacheManagerのメソッド
+def get_complete_entry(self, key: str) -> Optional[EntryModel]:
+    """完全なエントリをキャッシュから取得する"""
+    if not self._cache_enabled:
+        return None
 
-## 7. データアクセスパターン
+    entry = self._complete_entry_cache.get(key)
+    if entry:
+        # キャッシュヒット
+        self._complete_cache_hits += 1
+        self._check_and_log_performance()
+        self._update_access_stats(key)
+        return entry
+    else:
+        # キャッシュミス
+        self._complete_cache_misses += 1
+        return None
 
-### 7.1 ファクトリパターン
+def cache_complete_entry(self, key: str, entry: EntryModel) -> None:
+    """完全なエントリをキャッシュに保存する"""
+    if not self._cache_enabled:
+        return
 
-ViewerPOFileはPoFileインスタンスを受け取り、UI表示に最適化されたデータ構造を提供します。これはファクトリパターンの一種として機能します。
+    self._complete_entry_cache[key] = entry
+    self._update_access_stats(key)
+    self._check_cache_size()
 
-### 7.2 イテレータパターン
+def update_entry_in_cache(self, key: str, entry: EntryModel) -> None:
+    """エントリの更新をキャッシュに反映する"""
+    if not self._cache_enabled:
+        return
 
-エントリコレクションは反復処理が可能で、TableManagerなどでの表示処理に使用されます。
+    # 完全なエントリキャッシュを更新
+    self._complete_entry_cache[key] = entry
 
-### 7.3 オブザーバーパターン
+    # 基本情報キャッシュも更新
+    if key in self._entry_basic_info_cache:
+        basic_info = EntryModel(
+            key=entry.key,
+            msgid=entry.msgid,
+            msgstr=entry.msgstr,
+            fuzzy="fuzzy" in entry.flags,
+            obsolete=entry.obsolete,
+            position=entry.position,
+            flags=entry.flags,
+        )
+        self._entry_basic_info_cache[key] = basic_info
 
-データ変更時の通知にはシグナル/スロットメカニズム（PySide6）を使用し、オブザーバーパターンを実装しています。
+    # フィルタ結果キャッシュを無効化
+    self.set_force_filter_update(True)
+```
+
+### 3.3 UI連携機能
+
+```python
+# EntryCacheManagerのUI連携メソッド
+def add_row_key_mapping(self, row: int, key: str) -> None:
+    """行インデックスとエントリキーのマッピングを追加する
+    
+    UI層からのアクセスを効率化するために、テーブルの行インデックスと
+    エントリキーのマッピングを管理します。これにより、UI層（TableManager,
+    EventHandler）の独自キャッシュを排除し、キャッシュ管理を一元化できます。
+    
+    Args:
+        row: テーブルの行インデックス
+        key: エントリキー
+    """
+    self._row_key_map[row] = key
+
+def get_key_for_row(self, row: int) -> Optional[str]:
+    """行インデックスに対応するエントリキーを取得する
+    
+    Args:
+        row: テーブルの行インデックス
+        
+    Returns:
+        エントリキー、マッピングがなければNone
+    """
+    return self._row_key_map.get(row)
+
+def clear_row_key_mappings(self) -> None:
+    """行インデックスとキーのマッピングをクリアする
+    
+    テーブルの内容が完全に更新された場合などに呼び出されます。
+    """
+    self._row_key_map.clear()
+```
+
+### 3.4 プリフェッチ機能
+
+```python
+# EntryCacheManagerのプリフェッチメソッド
+def prefetch_visible_entries(self, visible_keys: List[str], fetch_callback=None) -> None:
+    """表示中のエントリをプリフェッチする
+    
+    テーブルに表示されている（または表示されそうな）エントリを
+    事前にキャッシュに読み込みます。これにより、スクロール時の
+    エントリ表示をスムーズにします。
+    
+    Args:
+        visible_keys: 表示中または表示予定のエントリキーのリスト
+        fetch_callback: キーのリストを受け取り、EntryModelのリストを返すコールバック関数
+    """
+    if not self._cache_enabled or not visible_keys:
+        return
+        
+    # すでにキャッシュにあるキーを除外
+    keys_to_fetch = [
+        key for key in visible_keys if key not in self._complete_entry_cache
+    ]
+    
+    if not keys_to_fetch:
+        return
+        
+    with self._prefetch_lock:
+        self._prefetch_queue.update(keys_to_fetch)
+        
+        if self._prefetch_in_progress:
+            return
+            
+        self._prefetch_in_progress = True
+        
+    # 非同期でプリフェッチを実行
+    threading.Thread(
+        target=self._async_prefetch, 
+        args=(fetch_callback,), 
+        daemon=True
+    ).start()
+```
+
+## 4. データフロー
+
+### 4.1 POファイル読み込み
+
+1. FileHandlerがPOファイルのパスを取得
+2. ViewerPOFileクラスのloadメソッドが呼び出される
+3. POLibraryTypeに応じたPOファイルアダプタが選択される
+4. POエントリがEntryModelオブジェクトに変換される
+5. DatabaseAccessorを通じてエントリがインメモリデータベースに格納される
+6. EntryCacheManagerのキャッシュがクリアされる
+7. TableManagerがViewerPOFileからエントリリストを取得し、テーブルを構築
+
+```
+ファイルパス → ViewerPOFile.load → POAdapter → EntryModel変換 → DatabaseAccessor → InMemoryEntryStore
+                                             ↓
+                                  EntryCacheManager(キャッシュクリア)
+```
+
+### 4.2 フィルタリングと検索
+
+1. ユーザーがSearchWidgetでフィルタや検索条件を入力
+2. ViewerPOFileのget_filtered_entriesメソッドが呼び出される
+3. EntryCacheManagerのフィルタキャッシュが確認される
+4. キャッシュミスまたは強制更新の場合、DatabaseAccessorを通じてクエリが実行される
+5. 取得されたエントリデータがEntryModelオブジェクトに変換される
+6. 変換されたオブジェクトがキャッシュに保存され、結果として返される
+7. TableManagerが結果を受け取り、テーブルを更新
+
+```
+ユーザー入力 → ViewerPOFile.get_filtered_entries → EntryCacheManager(キャッシュ確認)
+                                                    ↓ (キャッシュミス/強制更新)
+                                                  DatabaseAccessor(クエリ実行)
+                                                    ↓
+                                                  EntryModel変換
+                                                    ↓
+                                                  EntryCacheManager(キャッシュ保存)
+                                                    ↓
+                                                  結果返却 → TableManagerによる表示
+```
+
+### 4.3 エントリ編集
+
+1. ユーザーがテーブルでエントリを選択
+2. EntryListFacadeがViewerPOFileからEntryModelを取得（完全キャッシュ優先）
+3. EntryEditorFacadeを通じてEntryEditorにEntryModelが設定される
+4. ユーザーがエントリを編集し、Applyボタンをクリック
+5. EntryEditorFacadeのapply_changesメソッドが呼び出される
+6. ViewerPOFile.update_entryメソッドが呼び出される
+7. DatabaseAccessorを通じてインメモリDBが更新される
+8. EntryCacheManagerの各キャッシュが更新/無効化される
+9. TableManagerが更新され、変更が画面に反映される
+
+```
+ユーザー選択 → EntryListFacade → ViewerPOFile.get_entry → EntryCacheManager(キャッシュ取得) → EntryModel → EntryEditorFacade → EntryEditor
+                                                                                                ↑
+ユーザー編集 → EntryEditor → EntryEditorFacade → ViewerPOFile.update_entry → DatabaseAccessor → InMemoryEntryStore（DB更新）
+                                                                             → EntryCacheManager(キャッシュ更新)
+```
+
+## 5. データ関連の最適化戦略
+
+### 5.1 メモリ最適化
+
+1. **遅延ロード**: 詳細情報は必要になったときのみロード
+2. **キャッシュ制限**: 最大キャッシュサイズと優先度ベースの排出戦略
+3. **参照型オブジェクト**: 共通情報の複製を避け、参照共有
+
+### 5.2 DB最適化
+
+1. **インデックス**: 頻繁に検索される列にインデックスを設定
+2. **最適なクエリ**: EXPLAIN句を使用した効率的なクエリ設計
+3. **一括操作**: 複数更新を単一トランザクションでバッチ処理
+
+## 6. データモデルの拡張ポイント
+
+### 6.1 LLM評価拡張
+
+EntryModelクラスは、LLM評価情報を格納するフィールドを備えています：
+
+```python
+class EntryModel(BaseModel):
+    # 基本フィールド
+    key: str
+    position: int
+    msgid: str
+    msgstr: str = ""
+    
+    # LLM評価関連フィールド
+    quality_score: Optional[float] = None  # 0.0～1.0の品質スコア
+    review_comments: Dict[str, str] = {}   # カテゴリごとのレビューコメント
+    check_results: Dict[str, Any] = {}     # 自動チェック結果
+```
+
+### 6.2 複数形サポート
+
+EntryModelクラスは、複数形翻訳をサポートするフィールドを持っています：
+
+```python
+class EntryModel(BaseModel):
+    # 基本フィールド
+    msgid: str
+    msgstr: str = ""
+    
+    # 複数形関連フィールド
+    msgid_plural: Optional[str] = None    # 複数形の原文
+    msgstr_plural: Dict[int, str] = {}    # インデックスごとの複数形訳文
+```
+
+### 6.3 カスタムメタデータ
+
+翻訳プロジェクト固有のメタデータ保存用の拡張モデル：
+
+```python
+class ProjectMetadata(BaseModel):
+    """プロジェクト固有のメタデータモデル"""
+    
+    project_id: str
+    terminology_db: Optional[str] = None  # 用語集DBへの参照
+    client_name: Optional[str] = None
+    priority: int = 0
+    custom_fields: Dict[str, Any] = {}    # プロジェクト固有の追加フィールド
+```
