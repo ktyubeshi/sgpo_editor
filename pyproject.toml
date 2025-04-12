@@ -63,4 +63,4 @@ dependencies = [
 ]
 [tool.hatch.envs.test.scripts]
 test = "pytest {args:tests}"
-test-cov = "pytest --cov=sgpo_editor {args:tests}"
+test-cov = "pytest --cov=sgpo_editor --cov-report=term-missing {args:tests}"
