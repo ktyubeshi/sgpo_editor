@@ -38,7 +38,25 @@ COLUMN_INDEX_MAP: Dict[str, int] = {v: k for k, v in COLUMN_MAP.items()}
 
 
 class TableManager:
-    """Table Management Class"""
+    """テーブル表示管理クラス
+    
+    このクラスはPOエントリのテーブル表示のみに責任を持ちます。
+    データ操作、フィルタリング、ソートなどのロジックは全て外部（ViewerPOFile、ファサード等）に委譲します。
+    
+    主な責務:
+    - テーブルのUI設定と表示処理
+    - 列の表示/非表示の管理
+    - 列幅の保存と読み込み
+    - テーブル内容の更新と描画最適化
+    
+    キャッシュ管理:
+    - エントリのキャッシュは EntryCacheManager に完全に委譲
+    - 行とキーのマッピングも EntryCacheManager が管理
+    
+    ソート処理:
+    - ソート条件の設定と実際のソート処理は ViewerPOFile に委譲
+    - ソートインジケータの表示のみを管理
+    """
 
     def __init__(
         self,
@@ -47,13 +65,13 @@ class TableManager:
         get_current_po: Optional[Callable[[], Optional[ViewerPOFileRefactored]]] = None,
         sort_request_callback: Optional[Callable[[str, str], None]] = None,
     ) -> None:
-        """Initialize
+        """初期化
 
         Args:
-            table: Target table widget to manage
-            entry_cache_manager: EntryCacheManager instance
-            get_current_po: Callback to get the current PO file
-            sort_request_callback: Callback to handle table sort requests
+            table: 管理対象のテーブルウィジェット
+            entry_cache_manager: EntryCacheManagerのインスタンス
+            get_current_po: 現在のPOファイルを取得するコールバック
+            sort_request_callback: テーブル列ヘッダクリック時のソート要求コールバック
         """
         self.table = table
         self.entry_cache_manager = entry_cache_manager
@@ -569,7 +587,7 @@ class TableManager:
                 item4 = QTableWidgetItem(status)
                 item4.setFlags(item4.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 # 色付け
-                # item4.setForeground(self._get_status_color(status))
+                item4.setForeground(self._get_status_color(status))
                 self.table.setItem(row, 4, item4)
                 
                 # スコア列
@@ -589,10 +607,25 @@ class TableManager:
             self.table.setUpdatesEnabled(True)
 
     def _get_status_color(self, status: str) -> QColor:
-        """ステータスに基づいて色を取得する"""
-        # このメソッドは実装が必要です。
-        # 現在の実装は単に黒色を返すだけです。
-        return QColor(0, 0, 0)
+        """ステータスに基づいて色を取得する
+        
+        Args:
+            status: エントリのステータス文字列
+            
+        Returns:
+            対応する色オブジェクト
+        """
+        # 基本的な色のマッピングを定義
+        color_map = {
+            "未翻訳": QColor(255, 0, 0),     # 赤色
+            "fuzzy": QColor(255, 165, 0),   # オレンジ色
+            "翻訳済み": QColor(0, 128, 0),    # 緑色
+            "翻訳不要": QColor(128, 128, 128), # グレー
+            "廃止": QColor(200, 200, 200),    # 薄いグレー
+        }
+        
+        # マッピングに存在するステータスならその色を、そうでなければ黒を返す
+        return color_map.get(status, QColor(0, 0, 0))
 
     def _get_filter_conditions(self) -> tuple[Optional[str], Optional[str]]:
         """現在のフィルタ条件を取得
