@@ -91,10 +91,8 @@ class ViewerPOFileStats(ViewerPOFileUpdater):
             else:
                 path = Path(path)
 
-            # データベースからすべてのエントリを取得
-            entries = self.db_accessor.get_filtered_entries(
-                sort_column="position", sort_order="ASC"
-            )
+            # データベースからすべてのエントリを取得 (ソート引数は削除)
+            entries = self.db_accessor.get_filtered_entries()
 
             # POファイルファクトリを取得
             factory = get_po_factory(self.library_type)
@@ -106,46 +104,44 @@ class ViewerPOFileStats(ViewerPOFileUpdater):
             if self.metadata:
                 pofile.metadata = dict(self.metadata)
 
-            for entry_dict in entries:
+            for entry_model in entries:
                 # データベースの辞書形式のデータからPOEntryを作成
                 entry_kwargs: POEntryKwargs = {
-                    "msgid": entry_dict.get("msgid", ""),
-                    "msgstr": entry_dict.get("msgstr", ""),
-                    "occurrences": entry_dict.get("references", []),
-                    "flags": entry_dict.get("flags", []),
-                    "obsolete": entry_dict.get("obsolete", False),
+                    "msgid": entry_model.msgid or "",
+                    "msgstr": entry_model.msgstr or "",
+                    "occurrences": entry_model.references or [],
+                    "flags": entry_model.flags or [],
+                    "obsolete": entry_model.obsolete or False,
                 }
 
-                # 複数形
-                if "msgid_plural" in entry_dict and entry_dict["msgid_plural"]:
-                    entry_kwargs["msgid_plural"] = entry_dict["msgid_plural"]
-                    entry_kwargs["msgstr_plural"] = entry_dict.get("msgstr_plural", {})
+                # 複数形 (EntryModelにこれらの属性があるか確認が必要)
+                if hasattr(entry_model, 'msgid_plural') and entry_model.msgid_plural:
+                    entry_kwargs["msgid_plural"] = entry_model.msgid_plural
+                    entry_kwargs["msgstr_plural"] = getattr(entry_model, 'msgstr_plural', {}) or {}
 
                 # コンテキスト
-                if "msgctxt" in entry_dict and entry_dict["msgctxt"]:
-                    entry_kwargs["msgctxt"] = entry_dict["msgctxt"]
+                if entry_model.msgctxt:
+                    entry_kwargs["msgctxt"] = entry_model.msgctxt
 
-                # 前バージョン
-                if "previous_msgid" in entry_dict and entry_dict["previous_msgid"]:
-                    entry_kwargs["previous_msgid"] = entry_dict["previous_msgid"]
+                # 前バージョン (EntryModelにこれらの属性があるか確認が必要)
+                if hasattr(entry_model, 'previous_msgid') and entry_model.previous_msgid:
+                    entry_kwargs["previous_msgid"] = entry_model.previous_msgid
                 if (
-                    "previous_msgid_plural" in entry_dict
-                    and entry_dict["previous_msgid_plural"]
+                    hasattr(entry_model, 'previous_msgid_plural')
+                    and entry_model.previous_msgid_plural
                 ):
-                    entry_kwargs["previous_msgid_plural"] = entry_dict[
-                        "previous_msgid_plural"
-                    ]
-                if "previous_msgctxt" in entry_dict and entry_dict["previous_msgctxt"]:
-                    entry_kwargs["previous_msgctxt"] = entry_dict["previous_msgctxt"]
+                    entry_kwargs["previous_msgid_plural"] = entry_model.previous_msgid_plural
+                if hasattr(entry_model, 'previous_msgctxt') and entry_model.previous_msgctxt:
+                    entry_kwargs["previous_msgctxt"] = entry_model.previous_msgctxt
 
-                # コメント
-                if "comment" in entry_dict and entry_dict["comment"]:
-                    entry_kwargs["comment"] = entry_dict["comment"]
-                if "tcomment" in entry_dict and entry_dict["tcomment"]:
-                    entry_kwargs["tcomment"] = entry_dict["tcomment"]
+                # コメント (EntryModelにこれらの属性があるか確認が必要)
+                if hasattr(entry_model, 'comment') and entry_model.comment:
+                    entry_kwargs["comment"] = entry_model.comment
+                if hasattr(entry_model, 'tcomment') and entry_model.tcomment:
+                    entry_kwargs["tcomment"] = entry_model.tcomment
 
-                # Fuzzyフラグの設定
-                if entry_dict.get("fuzzy", False) and "fuzzy" not in entry_kwargs.get(
+                # Fuzzyフラグの設定 (EntryModel.fuzzy属性を使用)
+                if entry_model.fuzzy and "fuzzy" not in entry_kwargs.get(
                     "flags", []
                 ):
                     if "flags" not in entry_kwargs:
