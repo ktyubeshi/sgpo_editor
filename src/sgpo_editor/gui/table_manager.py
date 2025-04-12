@@ -599,17 +599,18 @@ class TableManager:
         return (self._current_filter_text, self._current_search_text)
 
     def get_display_entries(self) -> List[str]:
-        """Return keys of displayed entries (Now managed by CacheManager)
+        """現在表示されているエントリのキーリストを返す
 
         Returns:
-            List of entry keys currently displayed
+            現在表示されているエントリのキーリスト
         """
-        # return self._display_entries
-        # このメソッドは CacheManager へのアクセス方法が決まるまで未実装とするか、
-        # CacheManager から取得するように変更する必要がある。
-        # 現状は空リストを返す。
-        logger.warning("TableManager.get_display_entries is deprecated, use EntryCacheManager")
-        return []
+        # EntryCacheManagerから行キーマッピングを取得
+        keys = []
+        for row in range(self.table.rowCount()):
+            key = self.entry_cache_manager.get_key_for_row(row)
+            if key:
+                keys.append(key)
+        return keys
 
     def select_row(self, row: int) -> None:
         """Select specified row
