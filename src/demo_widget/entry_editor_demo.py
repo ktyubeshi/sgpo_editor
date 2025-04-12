@@ -180,7 +180,7 @@ class EntryEditorDemo(QMainWindow):
         main_layout = QHBoxLayout(main_widget)
 
         # スプリッター（エントリリストとエディタを分割）
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         main_layout.addWidget(splitter)
 
         # 左側: コントロールパネルとエントリリスト
@@ -241,12 +241,12 @@ class EntryEditorDemo(QMainWindow):
 
             # 状態に応じた背景色を設定
             if entry.get_status() == TranslationStatus.UNTRANSLATED:
-                item.setBackground(Qt.red)
+                item.setBackground(Qt.GlobalColor.red)
             elif entry.get_status() == TranslationStatus.FUZZY:
-                item.setBackground(Qt.yellow)
+                item.setBackground(Qt.GlobalColor.yellow)
 
             # カスタムデータとしてキーを保存
-            item.setData(Qt.UserRole, entry.key)
+            item.setData(Qt.ItemDataRole.UserRole, entry.key)
             self.entry_list.addItem(item)
 
     def _on_entry_selected(self, current, previous):
@@ -256,7 +256,7 @@ class EntryEditorDemo(QMainWindow):
             return
 
         # 選択されたエントリのキーを取得
-        key = current.data(Qt.UserRole)
+        key = current.data(Qt.ItemDataRole.UserRole)
 
         # キーからエントリを取得
         selected_entry = next((e for e in self.sample_entries if e.key == key), None)
@@ -285,17 +285,17 @@ class EntryEditorDemo(QMainWindow):
         # エントリキーに対応するアイテムを探す
         for i in range(self.entry_list.count()):
             item = self.entry_list.item(i)
-            if item.data(Qt.UserRole) == entry.key:
+            if item.data(Qt.ItemDataRole.UserRole) == entry.key:
                 # 項目のテキストを更新
                 item.setText(f"{entry.key}: {entry.msgid[:20]}...")
 
                 # 状態に応じた背景色を更新
                 if entry.get_status() == TranslationStatus.UNTRANSLATED:
-                    item.setBackground(Qt.red)
+                    item.setBackground(Qt.GlobalColor.red)
                 elif entry.get_status() == TranslationStatus.FUZZY:
-                    item.setBackground(Qt.yellow)
+                    item.setBackground(Qt.GlobalColor.yellow)
                 else:
-                    item.setBackground(Qt.white)
+                    item.setBackground(Qt.GlobalColor.white)
 
                 break
 

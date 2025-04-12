@@ -4,7 +4,7 @@
 複雑な型に分かりやすい名前を付けることで、コードの可読性と保守性を向上させます。
 """
 
-from typing import Any, Dict, List, TypeAlias, Union, Tuple, Callable, Optional, Literal, TypedDict, Set, TYPE_CHECKING
+from typing import Any, Dict, List, TypeAlias, Union, Tuple, Callable, Optional, Literal, TypedDict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sgpo_editor.models.entry import EntryModel
@@ -203,6 +203,17 @@ class StatsDict(TypedDict):
     file_name: str
 
 MetadataValueType = Union[str, int, float, bool, List[Any], Dict[str, Any]]
+
+class StatisticsInfoType(TypedDict, total=False):
+    """POファイル統計情報の型定義"""
+    total: int
+    translated: int
+    untranslated: int
+    fuzzy: int
+    obsolete: int
+    percent_translated: float
+
+StatisticsInfo: TypeAlias = StatisticsInfoType
 
 class ReviewCommentType(TypedDict, total=False):
     """レビューコメントの型定義"""

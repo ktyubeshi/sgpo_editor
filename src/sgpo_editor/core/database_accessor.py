@@ -15,7 +15,7 @@ ViewerPOFileクラスからデータベース操作の責務を分離します�
 """
 
 import logging
-from typing import Optional, List, Dict, Any, Set, Tuple
+from typing import Optional, List, Dict, Set, Tuple
 import sqlite3
 
 from sgpo_editor.models.database import InMemoryEntryStore
