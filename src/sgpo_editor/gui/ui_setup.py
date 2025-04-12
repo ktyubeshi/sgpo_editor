@@ -5,6 +5,7 @@
 
 import asyncio
 import logging
+import json
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -80,6 +81,8 @@ class UIManager:
         # 列表示設定のアクション
         self.column_visibility_actions: List[QAction] = []
         self.column_visibility_menu: Optional[QMenu] = None
+        # クリアアクション用のインスタンス変数を初期化 (空のQAction)
+        self.clear_recent_action: QAction = QAction(main_window)
 
         # ツールバーアクション
         self.toolbar_actions: Dict[str, QAction] = {}
@@ -370,65 +373,70 @@ class UIManager:
         Args:
             callback: 最近使用したファイルを開くためのコールバック（非同期関数も可）
         """
-        # 既存のメニューをクリア
-        if self.recent_files_menu:
-            self.recent_files_menu.clear()
-
-            # アクションリストをクリア
-            self.recent_file_actions.clear()
-
-        if not self.recent_files_menu:
+        if not callback or not self.recent_files_menu:
             return
 
-        # サブメニューとの接続を確保するために参照を保持
-        self.open_recent_file_callback = callback
+        # 既存のアクションをクリア
+        self.recent_files_menu.clear()
+        self.recent_file_actions.clear()
 
-        # 設定から最近使用したファイルのリストを取得
-        settings = QSettings()
-        recent_files_str = settings.value("recent_files_str", "", type=str)
-        recent_files = recent_files_str.split(";") if recent_files_str else []
-        recent_files = [
-            f for f in recent_files if f and Path(f).exists()
-        ]  # 存在するファイルのみ
+        # 設定から最近使ったファイルリストを取得 (FileHandlerから取得するように変更が必要かも)
+        settings = QSettings("SGPOEditor", "RecentFiles")
+        recent_files_json = settings.value("recent_files", "[]")
+        try:
+            recent_files = json.loads(recent_files_json)
+        except json.JSONDecodeError:
+            recent_files = []
+            logger.warning("Failed to load recent files setting.")
 
-        if not recent_files:
-            no_recent_action = QAction(
-                "最近使用したファイルはありません", self.main_window
-            )
-            no_recent_action.setEnabled(False)
-            self.recent_files_menu.addAction(no_recent_action)
-            return
+        num_recent_files = len(recent_files)
 
-        for i, filepath in enumerate(recent_files[:10]):  # 最大10件まで
-            file_name = Path(filepath).name
-            action_text = f"{i + 1:d}: {file_name}"
+        # メニュー項目を作成
+        for i, file_path_str in enumerate(recent_files):
+            file_path = Path(file_path_str)
+            # ファイルが存在するか確認
+            if not file_path.exists():
+                logger.warning(f"Recent file not found, removing: {file_path_str}")
+                # ここでリストから削除するロジックを追加するべき
+                continue
 
-            # アクションを作成
+            action_text = f"&{i + 1}. {file_path.name}"
             action = QAction(action_text, self.main_window)
-            # クロージャの変数バインディングの問題を回避
-            # pylint: disable=cell-var-from-loop
-
-            # 非同期メソッド対応
-            action.triggered.connect(
-                lambda checked, path=filepath: run_async(
-                    lambda: self.open_recent_file_callback(path) if self.open_recent_file_callback else None
-                )
-            )
-
+            action.setData(file_path_str) # ファイルパスをデータとして保持
+            # functools.partial を使ってコールバックに関数を渡す
+            action.triggered.connect(lambda checked=False, p=file_path_str: callback(p))
             self.recent_files_menu.addAction(action)
             self.recent_file_actions.append(action)
 
-        self.recent_files_menu.addSeparator()
-        clear_action = QAction("クリア", self.main_window)
-        clear_action.triggered.connect(self._clear_recent_files)
-        self.recent_files_menu.addAction(clear_action)
+        # ファイル履歴がある場合は区切り線とクリアアクションを追加
+        if num_recent_files > 0:
+            self.recent_files_menu.addSeparator()
+
+            # クリアアクションを作成し、インスタンス変数に設定
+            self.clear_recent_action.setText("履歴をクリア (&C)")
+            # 接続済みの場合は再接続しない (または古い接続を解除)
+            try:
+                self.clear_recent_action.triggered.disconnect()
+            except RuntimeError:
+                pass # まだ接続されていない
+            self.clear_recent_action.triggered.connect(self._clear_recent_files)
+            self.clear_recent_action.setEnabled(True) # 履歴があるので有効化
+            self.recent_files_menu.addAction(self.clear_recent_action)
+        else:
+            # 履歴がない場合は「履歴なし」を表示し、クリアアクションを無効化
+            no_history_action = QAction("(履歴なし)", self.main_window)
+            no_history_action.setEnabled(False)
+            self.recent_files_menu.addAction(no_history_action)
+            # クリアアクション自体は存在し続けるが、無効化してテキストをクリア
+            self.clear_recent_action.setText("") # テキストを空に
+            self.clear_recent_action.setEnabled(False)
+            # self.clear_recent_action = None # None にはしない
 
     def _clear_recent_files(self) -> None:
-        """最近使用したファイルの履歴をクリア"""
-        settings = QSettings()
-        settings.setValue("recent_files_str", "")
-        settings.setValue("recent_files", [])
-        settings.sync()  # 確実に保存
+        """最近使用したファイル履歴をクリアする内部メソッド"""
+        settings = QSettings("SGPOEditor", "RecentFiles")
+        settings.setValue("recent_files", json.dumps([]))
+        settings.sync()
         self.update_recent_files_menu(lambda _: None)
 
     def setup_toolbar(self, show_review_dialog_callback: Callable[[str], None]) -> None:
