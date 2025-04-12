@@ -33,13 +33,9 @@ class SearchWidget(QWidget):
 
     def __init__(
         self,
-        on_filter_changed: Callable[[], None],
-        on_search_changed: Callable[[], None],
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
-        self._on_filter_changed: Callable[[], None] = on_filter_changed
-        self._on_search_changed: Callable[[], None] = on_search_changed
 
         # 内部状態
         self._display_to_status: Dict[str, str] = {}
@@ -49,13 +45,13 @@ class SearchWidget(QWidget):
         self._filter_timer = QTimer(self)
         self._filter_timer.setSingleShot(True)
         self._filter_timer.setInterval(100)  # 100ミリ秒のデバウンス時間
-        self._filter_timer.timeout.connect(self._on_filter_changed)
+        self._filter_timer.timeout.connect(self.filter_changed.emit)
 
         # キーワードフィルタ用タイマー
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.setInterval(100)  # 100ミリ秒のデバウンス時間
-        self._search_timer.timeout.connect(self._on_search_changed)
+        self._search_timer.timeout.connect(self.filter_changed.emit)
 
         self._setup_ui()
 
@@ -148,10 +144,6 @@ class SearchWidget(QWidget):
 
         # フィルタ変更シグナルを発行
         self.filter_changed.emit()
-
-        # 両方のコールバックを呼び出してテーブルを更新
-        self._on_filter_changed()
-        self._on_search_changed()
 
     def get_filter(self) -> str:
         """現在のフィルタ（内部値）を取得"""
