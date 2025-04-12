@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 from sgpo_editor.models.entry import EntryModel
 
 
@@ -12,10 +12,11 @@ class TestEntryStructure(unittest.TestCase):
 
     def setUp(self):
         """テスト前の準備"""
-        self.viewer = ViewerPOFile()
-        self.viewer.db_accessor = MagicMock()
-        self.viewer.cache_manager = MagicMock()
-        self.viewer._force_filter_update = True
+        # モックをコンストラクタに渡す
+        self.mock_db_accessor = MagicMock()
+        self.mock_cache_manager = MagicMock()
+        self.viewer = ViewerPOFileRefactored(db_accessor=self.mock_db_accessor, cache_manager=self.mock_cache_manager)
+        # _force_filter_update は不要
 
     def test_entry_structure(self):
         """エントリが期待される構造を持っていることを確認"""
@@ -27,7 +28,7 @@ class TestEntryStructure(unittest.TestCase):
         ]
 
         # get_filtered_entriesをモック化
-        self.viewer.db_accessor.get_filtered_entries.return_value = mock_entries
+        self.mock_db_accessor.get_filtered_entries.return_value = mock_entries
 
         # フィルタされたエントリを取得
         entries = self.viewer.get_filtered_entries()
@@ -46,7 +47,7 @@ class TestEntryStructure(unittest.TestCase):
         ]
 
         # get_filtered_entriesをモック化
-        self.viewer.db_accessor.get_filtered_entries.return_value = mock_entries
+        self.mock_db_accessor.get_filtered_entries.return_value = mock_entries
 
         original_from_dict = EntryModel.from_dict
         

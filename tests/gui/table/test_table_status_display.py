@@ -8,6 +8,7 @@ from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.core.constants import TranslationStatus
 from sgpo_editor.i18n import translate
+from sgpo_editor.core.cache_manager import EntryCacheManager
 
 
 @pytest.fixture
@@ -23,6 +24,8 @@ def app():
 def table_widget(app):
     """テーブルウィジェットのフィクスチャ"""
     table = QTableWidget()
+    mock_cache_manager = MagicMock(spec=EntryCacheManager)
+    table_manager = TableManager(table, mock_cache_manager)
     yield table
 
 
@@ -59,3 +62,14 @@ def test_table_status_column_display(table_widget, entry_data):
     assert table_widget.item(1, 4).text() == translate(TranslationStatus.TRANSLATED)
     assert table_widget.item(2, 4).text() == translate(TranslationStatus.FUZZY)
     assert table_widget.item(3, 4).text() == translate(TranslationStatus.OBSOLETE)
+
+
+@pytest.fixture
+def table_manager(qtbot):
+    table = QTableWidget()
+    # モックオブジェクトを引数に追加
+    mock_cache_manager = MagicMock(spec=EntryCacheManager)
+    mock_sort_callback = MagicMock()
+    manager = TableManager(table, mock_cache_manager, sort_request_callback=mock_sort_callback)
+    qtbot.addWidget(table)
+    return manager, table

@@ -6,9 +6,12 @@
 import sys
 from unittest.mock import MagicMock, patch
 
+import pytest
 from PySide6.QtWidgets import QApplication, QTableWidget
 
+from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
+from sgpo_editor.models.entry import EntryModel
 
 # QApplication インスタンスを作成（テスト用）
 app = QApplication.instance()
@@ -22,11 +25,10 @@ class TestTableUpdateIssue:
     def setup_method(self):
         """各テストメソッド実行前の準備"""
         self.table = QTableWidget()
-        self.table.setColumnCount(6)  # 列数を設定
-        self.table.setHorizontalHeaderLabels(
-            ["Entry Number", "msgctxt", "msgid", "msgstr", "Status", "Score"]
-        )
-        self.table_manager = TableManager(self.table)
+        self.table.setRowCount(1)
+        self.table.setColumnCount(6)
+        self.mock_cache_manager = MagicMock(spec=EntryCacheManager)
+        self.table_manager = TableManager(self.table, self.mock_cache_manager)
 
         # テスト用にモックエントリを作成
         self.mock_entry = MagicMock()
@@ -63,7 +65,7 @@ class TestTableUpdateIssue:
         for i in range(self.table_manager.get_column_count()):
             expected_hidden = i in columns_to_hide
             assert self.table.isColumnHidden(i) == expected_hidden, (
-                f"列 {i} の非表示状態が正しくありません"
+                f"Column {i} visibility state is incorrect."
             )
 
         # エントリが正しくテーブルに表示されているか確認

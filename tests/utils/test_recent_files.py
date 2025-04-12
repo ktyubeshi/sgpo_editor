@@ -4,6 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 from unittest import mock
+import json
 
 import pytest
 from PySide6.QtCore import QCoreApplication, QSettings
@@ -162,11 +163,11 @@ class TestRecentFiles:
         # 最初はメニューに項目がないことを確認
         recent_menu = window.ui_manager.recent_files_menu
         assert recent_menu is not None
-        # 「最近使用した項目はありません」という無効なアクションがある
-        assert recent_menu.actions()[0].text() == "最近使用した項目はありません"
+        # 「履歴なし」という無効なアクションがあることを確認
+        assert recent_menu.actions()[0].text() == "(履歴なし)"
         assert not recent_menu.actions()[0].isEnabled()
 
-        # ファイルを開く操作をシミュレート
+        # ファイルを開く
         window.file_handler.add_recent_file(temp_po_file)
         window.ui_manager.update_recent_files_menu(window._open_recent_file)
 
@@ -239,7 +240,8 @@ class TestRecentFiles:
         # クリアアクションを実行
         clear_action = None
         for action in window.ui_manager.recent_files_menu.actions():
-            if action.text() == "履歴をクリア":
+            # アクションテキストを修正 (&C を含む)
+            if action.text() == "履歴をクリア (&C)":
                 clear_action = action
                 break
 
@@ -254,6 +256,6 @@ class TestRecentFiles:
         # メニューが初期状態に戻っていること
         assert (
             window.ui_manager.recent_files_menu.actions()[0].text()
-            == "最近使用した項目はありません"
+            == "(履歴なし)"
         )
         assert not window.ui_manager.recent_files_menu.actions()[0].isEnabled()

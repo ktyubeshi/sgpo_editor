@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 from PySide6.QtWidgets import QApplication, QHeaderView, QTableWidget
 
 from sgpo_editor.gui.table_manager import TableManager
+from sgpo_editor.core.cache_manager import EntryCacheManager
 
 # QApplication インスタンスを作成（テスト用）
 app = QApplication.instance()
@@ -23,7 +24,9 @@ class TestTableManager:
     def setup_method(self):
         """各テストメソッド実行前の準備"""
         self.table = QTableWidget()
-        self.table_manager = TableManager(self.table)
+        # EntryCacheManager のモックを作成して渡す
+        self.mock_cache_manager = MagicMock(spec=EntryCacheManager)
+        self.table_manager = TableManager(self.table, self.mock_cache_manager)
 
         # テスト用に列幅を明示的に設定
         for i in range(6):

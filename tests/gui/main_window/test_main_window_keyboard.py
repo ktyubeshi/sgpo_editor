@@ -9,6 +9,8 @@ from unittest.mock import MagicMock
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QTableWidget
 
+from sgpo_editor.core.cache_manager import EntryCacheManager
+
 
 class TestMainWindowKeyboard(unittest.TestCase):
     """キーボード操作に関するテスト"""
@@ -21,6 +23,9 @@ class TestMainWindowKeyboard(unittest.TestCase):
 
         # エントリエディタのモック
         self.entry_editor = MagicMock()
+
+        # EntryCacheManagerのモック
+        self.mock_cache_manager = MagicMock(spec=EntryCacheManager)
 
         # 現在のPOファイル取得用コールバックのモック
         self.get_current_po = MagicMock()
@@ -42,8 +47,8 @@ class TestMainWindowKeyboard(unittest.TestCase):
         self.event_handler = EventHandler(
             self.table,
             self.entry_editor,
+            self.mock_cache_manager,
             self.get_current_po,
-            self.update_table,
             self.show_status,
         )
 

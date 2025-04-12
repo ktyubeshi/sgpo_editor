@@ -7,7 +7,9 @@ from unittest.mock import MagicMock, patch
 
 from PySide6.QtWidgets import QTableWidget
 
+from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
+from sgpo_editor.models.entry import EntryModel
 
 
 class TestTableManagerUpdate(unittest.TestCase):
@@ -24,7 +26,8 @@ class TestTableManagerUpdate(unittest.TestCase):
         self.column_names = ["位置", "コンテキスト", "原文", "訳文", "状態", "スコア"]
 
         # テーブルマネージャを作成
-        self.table_manager = TableManager(self.table)
+        self.mock_cache_manager = MagicMock(spec=EntryCacheManager)
+        self.table_manager = TableManager(self.table, self.mock_cache_manager)
 
         # 既存のモックをリセット
         self.table.reset_mock()

@@ -7,8 +7,9 @@ import json
 import sys
 from unittest.mock import MagicMock, patch
 
-from PySide6.QtWidgets import QApplication, QTableWidget
+from PySide6.QtWidgets import QApplication, QHeaderView, QTableWidget
 
+from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
 
 # QApplication インスタンスを作成（テスト用）
@@ -23,12 +24,16 @@ class TestTableManagerColumnVisibility:
     def setup_method(self):
         """各テストメソッド実行前の準備"""
         self.table = QTableWidget()
-        self.table_manager = TableManager(self.table)
+        self.table.setColumnCount(6)
+        self.mock_cache_manager = MagicMock(spec=EntryCacheManager)
+        self.table_manager = TableManager(self.table, self.mock_cache_manager)
 
         # テストのために列の表示/非表示状態を初期化
         self.table_manager._hidden_columns = set()
         for i in range(self.table_manager.get_column_count()):
             self.table.setColumnHidden(i, False)
+
+        # テスト用に列幅を明示的に設定
 
     def test_column_visibility_initial_state(self):
         """列の表示/非表示の初期状態のテスト"""

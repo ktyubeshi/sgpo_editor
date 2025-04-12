@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import unittest
 from unittest.mock import MagicMock, patch, call
+import sys
 
 from PySide6.QtWidgets import QTableWidget
 
+from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
+from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.core.constants import TranslationStatus
 
 
 class TestTableGuiSync(unittest.TestCase):
@@ -35,7 +39,8 @@ class TestTableGuiSync(unittest.TestCase):
         self.table.setColumnHidden.side_effect = set_column_hidden_side_effect
 
         # テーブルマネージャを作成
-        self.table_manager = TableManager(self.table)
+        self.mock_cache_manager = MagicMock(spec=EntryCacheManager)
+        self.table_manager = TableManager(self.table, self.mock_cache_manager)
 
         # _hidden_columnsを初期化
         self.table_manager._hidden_columns = set()
@@ -157,7 +162,7 @@ class TestTableGuiSync(unittest.TestCase):
                     self.assertEqual(
                         column_states[i]["internal"],
                         column_states[i]["gui"],
-                        f"列 {i} の状態: 内部={column_states[i]['internal']}, GUI={column_states[i]['gui']}",
+                        f"Column {i} state mismatch"
                     )
 
             # いくつかの列を表示に戻す
@@ -179,7 +184,7 @@ class TestTableGuiSync(unittest.TestCase):
                     self.assertEqual(
                         column_states[i]["internal"],
                         column_states[i]["gui"],
-                        f"列 {i} の状態: 内部={column_states[i]['internal']}, GUI={column_states[i]['gui']}",
+                        f"Column {i} state mismatch after showing"
                     )
 
             # テーブル更新後も同期が保たれるか確認
@@ -210,7 +215,7 @@ class TestTableGuiSync(unittest.TestCase):
                 self.assertEqual(
                     column_states[i]["internal"],
                     column_states[i]["gui"],
-                    f"テーブル更新後、列 {i} の状態: 内部={column_states[i]['internal']}, GUI={column_states[i]['gui']}",
+                    f"Column {i} state mismatch"
                 )
 
 

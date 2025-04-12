@@ -3,10 +3,17 @@
 import pytest
 from pathlib import Path
 
+import pytest_asyncio
 from PySide6.QtWidgets import QApplication, QTableWidget
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
+from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
+from sgpo_editor.gui.widgets.search import SearchWidget
+from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
+from unittest.mock import MagicMock, call, patch
+from tests.core.filter.test_filter_reset_advanced import create_mock_entries
 
 
 @pytest.fixture
@@ -57,15 +64,29 @@ msgstr "テスト"
 
 
 @pytest.mark.integration
-def test_entry_list_status_display(app, sample_po_path):
+@pytest.mark.asyncio  # asyncioを使用するため追加
+async def test_entry_list_status_display(app, sample_po_path):
     """エントリリストのステータス表示統合テスト"""
     # テーブルとテーブルマネージャの用意
-    table_widget = QTableWidget()
-    table_manager = TableManager(table_widget)
+    mock_po = MagicMock()
+    entries = create_mock_entries(4) # 例として4件作成
+
+    mock_po.get_entries_by_keys.return_value = {e.key: e for e in entries}
+    mock_table = MagicMock(spec=QTableWidget)
+    mock_cache_manager = MagicMock(spec=EntryCacheManager)
+    table_manager = TableManager(mock_table, mock_cache_manager, lambda: mock_po)
+
+    # EntryListFacade の初期化引数を修正
+    entry_list = EntryListFacade(
+        mock_table, 
+        table_manager, 
+        MagicMock(spec=SearchWidget), # SearchWidget のモックを追加
+        lambda: mock_po # get_current_po を渡す
+    )
 
     # POファイルの読み込み
-    po_file = ViewerPOFile()
-    po_file.load(sample_po_path)
+    po_file = ViewerPOFileRefactored()
+    await po_file.load(sample_po_path)  # 非同期メソッドのため await を追加
 
     # エントリの取得
     entries = po_file.get_filtered_entries()
@@ -74,12 +95,12 @@ def test_entry_list_status_display(app, sample_po_path):
     table_manager.update_table(entries)
 
     # 行数チェック
-    assert table_widget.rowCount() == 4, (
-        f"Expected 4 rows, got {table_widget.rowCount()}"
+    assert mock_table.rowCount() == 4, (
+        f"Expected 4 rows, got {mock_table.rowCount()}"
     )
 
     # 状態列の内容チェック
-    states = [table_widget.item(i, 4).text() for i in range(table_widget.rowCount())]
+    states = [mock_table.item(i, 4).text() for i in range(mock_table.rowCount())]
 
     # 期待される状態値があるか確認
     assert "未翻訳" in states, "未翻訳状態が表示されていません"

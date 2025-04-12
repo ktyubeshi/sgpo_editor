@@ -4,8 +4,9 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QTableWidget
 from PySide6.QtGui import QColor
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.models.entry import EntryModel
 
@@ -22,7 +23,12 @@ def app():
 @pytest.fixture
 def table_widget(app):
     """テスト用のテーブルウィジェット"""
-    return QTableWidget()
+    table = QTableWidget()
+    table.setRowCount(1)
+    table.setColumnCount(6)
+    mock_cache_manager = MagicMock(spec=EntryCacheManager)
+    table_manager = TableManager(table, mock_cache_manager)
+    return table
 
 
 @pytest.fixture
@@ -200,3 +206,28 @@ def test_table_score_column_visibility(table_widget):
     # スコア列を再度表示する
     table_manager.toggle_column_visibility(5)
     assert not table_widget.isColumnHidden(5), "列表示設定後はスコア列は表示されるべき"
+
+
+@pytest.fixture
+def table_manager(qtbot):
+    table = QTableWidget()
+    # モックオブジェクトを引数に追加
+    mock_cache_manager = MagicMock(spec=EntryCacheManager)
+    mock_sort_callback = MagicMock()
+    manager = TableManager(table, mock_cache_manager, sort_request_callback=mock_sort_callback)
+    qtbot.addWidget(table)
+    return manager, table
+
+
+@pytest.fixture
+def score_table_manager(qtbot):
+    table = QTableWidget()
+    # モックオブジェクトを引数に追加
+    mock_cache_manager = MagicMock(spec=EntryCacheManager)
+    mock_sort_callback = MagicMock()
+    manager = TableManager(table, mock_cache_manager, sort_request_callback=mock_sort_callback)
+    qtbot.addWidget(table)
+    return manager, table
+
+
+# Helper function to create EntryModel with specific score

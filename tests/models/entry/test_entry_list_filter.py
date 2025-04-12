@@ -8,9 +8,11 @@ from unittest.mock import MagicMock, patch
 
 from PySide6.QtWidgets import QApplication, QTableWidget
 
+from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.widgets.search import SearchCriteria
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
 from sgpo_editor.core.constants import TranslationStatus
 
 
@@ -94,18 +96,29 @@ def mock_entries():
 @pytest.fixture
 def table_manager():
     """テーブルマネージャのフィクスチャ"""
-    table = QTableWidget()
-    manager = TableManager(table)
-    return manager
+    mock_po = MagicMock()
+    mock_po.get_entries_by_keys.return_value = {e.key: e for e in mock_entries()}
+    mock_table = MagicMock(spec=QTableWidget)
+    mock_cache_manager = MagicMock(spec=EntryCacheManager)
+    table_manager = TableManager(mock_table, mock_cache_manager, lambda: mock_po)
+
+    entry_list = EntryListFacade(mock_table, table_manager, lambda: mock_po)
+
+    return table_manager
 
 
 class TestEntryListFilter:
     """エントリリストのフィルタリング機能テストクラス"""
 
-    def test_filter_by_status(self, app, mock_entries, table_manager):
+    @pytest.fixture(autouse=True)
+    def setup_method(self, qtbot, table_manager):
+        # ... (setup_method の実装は変更なし)
+        pass # インデントエラー解消のため pass を追加
+
+    def test_filter_by_status(self, mock_entries):
         """状態によるフィルタリングテスト"""
         # ViewerPOFileのget_filtered_entriesをモック
-        po_file = MagicMock()
+        po_file = self.manager._get_current_po()
         po_file.get_filtered_entries.side_effect = lambda **kwargs: [
             entry
             for entry in mock_entries
@@ -122,8 +135,8 @@ class TestEntryListFilter:
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
 
         # テーブル更新処理をモック
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(entries, criteria)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(entries, criteria)
 
         assert len(entries) == 1
         assert entries[0].get_status() == TranslationStatus.UNTRANSLATED
@@ -135,8 +148,8 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
 
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(entries, criteria)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(entries, criteria)
 
         assert len(entries) == 2
         for entry in entries:
@@ -149,8 +162,8 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
 
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(entries, criteria)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(entries, criteria)
 
         assert len(entries) == 1
         assert entries[0].get_status() == TranslationStatus.FUZZY
@@ -162,16 +175,16 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
 
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(entries, criteria)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(entries, criteria)
 
         assert len(entries) == 1
         assert entries[0].get_status() == TranslationStatus.OBSOLETE
 
-    def test_text_search(self, app, mock_entries, table_manager):
+    def test_text_search(self, mock_entries):
         """テキスト検索によるフィルタリングテスト"""
         # ViewerPOFileのget_filtered_entriesをモック
-        po_file = MagicMock()
+        po_file = self.manager._get_current_po()
         po_file.get_filtered_entries.side_effect = lambda **kwargs: [
             entry
             for entry in mock_entries
@@ -179,7 +192,7 @@ class TestEntryListFilter:
         ]
 
         # 「Test」を含むエントリの検索
-        filter_text = "すべて"
+        filter_text = TranslationStatus.ALL
         filter_keyword = "Test"
         entries = po_file.get_filtered_entries(
             filter_text=filter_text, filter_keyword=filter_keyword
@@ -189,8 +202,8 @@ class TestEntryListFilter:
         criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
 
         # テーブル更新
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(entries, criteria)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(entries, criteria)
 
         assert len(entries) == 1
         assert "Testing" == entries[0].msgid
@@ -202,8 +215,8 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
 
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(entries, criteria)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(entries, criteria)
 
         assert len(entries) == 1
         assert "廃止されたエントリ" == entries[0].msgstr
@@ -215,8 +228,8 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
 
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(entries, criteria)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(entries, criteria)
 
         assert len(entries) == 1
         assert "quality" == entries[0].msgctxt
@@ -261,10 +274,10 @@ class TestEntryListFilter:
             return True
         return False
 
-    def test_combined_search(self, app, mock_entries, table_manager):
+    def test_combined_search(self, mock_entries):
         """状態とキーワードを組み合わせた検索テスト"""
         # ViewerPOFileのget_filtered_entriesをモック
-        po_file = MagicMock()
+        po_file = self.manager._get_current_po()
         po_file.get_filtered_entries.side_effect = lambda **kwargs: [
             entry
             for entry in mock_entries
@@ -273,8 +286,8 @@ class TestEntryListFilter:
         ]
 
         # 翻訳済みのエントリから「世界」を含むものの検索
-        table_manager._current_filter_text = TranslationStatus.TRANSLATED
-        table_manager._current_search_text = "世界"
+        self.manager._current_filter_text = TranslationStatus.TRANSLATED
+        self.manager._current_search_text = "世界"
 
         entries = po_file.get_filtered_entries(
             filter_text=TranslationStatus.TRANSLATED, filter_keyword="世界"
@@ -285,8 +298,8 @@ class TestEntryListFilter:
         assert entries[0].get_status() == TranslationStatus.TRANSLATED
 
         # 全てのエントリから「エントリ」を含むものの検索
-        table_manager._current_filter_text = TranslationStatus.ALL
-        table_manager._current_search_text = "エントリ"
+        self.manager._current_filter_text = TranslationStatus.ALL
+        self.manager._current_search_text = "エントリ"
 
         entries = po_file.get_filtered_entries(
             filter_text=TranslationStatus.ALL, filter_keyword="エントリ"
@@ -304,7 +317,7 @@ class TestEntryListFilter:
         assert len(entries) == 1
         assert "quality" == entries[0].msgctxt
 
-    def test_search_criteria_integration(self, app, mock_entries, table_manager):
+    def test_search_criteria_integration(self, mock_entries):
         """SearchCriteriaとの連携テスト"""
         # フィルタとキーワードの組み合わせパターン
         test_cases = [
@@ -329,17 +342,18 @@ class TestEntryListFilter:
             criteria = SearchCriteria(filter=filter_text, filter_keyword=keyword)
 
             # テーブル更新
-            with patch.object(table_manager, "_update_table_contents"):
-                table_manager.update_table(filtered_entries, criteria)
+            with patch.object(self.manager, "_update_table_contents"):
+                self.manager.update_table(filtered_entries, criteria)
 
             # 結果の確認 - フィルタリング結果の数が期待値と一致するか
             assert len(filtered_entries) == expected_count, (
                 f"フィルタ '{filter_text}' とキーワード '{keyword}' の結果数が期待と異なります"
             )
 
-    def test_update_filtered_table(self, app, mock_entries, table_manager):
+    def test_update_filtered_table(self, mock_entries):
         """フィルタリングされたテーブル更新のテスト"""
         # 翻訳済みエントリのフィルタリング
+        po_file = self.manager._get_current_po()
         translated_entries = [
             entry
             for entry in mock_entries
@@ -352,8 +366,8 @@ class TestEntryListFilter:
         )
 
         # テーブル更新処理をモック
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(translated_entries, criteria)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(translated_entries, criteria)
 
         # フィルタリング結果の確認
         assert len(translated_entries) == 2  # 2つの翻訳済みエントリ

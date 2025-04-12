@@ -11,6 +11,7 @@ from PySide6.QtGui import QAction
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.ui_setup import UIManager
 from sgpo_editor.gui.main_window import MainWindow
+from sgpo_editor.core.cache_manager import EntryCacheManager
 
 
 class TestColumnVisibility(unittest.TestCase):

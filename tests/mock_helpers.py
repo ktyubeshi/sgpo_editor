@@ -373,7 +373,7 @@ def setup_mock_po_file(monkeypatch):
     mock_po_file.save = MagicMock(return_value=True)
 
     monkeypatch.setattr(
-        "sgpo_editor.models.viewer_po_file.ViewerPOFile",
+        "sgpo_editor.core.viewer_po_file_refactored.ViewerPOFileRefactored",
         lambda *args, **kwargs: mock_po_file,
     )
 

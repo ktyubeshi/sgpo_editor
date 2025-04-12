@@ -3,13 +3,15 @@
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 
 from PySide6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
 from PySide6.QtCore import Qt
 
+from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
 
 
 @pytest.fixture
@@ -24,188 +26,197 @@ def app():
 @pytest.fixture
 def mock_entries():
     """モックエントリのリスト"""
-    entries = []
-
-    for i in range(5):
-        entry = EntryModel(
-            position=i,
-            msgid=f"msgid_{i}",
-            msgstr=f"msgstr_{i}" if i % 2 == 0 else "",
-            msgctxt=f"context_{i}",
-            flags=["fuzzy"] if i == 2 else [],
-            obsolete=(i == 4),
-        )
-        entry.score = 90 - (i * 10) if i < 4 else None
-        entries.append(entry)
-
-    return entries
+    return [
+        EntryModel(key="key_0", position=0, msgid="Hello", msgstr="こんにちは", msgctxt="greeting", obsolete=False, fuzzy=False, flags=[], metadata={}),
+        EntryModel(key="key_1", position=1, msgid="World", msgstr="世界", msgctxt="noun", obsolete=False, fuzzy=False, flags=[], metadata={}),
+        EntryModel(key="key_2", position=2, msgid="Test", msgstr="", msgctxt="verb", obsolete=False, fuzzy=True, flags=['fuzzy'], metadata={}),
+        EntryModel(key="key_3", position=3, msgid="Obsolete", msgstr="廃止", msgctxt="", obsolete=True, fuzzy=False, flags=[], metadata={}),
+        EntryModel(key="key_4", position=4, msgid="NoScore", msgstr="未翻訳", msgctxt="quality", obsolete=False, fuzzy=False, flags=[], metadata={}),
+    ]
 
 
 @pytest.fixture
-def table_manager():
+def table_manager(qtbot):
     """テーブルマネージャのフィクスチャ"""
     table = QTableWidget()
-    table.setColumnCount(6)  # 6列（位置、コンテキスト、原文、訳文、状態、スコア）
-    table.setHorizontalHeaderLabels(
-        ["位置", "コンテキスト", "原文", "訳文", "状態", "スコア"]
-    )
-
-    # TableManagerの初期化
-    manager = TableManager(table)
-
+    mock_cache_manager = MagicMock(spec=EntryCacheManager)
+    mock_sort_callback = MagicMock()
+    # TableManager インスタンスの作成
+    # get_current_poはNoneを返すように設定
+    manager = TableManager(table, mock_cache_manager, get_current_po=lambda: None, sort_request_callback=mock_sort_callback)
+    # 初期化中にエラーが発生しないことを確認
+    assert manager is not None
+    qtbot.addWidget(table)
     return manager
 
 
 class TestEntryListEvents:
     """エントリリストのイベント処理テストクラス"""
 
-    def test_on_selection_changed(self, app, mock_entries, table_manager):
+    @pytest.fixture(autouse=True)
+    def setup_method(self, qtbot, table_manager):
+        self.manager = table_manager
+        self.qtbot = qtbot
+        # モックオブジェクトを初期化
+        self.manager.on_entry_selected = MagicMock()
+        self.manager.on_cell_double_clicked = MagicMock()
+        # 実際の_display_entriesと_entry_cacheは使用しない
+        self.manager._display_entries = []
+        self.manager._entry_cache = {}
+
+    def test_on_selection_changed(self, mock_entries):
         """選択変更イベントのテスト"""
         # コールバック関数をモック
         callback_mock = MagicMock()
-        table_manager.on_entry_selected = callback_mock
+        self.manager.on_entry_selected = callback_mock
 
         # テーブル更新処理をモック
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(mock_entries)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(mock_entries)
 
         # テーブルに必要な行数を設定
-        table_manager.table.setRowCount(len(mock_entries))
+        self.manager.table.setRowCount(len(mock_entries))
 
         # 各エントリのキーを設定
-        for i, entry in enumerate(mock_entries):
-            key = f"key_{i}"
+        keys = [f"key_{i}" for i in range(len(mock_entries))]
+        for i, key in enumerate(keys):
             item = QTableWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, key)
-            table_manager.table.setItem(i, 0, item)
+            self.manager.table.setItem(i, 0, item)
 
         # _display_entriesと_entry_cacheをモック
-        display_entries = {f"key_{i}": i for i in range(len(mock_entries))}
+        display_entries = keys
         entry_cache = {f"key_{i}": entry for i, entry in enumerate(mock_entries)}
 
+        # モックオブジェクトをテーブルマネージャに設定
+        current = MagicMock()
+        current.row.return_value = 2
+        previous = MagicMock()
+        previous.row.return_value = 1
+
         with (
-            patch.object(table_manager, "_display_entries", display_entries),
-            patch.object(table_manager, "_entry_cache", entry_cache),
+            patch.object(self.manager, "_display_entries", display_entries),
+            patch.object(self.manager, "_entry_cache", entry_cache),
         ):
             # 行選択イベントをシミュレート
-            current = MagicMock()
-            current.row.return_value = 2
-            previous = MagicMock()
-            previous.row.return_value = 0
+            # 選択モデルをシミュレートするための準備
+            selection_model_mock = MagicMock()
+            selection_model_mock.selectedRows.return_value = [current] # 選択された行を返すように設定
 
-            # 選択行のキーを取得する処理をモック
-            with patch.object(table_manager, "get_key_at_row", return_value="key_2"):
-                # _on_selection_changedメソッドが実際に存在するか確認し、存在しない場合は代替テスト
-                if hasattr(table_manager, "_on_selection_changed"):
-                    table_manager._on_selection_changed(current, previous)
+            # テーブルウィジェットの選択モデルをモックに置き換え
+            with patch.object(self.manager.table, "selectionModel", return_value=selection_model_mock):
 
-                    # コールバックが呼ばれたことを確認
-                    callback_mock.assert_called_once()
-                    # 引数の確認
-                    args, _ = callback_mock.call_args
-                    assert len(args) == 1
-                    assert args[0] is mock_entries[2]  # 3番目のエントリが選択された
-                else:
-                    # 代替テスト: 直接行選択をシミュレート
-                    table_manager.select_row(2)
+                # 選択行のキーを取得する処理をモック
+                with patch.object(self.manager, "get_key_at_row", return_value="key_2"):
+                    # _on_selection_changedメソッドが実際に存在するか確認し、存在しない場合は代替テスト
+                    if hasattr(self.manager, "_on_selection_changed"):
+                        self.manager._on_selection_changed(current, previous)
 
-                    # 選択行のキーを取得して対応するエントリを取得
-                    key = table_manager.get_key_at_row(2)
-                    assert key == "key_2"
-
-                    # 選択行に対応するエントリをコールバックに渡す
-                    if key in entry_cache:
-                        table_manager.on_entry_selected(entry_cache[key])
+                        # コールバックが呼ばれたことを確認
                         callback_mock.assert_called_once()
                         args, _ = callback_mock.call_args
                         assert len(args) == 1
-                        assert args[0] is mock_entries[2]
+                        assert args[0] is mock_entries[2]  # 3番目のエントリ
+                    else:
+                        # 代替テスト: 直接行選択をシミュレート
+                        self.manager.select_row(2)
 
-    def test_on_header_clicked(self, app, mock_entries, table_manager):
+                        # 選択行のキーを取得して対応するエントリを取得
+                        key = self.manager.get_key_at_row(2)
+                        assert key == "key_2"
+
+                        # 選択行に対応するエントリをコールバックに渡す
+                        if key in entry_cache:
+                            self.manager.on_entry_selected(entry_cache[key])
+                            callback_mock.assert_called_once()
+                            args, _ = callback_mock.call_args
+                            assert len(args) == 1
+                            assert args[0] is mock_entries[2]
+
+    def test_on_header_clicked(self, mock_entries):
         """ヘッダークリックイベントのテスト"""
         # テーブル更新処理をモック
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(mock_entries)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(mock_entries)
 
         # ヘッダークリックイベントをシミュレート
         logical_index = 2  # 原文列
 
         # 現在のソート状態を確認
-        initial_sort_column = table_manager._current_sort_column
-        initial_sort_order = table_manager._current_sort_order
+        initial_sort_column = self.manager._current_sort_column
+        initial_sort_order = self.manager._current_sort_order
 
         # ヘッダークリックイベントを発生させる
-        table_manager._on_header_clicked(logical_index)
+        self.manager._on_header_clicked(logical_index)
 
         # ソート状態が更新されたことを確認
-        assert table_manager._current_sort_column == logical_index
+        assert self.manager._current_sort_column == logical_index
 
         # 同じ列を再度クリックした場合、ソート順が反転することを確認
-        current_sort_order = table_manager._current_sort_order
-        table_manager._on_header_clicked(logical_index)
+        current_sort_order = self.manager._current_sort_order
+        self.manager._on_header_clicked(logical_index)
 
         # ソート順が反転したことを確認
         if current_sort_order == Qt.SortOrder.AscendingOrder:
-            assert table_manager._current_sort_order == Qt.SortOrder.DescendingOrder
+            assert self.manager._current_sort_order == Qt.SortOrder.DescendingOrder
         else:
-            assert table_manager._current_sort_order == Qt.SortOrder.AscendingOrder
+            assert self.manager._current_sort_order == Qt.SortOrder.AscendingOrder
 
-    def test_on_item_double_clicked(self, app, mock_entries, table_manager):
+    def test_on_item_double_clicked(self, mock_entries):
         """アイテムダブルクリックイベントのテスト"""
         # ダブルクリックコールバック関数をモック
         callback_mock = MagicMock()
-        table_manager.on_cell_double_clicked = callback_mock
+        self.manager.on_cell_double_clicked = callback_mock
 
         # テーブル更新処理をモック
-        with patch.object(table_manager, "_update_table_contents"):
-            table_manager.update_table(mock_entries)
+        with patch.object(self.manager, "_update_table_contents"):
+            self.manager.update_table(mock_entries)
 
         # テーブルに必要な行数を設定
-        table_manager.table.setRowCount(len(mock_entries))
+        self.manager.table.setRowCount(len(mock_entries))
 
         # 各エントリのキーを設定
-        for i, entry in enumerate(mock_entries):
-            key = f"key_{i}"
+        keys = [f"key_{i}" for i in range(len(mock_entries))]
+        for i, key in enumerate(keys):
             item = QTableWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, key)
-            table_manager.table.setItem(i, 0, item)
+            self.manager.table.setItem(i, 0, item)
 
         # _display_entriesと_entry_cacheをモック
-        display_entries = {f"key_{i}": i for i in range(len(mock_entries))}
+        display_entries = keys
         entry_cache = {f"key_{i}": entry for i, entry in enumerate(mock_entries)}
 
         with (
-            patch.object(table_manager, "_display_entries", display_entries),
-            patch.object(table_manager, "_entry_cache", entry_cache),
+            patch.object(self.manager, "_display_entries", display_entries),
+            patch.object(self.manager, "_entry_cache", entry_cache),
         ):
             # セルダブルクリックイベントをシミュレート
-            item = MagicMock()
-            item.row.return_value = 1
-            item.column.return_value = 3  # 訳文列
+            row = 1
+            column = 3
+            item = self.manager.table.item(row, 0)
 
             # 選択行のキーを取得する処理をモック
-            with patch.object(table_manager, "get_key_at_row", return_value="key_1"):
+            with patch.object(self.manager, "get_key_at_row", return_value="key_1"):
                 # _on_item_double_clickedメソッドが実際に存在するか確認し、存在しない場合は代替テスト
-                if hasattr(table_manager, "_on_item_double_clicked"):
-                    table_manager._on_item_double_clicked(item)
+                if hasattr(self.manager, "_on_item_double_clicked"):
+                    self.manager._on_item_double_clicked(item)
 
                     # コールバックが呼ばれたことを確認
                     callback_mock.assert_called_once()
-                    # 引数の確認
                     args, _ = callback_mock.call_args
                     assert len(args) == 2
-                    assert args[0] is mock_entries[1]  # 2番目のエントリが選択された
-                    assert args[1] == 3  # 訳文列がダブルクリックされた
+                    assert args[0] is mock_entries[1] # 2番目のエントリ
+                    assert args[1] == column
                 else:
-                    # 代替テスト: 直接ダブルクリックをシミュレート
-                    # 選択行のキーを取得して対応するエントリを取得
-                    key = "key_1"
+                    # 代替テスト: 直接コールバックを呼び出す
+                    key = self.manager.get_key_at_row(row)
+                    assert key == "key_1"
 
                     # 選択行に対応するエントリをコールバックに渡す
                     if key in entry_cache:
-                        table_manager.on_cell_double_clicked(entry_cache[key], 3)
+                        self.manager.on_cell_double_clicked(entry_cache[key], column)
                         callback_mock.assert_called_once()
                         args, _ = callback_mock.call_args
                         assert len(args) == 2
                         assert args[0] is mock_entries[1]
-                        assert args[1] == 3
+                        assert args[1] == column

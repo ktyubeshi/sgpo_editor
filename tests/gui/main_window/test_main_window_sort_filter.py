@@ -4,8 +4,14 @@ from __future__ import annotations
 
 import gc
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+import sys
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QTableWidget
+
+from sgpo_editor.core.cache_manager import EntryCacheManager
+from sgpo_editor.gui.main_window import MainWindow
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.widgets.search import SearchCriteria
 
@@ -101,12 +107,11 @@ class TestMainWindowSortFilter(unittest.TestCase):
         self.mock_po.get_filtered_entries.reset_mock()
 
         # ヘッダークリックイベントをシミュレート
-        self.table_manager._on_header_clicked(2)  # 2列目（msgid）をクリック
+        self.main_window._handle_sort_request("msgid", "ASC")
 
-        # フィルタ条件が保持されていることを確認
-        self.mock_po.get_filtered_entries.assert_called_once_with(
-            filter_text=self.filter_text, filter_keyword=self.search_text
-        )
+        # set_sort_criteria と _update_table が呼ばれたことを確認
+        self.mock_po.set_sort_criteria.assert_called_once_with("msgid", "ASC")
+        self.main_window._update_table.assert_called_once()
 
 
 if __name__ == "__main__":

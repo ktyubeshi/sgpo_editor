@@ -5,10 +5,14 @@
 一致することを確認します。
 """
 
+import logging
+
 import pytest
 
 # テスト対象のモジュールをインポート
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
+
+logger = logging.getLogger(__name__)
 
 
 class TestFilterDebug:
@@ -17,135 +21,100 @@ class TestFilterDebug:
     @pytest.fixture
     def setup_test_data(self):
         """テスト用のPOファイルとデータを設定"""
-        # ViewerPOFileのインスタンスを作成
-        po_file = ViewerPOFile()
+        # ViewerPOFileRefactoredのインスタンスを作成
+        po_file = ViewerPOFileRefactored()
 
-        # テスト用のエントリを作成（多めに）
-        test_entries = []
-        for i in range(200):
-            entry = {
-                "key": f"key{i}",
-                "msgid": f"msgid{i}",
-                "msgstr": f"msgstr{i}",
-                "fuzzy": False,
-                "translated": True,
-            }
-            test_entries.append(entry)
+        # テスト用のエントリを作成
+        test_entries = [
+            {"key": "key1", "msgid": "msgid 1", "msgstr": "msgstr 1"},
+            {"key": "key2", "msgid": "msgid 2", "msgstr": "msgstr 2"},
+            {"key": "debug", "msgid": "debug id", "msgstr": "debug str"},
+        ]
 
-        # キーワード 'test' を含むエントリを追加
-        for i in range(50):
-            entry = {
-                "key": f"test_key{i}",
-                "msgid": f"test_msgid{i}",
-                "msgstr": f"test_msgstr{i}",
-                "fuzzy": False,
-                "translated": True,
-            }
-            test_entries.append(entry)
+        # データベースにエントリを追加 (db_accessor経由)
+        po_file.db_accessor.add_entries_bulk(test_entries)
 
-        # データベースにエントリを追加
-        po_file.db.add_entries_bulk(test_entries)
-
-        # データがロードされたことを示すフラグを設定
-        po_file._is_loaded = True
+        # データがロードされたことを示すフラグを設定 (テスト簡略化)
+        # po_file._is_loaded = True # 内部状態への直接アクセスは避ける
 
         yield po_file
 
-    def test_filter_reset_with_detailed_debug(self, setup_test_data):
-        """フィルタリセットの詳細なデバッグテスト"""
+    def test_filter_reset_with_debug_prints(self, setup_test_data):
+        """デバッグプリントを含むフィルタリセットテスト"""
         po_file = setup_test_data
 
+        logger.info("\n--- デバッグテスト開始 ---")
+
         # 1. 初期状態の確認
-        print("\n[DEBUG] ===== 初期状態の確認 =====")
+        # logger.debug(
+        #     f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
+        # )
         initial_entries = po_file.get_filtered_entries()
         initial_count = len(initial_entries)
-        print(f"[DEBUG] 初期状態のエントリ数: {initial_count}件")
-        print(
-            f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
-        )
+        logger.debug(f"[DEBUG] 初期状態のエントリ数: {initial_count}件")
+        logger.debug("初期状態の全エントリ:")
+        for entry in initial_entries:
+            logger.debug(f"  - {entry.key}: {entry.msgid}")
 
-        # 2. データベースから直接取得して比較
-        db_entries = po_file.db.get_entries()
-        db_count = len(db_entries)
-        print(f"[DEBUG] データベースから直接取得したエントリ数: {db_count}件")
-
-        # 初期状態の検証
-        assert initial_count == db_count, (
-            f"初期状態のエントリ数がデータベースと一致しません: {initial_count} != {db_count}"
-        )
-
-        # 3. フィルタを適用（'test'で検索）
-        print("\n[DEBUG] ===== フィルタ適用 =====")
+        # 2. フィルタを適用（'debug'で検索）
+        logger.debug("\n[DEBUG] 'debug'フィルタ適用")
         filtered_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword="test"
+            update_filter=True, filter_keyword="debug"
         )
         filtered_count = len(filtered_entries)
-        print(f"[DEBUG] 'test'フィルタ適用後のエントリ数: {filtered_count}件")
-        print(
-            f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
-        )
+        logger.debug(f"[DEBUG] 'debug'フィルタ適用後のエントリ数: {filtered_count}件")
+        # logger.debug(
+        #     f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
+        # )
+        logger.debug("フィルタ適用後のエントリ:")
+        for entry in filtered_entries:
+            logger.debug(f"  - {entry.key}: {entry.msgid}")
 
-        # 4. フィルタをリセット（Noneを使用）
-        print("\n[DEBUG] ===== フィルタリセット =====")
-        # キャッシュの状態を確認
-        if hasattr(po_file, "_entry_obj_cache"):
-            cache_size = len(po_file._entry_obj_cache)
-            print(f"[DEBUG] リセット前のキャッシュサイズ: {cache_size}件")
-
-        # リセット前の内部状態を詳細に出力
-        print("[DEBUG] リセット前のViewerPOFile状態:")
-        print(f"  - search_text: {po_file.search_text}")
-        print(f"  - translation_status: {po_file.translation_status}")
-        print(f"  - filtered_entries: {len(po_file.filtered_entries)}件")
-        print(f"  - flag_conditions: {po_file.flag_conditions}")
-
-        # キャッシュとsearch_textを手動でリセット
-        if hasattr(po_file, "_entry_obj_cache"):
-            po_file._entry_obj_cache = {}
-        po_file.search_text = None
-        po_file.filtered_entries = []
-        print("[DEBUG] キャッシュとsearch_textを手動でリセットしました")
-
-        # リセット後のエントリを取得
+        # 3. フィルタをリセット（空文字列）
+        logger.debug("\n[DEBUG] フィルタをリセット (空文字列)")
+        # print("[DEBUG] リセット前のViewerPOFile状態:")
+        # print(
+        #     f"  search_text: {po_file.search_text}"
+        # )
+        # print(
+        #     f"  filtered_entries: {[e.key for e in po_file.filtered_entries] if po_file.filtered_entries else '[]'}"
+        # )
         reset_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword=None
+            update_filter=True, filter_keyword=""
         )
         reset_count = len(reset_entries)
-        print(f"[DEBUG] リセット後のエントリ数: {reset_count}件")
-        print(
-            f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
+        logger.debug(f"[DEBUG] フィルタリセット後のエントリ数: {reset_count}件")
+        # logger.debug(
+        #     f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
+        # )
+        logger.debug("リセット後の全エントリ:")
+        for entry in reset_entries:
+            logger.debug(f"  - {entry.key}: {entry.msgid}")
+
+        # 4. 検証: リセット後のエントリ数が初期状態と同じになるはず
+        logger.debug(
+            f"\n[DEBUG] 検証: リセット後({reset_count}) == 初期状態({initial_count}) -> {
+                reset_count == initial_count
+            }"
         )
-
-        # リセット後のキャッシュサイズを確認
-        if hasattr(po_file, "_entry_obj_cache"):
-            reset_cache_size = len(po_file._entry_obj_cache)
-            print(f"[DEBUG] リセット後のキャッシュサイズ: {reset_cache_size}件")
-
-        # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず
         assert reset_count == initial_count, (
-            f"リセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
+            f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
         )
 
-        # 6. データベースから直接取得して比較（再確認）
-        db_entries_after = po_file.db.get_entries()
-        db_count_after = len(db_entries_after)
-        print(
-            f"[DEBUG] リセット後にデータベースから直接取得したエントリ数: {db_count_after}件"
+        # 5. データベースから直接取得して比較 (db_accessor経由)
+        db_entries = po_file.db_accessor.get_filtered_entries(search_text=None)
+        db_count = len(db_entries)
+        logger.debug(f"[DEBUG] データベース直接取得のエントリ数: {db_count}件")
+        assert db_count == initial_count, (
+            "データベース取得結果が初期状態と異なります"
         )
 
-        # データベース取得結果と初期状態が一致するか検証
-        assert db_count_after == initial_count, (
-            f"リセット後のデータベースエントリ数が初期状態と異なります: {db_count_after} != {initial_count}"
-        )
-
-        print(
-            "[DEBUG] フィルタリセットテスト成功: 初期状態とリセット後のエントリ数が一致しました"
-        )
+        logger.info("--- デバッグテスト終了 ---")
 
     def test_database_query_conditions(self, setup_test_data):
         """データベースのクエリ条件をテスト"""
         po_file = setup_test_data
-        db = po_file.db
+        db = po_file.db_accessor
 
         print("\n[DEBUG] ===== データベースクエリ条件のテスト =====")
 

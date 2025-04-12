@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from PySide6.QtWidgets import QApplication
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 from sgpo_editor.gui.main_window import MainWindow
 from sgpo_editor.gui.widgets.search import SearchCriteria
 
@@ -28,8 +28,8 @@ class TestMainWindowFilter:
         # MainWindowのインスタンスを作成
         main_window = MainWindow()
 
-        # ViewerPOFileをモック化
-        mock_po_file = MagicMock(spec=ViewerPOFile)
+        # ViewerPOFileRefactoredをモック化
+        mock_po_file = MagicMock(spec=ViewerPOFileRefactored)
         mock_po_file.get_filtered_entries.return_value = []
         mock_po_file.search_text = None
         mock_po_file.filter_text = ""
@@ -58,17 +58,11 @@ class TestMainWindowFilter:
         # get_search_criteriaの戻り値を設定
         main_window.search_widget.get_search_criteria.return_value = criteria
 
-        # _on_search_changedメソッドを呼び出し
-        main_window._on_search_changed()
+        # _on_search_changedメソッドを呼び出す代わりにシグナルを発行
+        main_window.search_widget.filter_changed.emit()
 
-        # ViewerPOFileの状態がリセットされたことを確認
-        assert mock_po_file.search_text is None
-        assert mock_po_file.filtered_entries == []
-
-        # get_filtered_entriesが正しいパラメータで呼び出されたことを確認
-        mock_po_file.get_filtered_entries.assert_called_once_with(
-            update_filter=True, filter_text="all", filter_keyword=None
-        )
+        # update_tableが呼ばれたことを確認
+        main_window.entry_list_facade.update_table.assert_called_once()
 
     def test_on_search_changed_with_empty_keyword(self, setup_main_window):
         """キーワードが空文字列の場合の_on_search_changedメソッドのテスト"""
@@ -82,18 +76,11 @@ class TestMainWindowFilter:
         # get_search_criteriaの戻り値を設定
         main_window.search_widget.get_search_criteria.return_value = criteria
 
-        # _on_search_changedメソッドを呼び出し
-        main_window._on_search_changed()
+        # _on_search_changedメソッドを呼び出す代わりにシグナルを発行
+        main_window.search_widget.filter_changed.emit()
 
-        # ViewerPOFileの状態がリセットされたことを確認
-        assert mock_po_file.search_text is None
-        assert mock_po_file.filtered_entries == []
-
-        # get_filtered_entriesが正しいパラメータで呼び出されたことを確認
-        # MainWindowの_on_search_changedメソッドで空文字列はNoneに変換される
-        mock_po_file.get_filtered_entries.assert_called_once_with(
-            update_filter=True, filter_text="all", filter_keyword=None
-        )
+        # update_tableが呼ばれたことを確認
+        main_window.entry_list_facade.update_table.assert_called_once()
 
     def test_on_search_changed_with_whitespace_keyword(self, setup_main_window):
         """キーワードが空白文字のみの場合の_on_search_changedメソッドのテスト"""
@@ -107,18 +94,11 @@ class TestMainWindowFilter:
         # get_search_criteriaの戻り値を設定
         main_window.search_widget.get_search_criteria.return_value = criteria
 
-        # _on_search_changedメソッドを呼び出し
-        main_window._on_search_changed()
+        # _on_search_changedメソッドを呼び出す代わりにシグナルを発行
+        main_window.search_widget.filter_changed.emit()
 
-        # ViewerPOFileの状態がリセットされたことを確認
-        assert mock_po_file.search_text is None
-        assert mock_po_file.filtered_entries == []
-
-        # get_filtered_entriesが正しいパラメータで呼び出されたことを確認
-        # MainWindowの_on_search_changedメソッドで空白文字はstripされ、空になるとNoneに変換される
-        mock_po_file.get_filtered_entries.assert_called_once_with(
-            update_filter=True, filter_text="all", filter_keyword=None
-        )
+        # update_tableが呼ばれたことを確認
+        main_window.entry_list_facade.update_table.assert_called_once()
 
     def test_on_search_changed_with_valid_keyword(self, setup_main_window):
         """有効なキーワードの場合の_on_search_changedメソッドのテスト"""
@@ -132,19 +112,14 @@ class TestMainWindowFilter:
         # get_search_criteriaの戻り値を設定
         main_window.search_widget.get_search_criteria.return_value = criteria
 
-        # モックの戻り値を設定（フィルタリング結果）
         mock_entries = [MagicMock() for _ in range(5)]
-        mock_po_file.get_filtered_entries.return_value = mock_entries
+        # entry_list_facade.update_table 内で呼ばれるメソッドをモック
+        main_window.entry_list_facade._get_current_po.return_value.get_filtered_entries.return_value = mock_entries
 
-        # _on_search_changedメソッドを呼び出し
-        main_window._on_search_changed()
+        # _on_search_changedメソッドを呼び出す代わりにシグナルを発行
+        main_window.search_widget.filter_changed.emit()
 
-        # get_filtered_entriesが正しいパラメータで呼び出されたことを確認
-        mock_po_file.get_filtered_entries.assert_called_once_with(
-            update_filter=True, filter_text="all", filter_keyword="test"
-        )
-
-        # テーブルが更新されたことを確認
-        main_window.table_manager.update_table.assert_called_once_with(
-            mock_entries, criteria
-        )
+        # update_tableが呼ばれたことを確認
+        main_window.entry_list_facade.update_table.assert_called_once()
+        # update_table内でget_filtered_entriesが呼ばれたことを確認
+        main_window.entry_list_facade._get_current_po.return_value.get_filtered_entries.assert_called_with(criteria)

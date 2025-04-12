@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import MagicMock
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 
 
 class TestViewerPOFileStats(unittest.TestCase):
@@ -11,9 +11,9 @@ class TestViewerPOFileStats(unittest.TestCase):
 
     def setUp(self):
         """テスト前の準備"""
-        self.viewer = ViewerPOFile()
-        # データベースをモック化
-        self.viewer.db = MagicMock()
+        # db_accessor のモックをコンストラクタに渡す
+        self.mock_db_accessor = MagicMock()
+        self.viewer = ViewerPOFileRefactored(db_accessor=self.mock_db_accessor)
 
     def test_get_stats_has_progress_attribute(self):
         """get_statsメソッドが返すオブジェクトにprogress属性があることを確認"""

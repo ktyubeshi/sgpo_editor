@@ -6,7 +6,7 @@ import logging
 import pytest
 import pytest_asyncio
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
+from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 from sgpo_editor.core.constants import TranslationStatus
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 @pytest_asyncio.fixture
 async def test_po_file(tmp_path):
     """テスト用のPOファイルを作成する"""
-    po_file = ViewerPOFile()
+    po_file = ViewerPOFileRefactored()
     file_path = tmp_path / "test.po"
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(
@@ -45,14 +45,13 @@ msgstr ""
         )
     await po_file.load(file_path)
     
-    po_file._force_filter_update = True
     return po_file
 
 
 @pytest.mark.asyncio
 async def test_load_po_file(tmp_path):
     """POファイルを読み込めることを確認する"""
-    po_file = ViewerPOFile()
+    po_file = ViewerPOFileRefactored()
     file_path = tmp_path / "test.po"
     with open(file_path, "w", encoding="utf-8") as f:
         f.write('msgid "test"\nmsgstr "テスト"')
@@ -63,11 +62,10 @@ async def test_load_po_file(tmp_path):
 @pytest.mark.asyncio
 async def test_get_entries(test_po_file):
     """エントリを取得できることを確認する"""
-    test_po_file._force_filter_update = True
-    test_po_file.translation_status = TranslationStatus.ALL
-    
     # get_filtered_entriesを使用してエントリを取得
-    entries = test_po_file.get_filtered_entries(update_filter=True)
+    entries = test_po_file.get_filtered_entries(
+        update_filter=True, filter_status=None
+    )
     assert len(entries) == 3
     
     # Entryオブジェクトを返すことを確認
@@ -77,7 +75,9 @@ async def test_get_entries(test_po_file):
     # フィルタリングのテスト
     # 検索テキストを使用したフィルタリング
     test_po_file.search_text = "test1"
-    filtered = test_po_file.get_filtered_entries(update_filter=True)
+    filtered = test_po_file.get_filtered_entries(
+        update_filter=True, filter_keyword="test1", filter_status=None
+    )
     assert len(filtered) == 1
     assert filtered[0].msgid == "test1"
 
@@ -85,10 +85,10 @@ async def test_get_entries(test_po_file):
 @pytest.mark.asyncio
 async def test_update_entry(test_po_file):
     """エントリを更新できることを確認する"""
-    test_po_file._force_filter_update = True
-    test_po_file.translation_status = TranslationStatus.ALL
-    
-    entries = test_po_file.get_filtered_entries(update_filter=True)
+    # get_filtered_entriesを使用してエントリを取得
+    entries = test_po_file.get_filtered_entries(
+        update_filter=True, filter_status=None
+    )
     assert len(entries) > 0, "エントリが取得できませんでした"
     
     entry = entries[0]
@@ -108,34 +108,36 @@ async def test_update_entry(test_po_file):
 @pytest.mark.asyncio
 async def test_search_entries(test_po_file):
     """エントリを検索できることを確認する"""
-    test_po_file._force_filter_update = True
-    test_po_file.translation_status = TranslationStatus.ALL
-    
-    # 初期状態を確認
-    initial_entries = test_po_file.get_filtered_entries(update_filter=True)
-    assert len(initial_entries) == 3
+    # get_filtered_entriesを使用してエントリを取得
+    entries = test_po_file.get_filtered_entries(
+        update_filter=True, filter_status=None
+    )
+    assert len(entries) == 3
 
     # search_textを使用した検索フィルタリング
     test_po_file.search_text = "test1"
-    results = test_po_file.get_filtered_entries(update_filter=True)
+    results = test_po_file.get_filtered_entries(
+        update_filter=True, filter_keyword="test1", filter_status=None
+    )
 
     assert len(results) == 1
     assert results[0].msgid == "test1"
 
     # 検索テキストをクリアして元に戻す
     test_po_file.search_text = ""
-    test_po_file._force_filter_update = True
-    results = test_po_file.get_filtered_entries(update_filter=True)
+    results = test_po_file.get_filtered_entries(
+        update_filter=True, filter_keyword="", filter_status=None
+    )
     assert len(results) == 3
 
 
 @pytest.mark.asyncio
 async def test_get_stats(test_po_file):
     """統計情報を取得できることを確認する"""
-    test_po_file._force_filter_update = True
-    test_po_file.translation_status = TranslationStatus.ALL
-    
-    entries = test_po_file.get_filtered_entries(update_filter=True)
+    # get_filtered_entriesを使用してエントリを取得
+    entries = test_po_file.get_filtered_entries(
+        update_filter=True, filter_status=None
+    )
     assert len(entries) == 3, f"エントリ数が期待値と異なります: {len(entries)} != 3"
     
     stats = test_po_file.get_stats()
@@ -148,10 +150,10 @@ async def test_get_stats(test_po_file):
 @pytest.mark.asyncio
 async def test_save_po_file(test_po_file, tmp_path):
     """POファイルを保存できることを確認する"""
-    test_po_file._force_filter_update = True
-    test_po_file.translation_status = TranslationStatus.ALL
-    
-    entries = test_po_file.get_filtered_entries(update_filter=True)
+    # get_filtered_entriesを使用してエントリを取得
+    entries = test_po_file.get_filtered_entries(
+        update_filter=True, filter_status=None
+    )
     assert len(entries) == 3, f"エントリ数が期待値と異なります: {len(entries)} != 3"
     
     save_path = tmp_path / "save.po"
@@ -160,9 +162,10 @@ async def test_save_po_file(test_po_file, tmp_path):
     assert not test_po_file.modified
 
     # 保存したファイルを読み込んで内容を確認
-    loaded = ViewerPOFile()
+    loaded = ViewerPOFileRefactored()
     await loaded.load(save_path)
-    loaded._force_filter_update = True
-    loaded.translation_status = TranslationStatus.ALL
-    entries = loaded.get_filtered_entries(update_filter=True)
+    # get_filtered_entriesを使用してエントリを取得
+    entries = loaded.get_filtered_entries(
+        update_filter=True, filter_status=None
+    )
     assert len(entries) == 3
