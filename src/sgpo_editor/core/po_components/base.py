@@ -3,11 +3,11 @@
 このモジュールは、POファイルを読み込み、メタデータを管理する基本的な機能を提供します。
 """
 
+import asyncio
 import logging
 import time
-import asyncio
 from pathlib import Path
-from typing import Optional, Union, Dict
+from typing import Optional, Union
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.database_accessor import DatabaseAccessor

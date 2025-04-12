@@ -24,7 +24,7 @@ import time
 import asyncio
 import threading
 from collections import Counter
-from typing import Optional, List, Dict, Any, Set, Tuple, cast
+from typing import Optional, List, Dict, Set, cast
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import (
