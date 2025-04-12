@@ -24,6 +24,7 @@ from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.i18n import setup_translator
 
 from sgpo_editor.core import ViewerPOFile
+from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.event_handler import EventHandler
 from sgpo_editor.gui.facades.entry_editor_facade import EntryEditorFacade
 from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
@@ -52,19 +53,27 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("PO Editor")
         self.resize(800, 600)
 
+        # CacheManagerのインスタンスを作成
+        self.entry_cache_manager = EntryCacheManager()
+
         # コンポーネントの作成
         self.entry_editor = EntryEditor()
         self.stats_widget = StatsWidget()
         self.table = QTableWidget()
 
-        # SearchWidgetの初期化（コールバック関数を渡す）
+        # SearchWidgetの初期化（コールバック関数を渡さないように変更）
         self.search_widget = SearchWidget(
-            on_filter_changed=lambda: self._update_table(),
-            on_search_changed=lambda: self._update_table(),
+            # on_filter_changed=lambda: self._update_table(), # 削除
+            # on_search_changed=lambda: self._update_table(), # 削除
         )
 
         # 各マネージャの初期化
-        self.table_manager = TableManager(self.table, self._get_current_po)
+        self.table_manager = TableManager(
+            self.table, 
+            self.entry_cache_manager, 
+            self._get_current_po,
+            self._handle_sort_request
+        )
         self.ui_manager = UIManager(
             self, self.entry_editor, self.stats_widget, self.search_widget
         )
@@ -75,21 +84,25 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage,
         )
 
-        # ファサードの初期化（新規追加）
+        # ファサードの初期化（EntryCacheManager を渡すように修正）
         self.entry_editor_facade = EntryEditorFacade(
             self.entry_editor, self._get_current_po, self.statusBar().showMessage
         )
         self.entry_list_facade = EntryListFacade(
-            self.table, self.table_manager, self.search_widget, self._get_current_po
+            self.table,
+            self.table_manager,
+            self.search_widget,
+            self.entry_cache_manager,
+            self._get_current_po,
         )
 
         # 既存のイベントハンドラ（レガシー互換用）
         self.event_handler = EventHandler(
             self.table,
             self.entry_editor,
+            self.entry_cache_manager,
             self._get_current_po,
-            self._update_table,
-            self.statusBar().showMessage,
+            self.statusBar().showMessage, # 5番目の引数として show_status
         )
 
         # メタデータパネルの初期化
@@ -106,14 +119,32 @@ class MainWindow(QMainWindow):
         self.event_handler.entry_selected.connect(self._on_entry_selected)
 
         # ファサードを使った新しいイベント接続
-        self.entry_editor_facade.entry_applied.connect(self._on_entry_updated)
+        self.entry_editor_facade.entry_applied.connect(self.entry_list_facade.update_table_and_reselect)
+        self.entry_editor_facade.entry_applied.connect(self.update_metadata_panel)
+
         # エントリテキスト変更シグナルは現時点では必要ないのでコメントアウト
         # self.entry_editor_facade.entry_changed.connect(self._on_entry_text_changed)
-        self.entry_list_facade.entry_selected.connect(self._on_entry_selected)
-        self.entry_list_facade.filter_changed.connect(self._update_table)
+        # self.entry_list_facade.entry_selected.connect(self._on_entry_selected) # 古い接続を削除
+        self.entry_list_facade.entry_selected.connect(self.update_metadata_panel) # メタデータ更新に接続
+        # self.entry_list_facade.filter_changed.connect(self._update_table) # EntryListFacade内で完結するため削除
+
+        # エントリ選択時にエディタを更新
+        self.entry_list_facade.entry_selected.connect(self._update_editor_on_selection)
 
         # メタデータパネルのイベント接続
         self.metadata_panel.edit_requested.connect(self.edit_metadata)
+
+        # ウィンドウ状態の復元
+        self.ui_manager.restore_dock_states()
+        self.ui_manager.restore_window_state()
+
+        # メニューの接続
+        self.ui_manager.recent_files_menu.aboutToShow.connect(
+            self._update_recent_files_menu
+        )
+        self.ui_manager.clear_recent_action.triggered.connect(
+            self._on_clear_recent_files_triggered
+        )
 
     def _setup_ui(self) -> None:
         """UIの初期化"""
@@ -156,10 +187,6 @@ class MainWindow(QMainWindow):
         # ステータスバー
         self.ui_manager.setup_statusbar()
 
-        # ウィンドウ状態の復元
-        self.ui_manager.restore_dock_states()
-        self.ui_manager.restore_window_state()
-
     def closeEvent(self, event: QEvent) -> None:
         """ウィンドウが閉じられるときの処理
 
@@ -171,13 +198,13 @@ class MainWindow(QMainWindow):
         self.ui_manager.save_window_state()
         event.accept()
 
-    def _get_current_po(self) -> Optional["ViewerPOFile"]:
-        """現在のPOファイルを取得
-
+    def _get_current_po(self) -> Optional[ViewerPOFile]:
+        """現在のPOファイルを取得する
+        
         Returns:
-            現在のPOファイル
+            Optional[ViewerPOFile]: 現在のPOファイル
         """
-        return self.file_handler.current_po
+        return self.file_handler.po_file
 
     async def _open_file(self) -> None:
         """ファイルを開く（非同期）"""
@@ -288,284 +315,54 @@ class MainWindow(QMainWindow):
         self.stats_widget.update_stats(stats_model)
 
     def _update_table(self) -> None:
-        """テーブルを更新する
+        """テーブルを更新する (EntryListFacadeに委譲)"""
+        logger.debug("MainWindow._update_table: EntryListFacade.update_table を呼び出します")
+        self.entry_list_facade.update_table()
+        logger.debug("MainWindow._update_table: EntryListFacade.update_table の呼び出し完了")
 
-        ファサードパターンを使用して、テーブル更新処理を委譲します。
-        """
+    def _handle_sort_request(self, column_name: str, sort_order: str) -> None:
+        """TableManager からのソート要求を処理する"""
+        logger.debug(f"MainWindow._handle_sort_request: 要求受信 column='{column_name}', order='{sort_order}'")
         current_po = self._get_current_po()
-        if not current_po:
-            logger.debug(
-                "POファイルが読み込まれていないため、テーブル更新をスキップします"
-            )
-            return
-
-        try:
-            # EntryListFacadeにテーブル更新を委譲
-            self.entry_list_facade.update_table()
-
-            # 件数表示のためにPOファイルから情報を取得
-            entries = current_po.get_filtered_entries()
-            self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
-        except Exception as e:
-            logger.error(f"テーブル更新エラー: {e}")
-            self.statusBar().showMessage(f"テーブル更新エラー: {e}")
-
-            # テーブルの表示を強制的に更新
-            self.table.viewport().update()
-        except Exception as e:
-            logger.error(f"テーブル更新エラー: {str(e)}", exc_info=True)
-            self.statusBar().showMessage(f"テーブル更新エラー: {str(e)}")
-
-    def _on_filter_changed(self) -> None:
-        """フィルターが変更されたときの処理"""
-        current_po = self._get_current_po()
-        if not current_po:
-            return
-
-        try:
-            # フィルタ条件を取得
-            criteria = self.search_widget.get_search_criteria()
-
-            # POファイルからフィルタ条件に合ったエントリを取得
-            entries = current_po.get_filtered_entries(
-                filter_text=criteria.filter, filter_keyword=criteria.filter_keyword
-            )
-
-            # テーブルを更新
-            self.table_manager.update_table(entries, criteria)
-
-            # フィルタ結果の件数をステータスバーに表示
-            self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
-        except Exception as e:
-            self.statusBar().showMessage(f"エラー: {str(e)}")
-
-    def _on_search_changed(self) -> None:
-        """フィルターキーワードが変更されたときの処理"""
-        import logging
-
-        current_po = self._get_current_po()
-        if not current_po:
-            logging.debug("現在のPOファイルが存在しません")
-            return
-
-        try:
-            # フィルタ条件を取得
-            criteria = self.search_widget.get_search_criteria()
-
-            # 空のキーワードを処理
-            if criteria.filter_keyword is None:
-                # Noneの場合はそのまま処理
-                logging.debug("キーワードがNoneのため、全エントリを取得します")
-            elif criteria.filter_keyword.strip() == "":
-                # 空白文字のみの場合はNoneに設定
-                criteria.filter_keyword = None
-                logging.debug("キーワードが空文字のため、全エントリを取得します")
-                # 検索テキストを明示的に空に設定
-                self.search_widget.search_edit.setText("")
-
-                # ★重要: キーワードがクリアされたとき、ViewerPOFileの内部状態をリセット
-                current_po.search_text = None
-                # キャッシュされたフィルタリング結果をクリア
-                current_po.filtered_entries = []
-
-            # デバッグ用ログ出力
-            print(f"キーワードフィルタ変更: {criteria.filter_keyword}")
-            print(
-                f"フィルタ条件: filter={criteria.filter}, keyword={
-                    criteria.filter_keyword
-                }, match_mode={criteria.match_mode}"
-            )
-            logging.debug(
-                f"MainWindow._on_search_changed: filter={criteria.filter}, keyword={
-                    criteria.filter_keyword
-                }"
-            )
-
-            # エントリを取得する前に、キーワードがNoneまたは空文字の場合はViewerPOFileの内部状態を明示的にリセット
-            if criteria.filter_keyword is None:
-                logging.debug(
-                    "キーワードがNoneのため、ViewerPOFileの内部状態をリセットします"
-                )
-                current_po.search_text = None
-                current_po.filtered_entries = []
-            elif criteria.filter_keyword == "":
-                logging.debug(
-                    "キーワードが空文字のため、ViewerPOFileの内部状態をリセットします"
-                )
-                current_po.search_text = None
-                current_po.filtered_entries = []
-
-            # POファイルからフィルタ条件に合ったエントリを取得
-            print("フィルタ条件に合ったエントリを取得中...")
-            print(
-                f"現在のViewerPOFile状態: search_text={
-                    current_po.search_text
-                }, filter_text={current_po.filter_text}"
-            )
-
-            entries = current_po.get_filtered_entries(
-                update_filter=True,  # 強制的にフィルタを更新
-                filter_text=criteria.filter,
-                filter_keyword=criteria.filter_keyword,
-            )
-            print(f"取得完了: {len(entries)}件のエントリが見つかりました")
-            print(
-                f"更新後のViewerPOFile状態: search_text={
-                    current_po.search_text
-                }, filter_text={current_po.filter_text}"
-            )
-
-            # テーブルを更新
-            print("テーブル更新開始...")
-            updated_entries = self.table_manager.update_table(entries, criteria)
-            print(
-                f"テーブル更新完了: {
-                    len(updated_entries) if updated_entries else 0
-                }件表示"
-            )
-
-            # フィルタ結果の件数をステータスバーに表示
-            self.statusBar().showMessage(f"フィルタ結果: {len(entries)}件")
-        except Exception as e:
-            print(f"キーワードフィルタ処理中にエラーが発生しました: {str(e)}")
-            logging.error(f"キーワードフィルタエラー: {str(e)}")
-            import traceback
-
-            traceback.print_exc()
-            self.statusBar().showMessage(f"エラー: {str(e)}")
+        if current_po:
+            logger.debug(f"MainWindow._handle_sort_request: ViewerPOFile にソート条件を設定")
+            current_po.set_sort_criteria(column_name, sort_order)
+            # ソート条件を設定したらテーブルを更新 (Facade経由)
+            logger.debug("MainWindow._handle_sort_request: EntryListFacade.update_table を呼び出してテーブルを更新")
+            self.entry_list_facade.update_table() # Facade のメソッドを呼び出す
+        else:
+            logger.warning("MainWindow._handle_sort_request: POファイルが開かれていません")
 
     def _on_entry_selected(self, entry_number: int) -> None:
-        """エントリが選択されたときの処理
+        """エントリが選択されたときの処理 (レガシー EventHandler からの接続用)
+
+        主要なロジックは MainWindow.update_metadata_panel と各ウィンドウの
+        表示/非表示時のシグナル接続/切断に移譲されました。
+        このメソッドは将来的に削除される可能性があります。
 
         Args:
             entry_number: エントリ番号
         """
-        logger.debug(f"エントリ選択通知を受信: エントリ番号={entry_number}")
-
-        try:
-            # メタデータパネルのみ更新し、テーブルの更新は行わない
-            logger.debug("MainWindow._on_entry_selected: メタデータパネルを更新")
-            self.update_metadata_panel()
-
-            # プレビューウィンドウが表示されている場合は更新
-            logger.debug(
-                "MainWindow._on_entry_selected: プレビューダイアログの更新を試行"
-            )
-            has_preview = (
-                hasattr(self, "_preview_dialog")
-                and self._preview_dialog
-                and self._preview_dialog.isVisible()
-            )
-            logger.debug(
-                f"MainWindow._on_entry_selected: プレビューダイアログの状態: 存在={hasattr(self, '_preview_dialog')}, 有効={bool(getattr(self, '_preview_dialog', None))}, 表示中={getattr(self, '_preview_dialog', None).isVisible() if hasattr(self, '_preview_dialog') and self._preview_dialog else False}"
-            )
-
-            self._update_preview_dialog(entry_number)
-
-            # 評価結果ウィンドウが表示されている場合は更新
-            logger.debug(
-                "MainWindow._on_entry_selected: 評価結果ウィンドウの更新を試行"
-            )
-            has_evaluation = (
-                hasattr(self, "_evaluation_result_window")
-                and self._evaluation_result_window
-                and self._evaluation_result_window.isVisible()
-            )
-            logger.debug(
-                f"MainWindow._on_entry_selected: 評価結果ウィンドウの状態: 存在={hasattr(self, '_evaluation_result_window')}, 有効={bool(getattr(self, '_evaluation_result_window', None))}, 表示中={getattr(self, '_evaluation_result_window', None).isVisible() if hasattr(self, '_evaluation_result_window') and self._evaluation_result_window else False}"
-            )
-
-            self._update_evaluation_result_window(entry_number)
-
-            logger.debug(
-                f"MainWindow._on_entry_selected: 処理完了 (プレビュー={has_preview}, 評価結果={has_evaluation})"
-            )
-        except Exception as e:
-            logger.error(
-                f"MainWindow._on_entry_selected: エラー発生 {e}", exc_info=True
-            )
-            # エラーが発生しても処理を継続するため、例外は再送出しない
+        logger.warning(f"MainWindow._on_entry_selected はレガシー接続用に残されています: entry_number={entry_number}")
+        # メタデータパネル更新は entry_selected シグナルから直接 update_metadata_panel に接続
+        # プレビュー/評価結果ウィンドウ更新は、各ウィンドウ表示時に entry_selected に接続
+        pass # 何もしない
 
     def _on_entry_updated(self, key: str, msgstr: str) -> None:
-        """エントリが更新されたときの処理
+        """エントリが更新されたときの処理 (レガシー EventHandler からの接続用)
+
+        主要なロジックは EntryListFacade と MainWindow.update_metadata_panel に移譲されました。
+        このメソッドは将来的に削除される可能性があります。
 
         Args:
             key: エントリのキー
             msgstr: 更新された翻訳文
         """
-        logger.debug(f"MainWindow._on_entry_updated: 開始 key={key}")
-
-        # 現在のPOファイルを取得
-        current_po = self._get_current_po()
-        if not current_po:
-            logger.debug(
-                "MainWindow._on_entry_updated: 現在のPOファイルが存在しないため、エントリ更新処理をスキップします"
-            )
-            return
-
-        try:
-            # 更新前の選択キーを取得
-            current_key = self.entry_list_facade.get_selected_entry_key()
-            logger.debug(
-                f"MainWindow._on_entry_updated: 更新前の選択キー: {current_key}"
-            )
-
-            # 更新されたキー
-            updated_key = key
-            logger.debug(
-                f"MainWindow._on_entry_updated: 更新されたエントリ key={updated_key}"
-            )
-
-            # 統計情報の更新
-            logger.debug("MainWindow._on_entry_updated: 統計情報の更新")
-            stats = current_po.get_stats()
-            self._update_stats(stats)
-
-            # 強制的にフィルタ更新フラグを設定
-            logger.debug(
-                "MainWindow._on_entry_updated: 強制的にフィルタ更新フラグを設定"
-            )
-            current_po._force_filter_update = True
-
-            # ファサードを使用してテーブルを更新
-            logger.debug("MainWindow._on_entry_updated: テーブル更新開始")
-            self.entry_list_facade.update_table()
-            logger.debug("MainWindow._on_entry_updated: テーブル更新完了")
-
-            # エントリの選択状態を維持
-            if updated_key:
-                # 更新されたエントリを選択
-                logger.debug(
-                    f"MainWindow._on_entry_updated: 更新されたエントリを選択 key={updated_key}"
-                )
-                selection_success = self.entry_list_facade.select_entry_by_key(
-                    updated_key
-                )
-                logger.debug(
-                    f"MainWindow._on_entry_updated: 選択結果 success={selection_success}"
-                )
-
-                if not selection_success and current_key and current_key != updated_key:
-                    # 更新されたキーでの選択に失敗したら元のキーで試す
-                    logger.debug(
-                        f"MainWindow._on_entry_updated: 更新キーでの選択に失敗したため元のキーで再試行 key={current_key}"
-                    )
-                    self.entry_list_facade.select_entry_by_key(current_key)
-            elif current_key:
-                # 元の選択状態を復元
-                logger.debug(
-                    f"MainWindow._on_entry_updated: 元の選択状態を復元 key={current_key}"
-                )
-                self.entry_list_facade.select_entry_by_key(current_key)
-
-            # メタデータパネルの更新
-            logger.debug("MainWindow._on_entry_updated: メタデータパネルの更新")
-            self.update_metadata_panel()
-            logger.debug("MainWindow._on_entry_updated: 完了")
-
-        except Exception as e:
-            logger.error(f"MainWindow._on_entry_updated: エラー発生 {e}")
-            logger.error(f"エントリ更新処理エラー: {e}")
+        logger.warning(f"MainWindow._on_entry_updated はレガシー接続用に残されています: key={key}")
+        # 統計更新はファイル変更の副作用として処理されるため不要
+        # テーブル更新と選択維持は EntryListFacade.update_table_and_reselect が担当
+        # メタデータ更新は entry_applied シグナルから直接 update_metadata_panel に接続
+        pass # 何もしない
 
     def _change_entry_layout(self, layout_type: LayoutType) -> None:
         """エントリ編集のレイアウトを変更する
@@ -573,7 +370,8 @@ class MainWindow(QMainWindow):
         Args:
             layout_type: レイアウトタイプ
         """
-        self.event_handler.change_entry_layout(layout_type)
+        # self.event_handler.change_entry_layout(layout_type) # 古い呼び出しを削除
+        self.entry_editor_facade.change_layout(layout_type) # ファサード経由で呼び出す
 
     def _show_preview_dialog(self) -> None:
         """プレビューダイアログを表示する
@@ -592,6 +390,16 @@ class MainWindow(QMainWindow):
         dialog.set_event_handler(
             self.event_handler
         )  # 互換性のためにイベントハンドラを使用
+        # entry_selected シグナルを切断するスロット
+        def disconnect_preview_update():
+            try:
+                self.entry_list_facade.entry_selected.disconnect(self._update_preview_dialog)
+                logger.debug("PreviewDialog: entry_selected シグナルを切断しました")
+            except (RuntimeError, TypeError):
+                # RuntimeError: シグナルが接続されていない場合
+                # TypeError: 引数の型が正しくない場合（通常発生しないはず）
+                logger.debug("PreviewDialog: entry_selected シグナルは既に切断されているか、接続されていませんでした")
+
         # 現在のエントリを設定
         dialog.set_entry(current_entry)
         # ダイアログを表示
@@ -603,9 +411,15 @@ class MainWindow(QMainWindow):
         self._preview_dialog = dialog
 
         # エントリ選択時にプレビューダイアログを更新するシグナルを接続
-        if not hasattr(self, "_connected_preview_signal"):
+        try:
+            # 既存の接続があれば切断してから再接続（多重接続防止）
+            disconnect_preview_update()
             self.entry_list_facade.entry_selected.connect(self._update_preview_dialog)
-            self._connected_preview_signal = True
+            logger.debug("PreviewDialog: entry_selected シグナルを接続しました")
+            # ダイアログが閉じられたときにシグナルを切断
+            dialog.finished.connect(disconnect_preview_update)
+        except Exception as e:
+            logger.error(f"プレビューダイアログのシグナル接続中にエラー: {e}")
 
     def _open_po_format_editor(self) -> None:
         """POフォーマットエディタを開く
@@ -738,37 +552,28 @@ class MainWindow(QMainWindow):
         """メタデータ編集ダイアログを表示
 
         Args:
-            entry: 編集対象のエントリ（指定がない場合は選択中のエントリ）
+            entry: 編集対象のエントリ（指定がない場合はエディタ表示中のエントリ）
         """
         if entry is None:
-            # 現在選択されているエントリを取得
-            current_entry = self.event_handler.get_current_entry()
+            # エディタに表示中のエントリを取得 (Facade経由)
+            current_entry = self.entry_editor_facade.get_current_entry()
             if not current_entry:
                 self.statusBar().showMessage(
-                    "メタデータを編集するエントリが選択されていません"
+                    "メタデータを編集するエントリが選択/表示されていません"
                 )
                 return
-
             entry = current_entry
 
         dialog = MetadataEditDialog(entry, self)
-
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            # メタデータパネルを更新
             self.update_metadata_panel()
-
-            # メタデータが変更されたフラグを設定
             self.file_handler.set_modified(True)
-
-            # ステータスバーに表示
             self.statusBar().showMessage("メタデータを更新しました")
 
     def update_metadata_panel(self) -> None:
         """メタデータパネルを更新"""
-        # 現在選択されているエントリを取得
-        current_entry = self.event_handler.get_current_entry()
-
-        # メタデータパネルにエントリを設定
+        # エディタに表示中のエントリを取得 (Facade経由)
+        current_entry = self.entry_editor_facade.get_current_entry()
         self.metadata_panel.set_entry(current_entry)
 
     def _show_translation_evaluate_dialog(self) -> None:
@@ -1036,6 +841,31 @@ class MainWindow(QMainWindow):
                 )
                 self._evaluation_result_window.show()
 
+                # entry_selected シグナルを切断するスロット
+                def disconnect_eval_update():
+                    try:
+                        self.entry_list_facade.entry_selected.disconnect(self._update_evaluation_result_window)
+                        logger.debug("EvaluationResultWindow: entry_selected シグナルを切断しました")
+                    except (RuntimeError, TypeError):
+                        logger.debug("EvaluationResultWindow: entry_selected シグナルは既に切断されているか、接続されていませんでした")
+
+                # entry_selected シグナルを接続
+                try:
+                    # 既存の接続があれば切断してから再接続
+                    disconnect_eval_update()
+                    self.entry_list_facade.entry_selected.connect(self._update_evaluation_result_window)
+                    logger.debug("EvaluationResultWindow: entry_selected シグナルを接続しました")
+                    # ウィンドウが閉じられたときにシグナルを切断 (closeEvent or finished)
+                    # TranslationEvaluationResultWindow が QDialog か QWidget かで適切なシグナルを選ぶ
+                    # ここでは finished を使うと仮定 (QWidgetの場合は closeEvent をオーバーライドする必要があるかも)
+                    if hasattr(self._evaluation_result_window, 'finished'):
+                        self._evaluation_result_window.finished.connect(disconnect_eval_update)
+                    else: # QWidgetの場合 (closeEventをハンドルする前提)
+                        # closeEventで明示的にdisconnectを呼ぶ実装が必要
+                        logger.warning("EvaluationResultWindowにfinishedシグナルがないため、自動切断できません。")
+                except Exception as e:
+                    logger.error(f"評価結果ウィンドウのシグナル接続中にエラー: {e}")
+
         except Exception as e:
             logger.error(
                 f"MainWindow._show_translation_evaluation_result_dialog: エラー発生 {e}",
@@ -1081,6 +911,24 @@ class MainWindow(QMainWindow):
             f"MainWindow._get_selected_entry_number: エントリ番号={entry.position}を返します"
         )
         return entry.position
+
+    def _on_clear_recent_files_triggered(self):
+        """最近使ったファイルの履歴をクリアするアクションハンドラ"""
+        self.file_handler.clear_recent_files()
+        self._update_recent_files_menu()
+
+    def _update_recent_files_menu(self) -> None:
+        """最近使用したファイルメニューを更新"""
+        self.ui_manager.update_recent_files_menu(self._open_recent_file)
+
+    def _update_editor_on_selection(self, entry_number: int) -> None:
+        """エントリ選択時にエディタの内容を更新するスロット"""
+        logger.debug(f"MainWindow._update_editor_on_selection: entry_number={entry_number}")
+        current_po = self._get_current_po()
+        if not current_po:
+            return
+        entry = current_po.get_entry_by_number(entry_number)
+        self.entry_editor_facade.display_entry(entry)
 
 
 def main():
