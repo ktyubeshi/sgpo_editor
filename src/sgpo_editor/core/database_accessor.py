@@ -200,169 +200,86 @@ class DatabaseAccessor:
 
     def get_filtered_entries(
         self,
+        filter_text: str = "すべて",
+        filter_keyword: Optional[str] = None,
+        match_mode: str = "部分一致",
+        case_sensitive: bool = False,
+        filter_status: Optional[Set[str]] = None,
+        filter_obsolete: bool = True,
         search_text: Optional[str] = None,
-        sort_column: Optional[str] = None,
-        sort_order: Optional[str] = None,
-        flag_conditions: Optional[FlagConditions] = None,
-        translation_status: Optional[str] = None,
-    ) -> List[EntryDict]:
-        """フィルタ条件に合ったエントリを取得する
+    ) -> List[EntryModel]:
+        # search_text を filter_keyword から取得 (後方互換性のため)
+        if search_text is None:
+            search_text = filter_keyword
 
-        このメソッドは、指定されたフィルタ条件に基づいてデータベースからエントリを検索します。
-        ViewerPOFileFilterクラスから呼び出され、EntryCacheManagerのフィルタキャッシュと連携します。
-        通常、EntryCacheManagerのget_filtered_entries_cacheメソッドで最初にキャッシュを確認し、
-        キャッシュミスの場合や強制更新フラグがある場合にこのメソッドが呼び出されます。
-
-        最適化ポイント:
-        - WHERE句の条件は動的に構築され、必要なフィルタのみが適用されます
-        - パラメータ化されたクエリを使用してSQLインジェクションを防止します
-        - フラグ条件は効率的なサブクエリとして実装されています
-        - 翻訳ステータスに応じた条件が最適化されています
-        - 適切なインデックスが使用されるようにクエリを設計
-
-        Args:
-            search_text: 検索テキスト（msgid、msgstrに含まれる文字列）
-            sort_column: ソート列（"position"、"msgid"、"msgstr"など）
-            sort_order: ソート順序（"asc"または"desc"）
-            flag_conditions: フラグ条件（"fuzzy": True/Falseなど）
-            translation_status: 翻訳ステータス（"all"、"translated"、"untranslated"、"fuzzy"など）
-
-        Returns:
-            フィルタ条件に一致するエントリの辞書のリスト
-        """
-        logger.debug(
-            f"DatabaseAccessor.get_filtered_entries: search_text={search_text}, "
-            f"sort_column={sort_column}, sort_order={sort_order}, "
-            f"flag_conditions={flag_conditions}, translation_status={translation_status}"
-        )
-
-        # デフォルト値設定
-        sort_column = sort_column or "position"
-        sort_order = sort_order or "ASC"
-        flag_conditions = flag_conditions or {}
-
-        # SQLクエリのパラメータ
-        params = []
-
-        # 基本クエリ
-        query = """
-            SELECT e.*, d.position AS position
-            FROM entries e
-            LEFT JOIN display_order d ON e.id = d.entry_id
-        """
-
-        # WHERE句の条件を格納するリスト
-        where_conditions = []
-
-        # 検索テキストフィルタ
-        if search_text:
-            where_conditions.append("(e.msgid LIKE ? OR e.msgstr LIKE ?)")
-            search_pattern = f"%{search_text}%"
-            params.extend([search_pattern, search_pattern])
-
-        # 翻訳ステータスに基づくフィルタ
-        from sgpo_editor.core.constants import TranslationStatus
-
-        if translation_status == TranslationStatus.TRANSLATED:
-            # 翻訳済み: msgstrが空でなく、fuzzyでない
-            where_conditions.append("(e.msgstr != '' AND e.fuzzy = 0)")
-        elif translation_status == TranslationStatus.UNTRANSLATED:
-            # 未翻訳: msgstrが空で、fuzzyでない
-            where_conditions.append("(e.msgstr = '' AND e.fuzzy = 0)")
-        elif translation_status == TranslationStatus.FUZZY:
-            # fuzzy: fuzzyフラグがある
-            where_conditions.append("e.fuzzy = 1")
-        elif translation_status == TranslationStatus.FUZZY_OR_UNTRANSLATED:
-            # fuzzyまたは未翻訳
-            where_conditions.append("(e.fuzzy = 1 OR e.msgstr = '')")
-        # ALL（すべて）の場合は条件なし
-
-        # フラグ条件に基づくフィルタ
-        if "fuzzy" in flag_conditions:
-            if flag_conditions["fuzzy"]:
-                where_conditions.append("e.fuzzy = 1")
-            else:
-                where_conditions.append("e.fuzzy = 0")
-
-        if "msgstr_empty" in flag_conditions and flag_conditions["msgstr_empty"]:
-            where_conditions.append("e.msgstr = ''")
-
-        if (
-            "msgstr_not_empty" in flag_conditions
-            and flag_conditions["msgstr_not_empty"]
-        ):
-            where_conditions.append("e.msgstr != ''")
-
-        if (
-            "fuzzy_or_msgstr_empty" in flag_conditions
-            and flag_conditions["fuzzy_or_msgstr_empty"]
-        ):
-            where_conditions.append("(e.fuzzy = 1 OR e.msgstr = '')")
-
-        # カスタムフラグ条件
-        for flag_name, flag_value in flag_conditions.items():
-            if flag_name not in (
-                "fuzzy",
-                "msgstr_empty",
-                "msgstr_not_empty",
-                "fuzzy_or_msgstr_empty",
-            ):
-                if flag_value:
-                    # サブクエリでフラグの有無を確認
-                    where_conditions.append("""
-                        EXISTS (
-                            SELECT 1 FROM entry_flags ef 
-                            WHERE ef.entry_id = e.id AND ef.flag = ?
-                        )
-                    """)
-                    params.append(flag_name)
-
-        # WHERE句を構築
-        if where_conditions:
-            query += " WHERE " + " AND ".join(where_conditions)
-
-        # ソート順の決定
-        valid_sort_columns = {
-            "position": "d.position",
-            "msgid": "e.msgid",
-            "msgstr": "e.msgstr",
-            "fuzzy": "e.fuzzy",
-            "score": """(
-                SELECT qs.overall_score 
-                FROM quality_scores qs 
-                WHERE qs.entry_id = e.id
-            )""",
-        }
-
-        # 有効なソート列かチェック
-        sort_column_sql = valid_sort_columns.get(sort_column, "d.position")
-
-        # ソート順のSQLインジェクション防止
-        sort_order_sql = "ASC" if sort_order.upper() != "DESC" else "DESC"
-
-        # ソート条件を追加
-        query += f" ORDER BY {sort_column_sql} {sort_order_sql}"
-
-        # クエリ実行と結果の取得
-        with self.db.transaction() as cur:
-            logger.debug(
-                f"DatabaseAccessor.get_filtered_entries: SQLクエリ実行: {query}"
-            )
-            logger.debug(
-                f"DatabaseAccessor.get_filtered_entries: SQLパラメータ: {params}"
-            )
-            cur.execute(query, params)
-
-            # 結果をリストに変換
-            result = []
-            for row in cur.fetchall():
-                entry_dict = self._row_to_entry_dict(row)
-                result.append(entry_dict)
+        # 検索テキストの前後の空白を除去
+        cleaned_search_text = search_text.strip() if search_text else None
 
         logger.debug(
-            f"DatabaseAccessor.get_filtered_entries: {len(result)}件のエントリを取得"
+            f"DatabaseAccessor.get_filtered_entries (Python filter): filter_status={filter_status}, "
+            f"filter_obsolete={filter_obsolete}, search_text={cleaned_search_text}, "
+            f"match_mode={match_mode}, case_sensitive={case_sensitive}"
         )
-        return result
+
+        # 関数の本体を復元
+        filtered_entries = []
+        for entry_dict in self.db.get_entries():
+            entry = EntryModel.from_dict(entry_dict) # EntryModel に変換
+
+            # 廃止フィルタリング
+            if not filter_obsolete and entry.obsolete:
+                continue
+
+            # 状態フィルタリング
+            if filter_status:
+                status = entry.get_status() # get_status() は EntryModel のメソッド
+                if status not in filter_status:
+                    continue
+
+            # キーワードフィルタリング
+            if cleaned_search_text:
+                if not self._match_keyword(
+                    entry, cleaned_search_text, match_mode, case_sensitive
+                ):
+                    continue
+
+            # すべてのフィルタを通過したらリストに追加
+            filtered_entries.append(entry)
+
+        logger.debug(f"DatabaseAccessor.get_filtered_entries (Python filter): Found {len(filtered_entries)} entries")
+        return filtered_entries
+
+    # _match_keyword ヘルパーメソッド (get_filtered_entries で使用)
+    def _match_keyword(
+        self,
+        entry: EntryModel,
+        keyword: str,
+        match_mode: str,
+        case_sensitive: bool,
+    ) -> bool:
+        """エントリがキーワードに一致するかどうかを判定する"""
+        targets = [
+            entry.msgid or "",
+            entry.msgstr or "",
+            entry.msgctxt or "",
+            entry.comment or "",
+            entry.tcomment or "",
+        ]
+        targets.extend(entry.references or [])
+            
+        search_keyword = keyword if case_sensitive else keyword.lower()
+
+        for target in targets:
+            text_to_search = target if case_sensitive else target.lower()
+            if match_mode == "部分一致":
+                if search_keyword in text_to_search:
+                    return True
+            elif match_mode == "完全一致":
+                if search_keyword == text_to_search:
+                    return True
+            # 他のマッチモード (正規表現など) があればここに追加
+            
+        return False
 
     def update_entry(self, entry: EntryInput) -> bool:
         """エントリを更新する

@@ -50,7 +50,7 @@ class EntryCacheManager:
        - 値: 完全なEntryModelオブジェクト（すべてのフィールドを含む）
 
     2. entry_basic_info_cache: 基本情報のみのEntryModelオブジェクトのキャッシュ
-       - 用途: エントリのリスト表示など、基本情報のみが必要な場合に使用
+       - 用途: エントリリスト表示など、基本情報のみが必要な場合に使用
        - キー: エントリのキー
        - 値: 基本情報のみを含むEntryModelオブジェクト（msgid, msgstr, fuzzy, obsoleteなど）
 
@@ -127,8 +127,12 @@ class EntryCacheManager:
         self._prefetch_lock = threading.RLock()
         self._prefetch_queue: Set[str] = set()
         self._prefetch_in_progress: bool = False
+        # プリフェッチ中のキーを追跡するセット
+        self._keys_being_prefetched: Set[str] = set()
         
         self._row_key_map: Dict[int, str] = {}
+        # 逆引き用マップを追加
+        self._key_row_map: Dict[str, int] = {}
 
         logger.debug("EntryCacheManager: 初期化完了")
 
@@ -711,7 +715,7 @@ class EntryCacheManager:
     # UI層との連携機能
 
     def add_row_key_mapping(self, row: int, key: str) -> None:
-        """行インデックスとエントリキーのマッピングを追加する
+        """行インデックスとエントリキーのマッピングを追加または更新する
 
         UI層からのアクセスを効率化するために、テーブルの行インデックスと
         エントリキーのマッピングを管理します。これにより、UI層（TableManager,
@@ -721,14 +725,15 @@ class EntryCacheManager:
             row: テーブルの行インデックス
             key: エントリキー
         """
+        if not self._cache_enabled:
+            return
         logger.debug(f"EntryCacheManager.add_row_key_mapping: row={row}, key={key}")
-        # 行→キーのマッピングを保存
-        if not hasattr(self, "_row_key_map"):
-            self._row_key_map = {}
         self._row_key_map[row] = key
+        # 逆引きマップも更新
+        self._key_row_map[key] = row
 
     def get_key_for_row(self, row: int) -> Optional[str]:
-        """行インデックスからエントリキーを取得する
+        """指定された行インデックスに対応するエントリキーを取得する
 
         Args:
             row: テーブルの行インデックス
@@ -736,7 +741,7 @@ class EntryCacheManager:
         Returns:
             エントリキー、存在しない場合はNone
         """
-        if not hasattr(self, "_row_key_map"):
+        if not self._cache_enabled:
             return None
         return self._row_key_map.get(row)
 
@@ -745,9 +750,27 @@ class EntryCacheManager:
         logger.debug("EntryCacheManager.clear_row_key_mappings: マッピングをクリア")
         if hasattr(self, "_row_key_map"):
             self._row_key_map.clear()
+        # 逆引きマップもクリア
+        self._key_row_map.clear()
+
+    def find_row_by_key(self, key: str) -> int:
+        """指定されたエントリキーに対応する行インデックスを取得する
+
+        Args:
+            key: エントリキー
+
+        Returns:
+            行インデックス、存在しない場合は-1
+        """
+        if not self._cache_enabled:
+            return -1
+            
+        row = self._key_row_map.get(key, -1)
+        logger.debug(f"EntryCacheManager.find_row_by_key: key={key}, found_row={row}")
+        return row
 
     def update_entry_in_ui_cache(self, entry: EntryModel) -> None:
-        """エントリをUIキャッシュに反映する
+        """完全エントリキャッシュ内のエントリを更新する
 
         エントリが更新された場合、UI層での表示に使われるキャッシュも更新します。
         これはTableManagerとEventHandlerの独自キャッシュを廃止し、
@@ -865,39 +888,50 @@ class EntryCacheManager:
             f"EntryCacheManager.prefetch_visible_entries: {len(visible_keys)}件"
         )
         
-        # すでにキャッシュにあるキーを除外
-        keys_to_fetch = [
-            key for key in visible_keys if key not in self._complete_entry_cache
-        ]
-        
-        if not keys_to_fetch:
-            return
-            
+        keys_to_actually_prefetch: Set[str] = set()
         with self._prefetch_lock:
-            self._prefetch_queue.update(keys_to_fetch)
+            # キャッシュになく、かつプリフェッチ中でもないキーを抽出
+            keys_to_consider = {
+                key for key in visible_keys 
+                if key not in self._complete_entry_cache and 
+                   key not in self._keys_being_prefetched
+            }
             
-            if self._prefetch_in_progress:
+            if not keys_to_consider:
+                logger.debug("EntryCacheManager: プリフェッチ対象の新しいキーはありません。")
                 return
                 
-            self._prefetch_in_progress = True
-            
-        threading.Thread(
-            target=self._async_prefetch, 
-            args=(fetch_callback,), 
-            daemon=True
-        ).start()
-        
-    def _async_prefetch(self, fetch_callback=None) -> None:
-        """バックグラウンドでエントリをプリフェッチする
+            # プリフェッチキューに追加し、処理中セットにも追加
+            # 既存のキューに入っているものも考慮（本来は不要だが念のため）
+            new_keys_for_queue = keys_to_consider - self._prefetch_queue
+            if new_keys_for_queue:
+                self._prefetch_queue.update(new_keys_for_queue)
+                self._keys_being_prefetched.update(new_keys_for_queue)
+                keys_to_actually_prefetch = new_keys_for_queue # 実際に新たに追加されたキー
+            else:
+                logger.debug("EntryCacheManager: 考慮対象キーはすべて既にキューにありました。")
+                return # 新しくキューに追加するものがなければ何もしない
 
-        プリフェッチキューからバッチ単位でエントリを取得し、
-        キャッシュに読み込みます。これにより、UI応答性を維持しながら
-        キャッシュを効率的に構築できます。
+        logger.debug(
+            f"EntryCacheManager: プリフェッチキューに{len(keys_to_actually_prefetch)}件追加。 \
+            キュー合計: {len(self._prefetch_queue)}件, 処理中合計: {len(self._keys_being_prefetched)}件"
+        )
 
-        Args:
-            fetch_callback: キーのリストを受け取り、EntryModelのリストを返すコールバック関数
-                           形式: callback([key1, key2, ...]) -> [entry1, entry2, ...]
-        """
+        # プリフェッチ処理が実行中でなければ開始
+        with self._prefetch_lock:
+            if not self._prefetch_in_progress:
+                self._prefetch_in_progress = True
+                logger.debug("EntryCacheManager: 非同期プリフェッチ処理を開始します。")
+                # asyncioを使ってバックグラウンドで実行
+                asyncio.run_coroutine_threadsafe(
+                    self._async_prefetch(fetch_callback),
+                    asyncio.get_event_loop() # 現在のスレッドのイベントループを取得
+                )
+            else:
+                logger.debug("EntryCacheManager: プリフェッチ処理は既に実行中です。")
+
+    async def _async_prefetch(self, fetch_callback=None) -> None:
+        """非同期でプリフェッチを実行する内部メソッド"""
         try:
             while True:
                 batch_keys = []
@@ -907,30 +941,56 @@ class EntryCacheManager:
                         break
                         
                     batch_keys = list(self._prefetch_queue)[:self.PREFETCH_BATCH_SIZE]
-                    self._prefetch_queue.difference_update(batch_keys)
+                    self._prefetch_queue = self._prefetch_queue - set(batch_keys)
                 
                 if not batch_keys:
                     continue
                     
-                logger.debug(f"バックグラウンドプリフェッチ: {len(batch_keys)}件")
+                logger.debug(f"EntryCacheManager: プリフェッチバッチ処理開始: {len(batch_keys)}件")
+                keys_processed_in_batch = set(batch_keys) # このバッチで処理しようとしたキーを記録
                 
-                if fetch_callback and callable(fetch_callback):
-                    try:
-                        entries = fetch_callback(batch_keys)
-                        if entries:
-                            for entry in entries:
-                                if entry and hasattr(entry, 'key'):
-                                    self.cache_complete_entry(entry.key, entry)
-                                    self._update_access_stats(entry.key)
-                            logger.debug(f"プリフェッチ完了: {len(entries)}件のエントリをキャッシュに追加")
-                    except Exception as e:
-                        logger.error(f"エントリフェッチ中にエラーが発生: {e}")
+                try:
+                    # fetch_callbackを呼び出してデータを取得
+                    fetched_entries = await fetch_callback(batch_keys)
+                    if fetched_entries:
+                        for entry in fetched_entries:
+                            if entry and hasattr(entry, 'key'):
+                                self.cache_complete_entry(entry.key, entry)
+                                self._update_access_stats(entry.key)
+                        logger.debug(f"プリフェッチ完了: {len(fetched_entries)}件のエントリをキャッシュに追加")
+                    else:
+                        logger.debug("EntryCacheManager: 存在しないエントリをキャッシュ (空データ): {key}")
+                        # self.cache_complete_entry(key, EntryModel(key=key)) # 空モデルは入れない方が良いかも
+                except Exception as e:
+                    logger.error(f"EntryCacheManager: プリフェッチ中のfetch_callbackでエラー: {e}", exc_info=True)
+                finally:
+                    # バッチ処理が完了（成功・失敗問わず）したら、処理中セットからキーを削除
+                    with self._prefetch_lock:
+                        self._keys_being_prefetched -= keys_processed_in_batch
+                        logger.debug(f"EntryCacheManager: プリフェッチ処理中セットから{len(keys_processed_in_batch)}件削除。残り処理中: {len(self._keys_being_prefetched)}件")
                 
                 self._trim_cache_if_needed()
                 
-                time.sleep(0.01)
-                
+                # 少し待機して他の処理にCPUを譲る
+                await asyncio.sleep(0.01)
+
+            # プリフェッチ完了
+            with self._prefetch_lock:
+                self._prefetch_in_progress = False
+                logger.debug("EntryCacheManager: 非同期プリフェッチ処理が完了しました。")
+                # 念のため、完了時に処理中セットをクリア（キューが空なら）
+                if not self._prefetch_queue:
+                    remaining_count = len(self._keys_being_prefetched)
+                    if remaining_count > 0:
+                        logger.warning(f"プリフェッチ完了時に処理中セットにキーが残っています: {remaining_count}件。クリアします。")
+                        self._keys_being_prefetched.clear()
+
         except Exception as e:
             logger.error(f"プリフェッチ処理でエラーが発生: {e}")
             with self._prefetch_lock:
                 self._prefetch_in_progress = False
+
+    def is_key_being_prefetched(self, key: str) -> bool:
+        """指定されたキーが現在プリフェッチ処理中かどうかを確認する"""
+        with self._prefetch_lock:
+            return key in self._keys_being_prefetched
