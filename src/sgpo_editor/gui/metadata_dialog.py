@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QMessageBox,
     QMenu,
+    QWidget,
 )
 
 from sgpo_editor.models.entry import EntryModel
@@ -103,25 +104,35 @@ class MetadataValueEditor(QDialog):
 class MetadataEditDialog(QDialog):
     """メタデータ編集ダイアログ"""
 
-    def __init__(self, entry: EntryModel, parent: Optional[QDialog] = None) -> None:
+    def __init__(
+        self, parent: Optional[QWidget] = None, metadata: Optional[Dict[str, str]] = None
+    ):
         """初期化
 
         Args:
-            entry: 編集対象のエントリ
             parent: 親ウィジェット
+            metadata: 初期メタデータ
         """
         super().__init__(parent)
-        self.entry = entry
-        self.setWindowTitle("メタデータ編集")
-        self.resize(500, 400)
+        self.setWindowTitle(self.tr("メタデータ編集"))
+        self.resize(600, 400)
 
-        # レイアウト設定
-        self.setup_ui()
+        # メタデータを保存
+        self._metadata: Dict[str, str] = metadata.copy() if metadata else {}
+        
+        # UI要素を初期化（インスペクションエラー回避のため）
+        self.metadata_table = None
+        self.key_edit = None
+        self.value_edit = None
+        self.type_combo = None
 
-        # 既存のメタデータを表示
-        self.load_metadata()
+        # UIのセットアップ
+        self._setup_ui()
 
-    def setup_ui(self) -> None:
+        # メタデータを表に表示
+        self._populate_table()
+
+    def _setup_ui(self) -> None:
         """UIコンポーネントの設定"""
         layout = QVBoxLayout(self)
 
@@ -185,13 +196,11 @@ class MetadataEditDialog(QDialog):
 
         layout.addLayout(button_layout)
 
-    def load_metadata(self) -> None:
+    def _populate_table(self) -> None:
         """既存のメタデータをテーブルに読み込む"""
-        # EntryModelクラスのmetadataプロパティを使用
-        metadata = getattr(self.entry, "metadata", {})
-        self.metadata_table.setRowCount(len(metadata))
+        self.metadata_table.setRowCount(len(self._metadata))
 
-        for row, (key, value) in enumerate(metadata.items()):
+        for row, (key, value) in enumerate(self._metadata.items()):
             key_item = QTableWidgetItem(key)
             self.metadata_table.setItem(row, 0, key_item)
 
@@ -378,7 +387,7 @@ class MetadataEditDialog(QDialog):
     def save_metadata(self) -> None:
         """メタデータをエントリに保存する"""
         # 既存のメタデータをクリア
-        self.entry.clear_metadata()
+        self._metadata.clear()
 
         # テーブルから新しいメタデータを設定
         rows = self.metadata_table.rowCount()
@@ -394,6 +403,6 @@ class MetadataEditDialog(QDialog):
                 # 値の型変換
                 value = self.convert_value(value_str, value_type)
 
-                self.entry.add_metadata(key, value)
+                self._metadata[key] = value
 
         self.accept()

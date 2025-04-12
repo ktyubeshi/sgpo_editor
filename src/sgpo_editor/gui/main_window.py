@@ -97,6 +97,7 @@ class MainWindow(QMainWindow):
         )
 
         # 既存のイベントハンドラ（レガシー互換用）
+        # 注意: EventHandlerは将来のバージョンで削除される予定です
         self.event_handler = EventHandler(
             self.table,
             self.entry_editor,
@@ -111,28 +112,8 @@ class MainWindow(QMainWindow):
         # UIの初期化
         self._setup_ui()
 
-        # イベント接続
-        self.event_handler.setup_connections()
-
-        # レガシーなイベント接続
-        self.event_handler.entry_updated.connect(self._on_entry_updated)
-        self.event_handler.entry_selected.connect(self._on_entry_selected)
-
-        # ファサードを使った新しいイベント接続
-        self.entry_editor_facade.entry_applied.connect(self.entry_list_facade.update_table_and_reselect)
-        self.entry_editor_facade.entry_applied.connect(self.update_metadata_panel)
-
-        # エントリテキスト変更シグナルは現時点では必要ないのでコメントアウト
-        # self.entry_editor_facade.entry_changed.connect(self._on_entry_text_changed)
-        # self.entry_list_facade.entry_selected.connect(self._on_entry_selected) # 古い接続を削除
-        self.entry_list_facade.entry_selected.connect(self.update_metadata_panel) # メタデータ更新に接続
-        # self.entry_list_facade.filter_changed.connect(self._update_table) # EntryListFacade内で完結するため削除
-
-        # エントリ選択時にエディタを更新
-        self.entry_list_facade.entry_selected.connect(self._update_editor_on_selection)
-
-        # メタデータパネルのイベント接続
-        self.metadata_panel.edit_requested.connect(self.edit_metadata)
+        # イベント接続を設定
+        self._setup_connections()
 
         # ウィンドウ状態の復元
         self.ui_manager.restore_dock_states()
@@ -348,21 +329,20 @@ class MainWindow(QMainWindow):
         # プレビュー/評価結果ウィンドウ更新は、各ウィンドウ表示時に entry_selected に接続
         pass # 何もしない
 
-    def _on_entry_updated(self, key: str, msgstr: str) -> None:
-        """エントリが更新されたときの処理 (レガシー EventHandler からの接続用)
-
-        主要なロジックは EntryListFacade と MainWindow.update_metadata_panel に移譲されました。
-        このメソッドは将来的に削除される可能性があります。
+    def _on_entry_updated(self, key: str) -> None:
+        """エントリが更新されたときの処理
+        
+        注意: このメソッドは後方互換性のために維持されていますが、
+        将来的には entry_editor_facade.entry_applied シグナルに完全に置き換わる予定です。
 
         Args:
-            key: エントリのキー
-            msgstr: 更新された翻訳文
+            key: 更新されたエントリのキー
         """
-        logger.warning(f"MainWindow._on_entry_updated はレガシー接続用に残されています: key={key}")
-        # 統計更新はファイル変更の副作用として処理されるため不要
-        # テーブル更新と選択維持は EntryListFacade.update_table_and_reselect が担当
-        # メタデータ更新は entry_applied シグナルから直接 update_metadata_panel に接続
-        pass # 何もしない
+        logger.debug(f"MainWindow._on_entry_updated: key={key}")
+        # テーブルの更新
+        self.entry_list_facade.update_table_and_reselect(key)
+        # 統計情報の更新
+        self._update_stats(self._get_current_po().get_statistics() if self._get_current_po() else {})
 
     def _change_entry_layout(self, layout_type: LayoutType) -> None:
         """エントリ編集のレイアウトを変更する
@@ -929,6 +909,29 @@ class MainWindow(QMainWindow):
             return
         entry = current_po.get_entry_by_number(entry_number)
         self.entry_editor_facade.display_entry(entry)
+
+    def _setup_connections(self) -> None:
+        """イベント接続の設定
+        
+        注意: EventHandlerは将来のバージョンで削除される予定です。
+        新しいコードでは EntryListFacade と EntryEditorFacade を使用してください。
+        """
+        # レガシーな接続（後方互換用、将来的に削除予定）
+        # TODO: 以下の接続はファサードパターンに完全に移行する際に削除する
+        self.event_handler.entry_updated.connect(self._on_entry_updated)
+        self.event_handler.entry_selected.connect(self._on_entry_selected)
+
+        # ファサードを使用した新しい接続
+        # エントリ適用時に更新を通知
+        self.entry_editor_facade.entry_applied.connect(self.entry_list_facade.update_table_and_reselect)
+        self.entry_editor_facade.entry_applied.connect(self.update_metadata_panel)
+
+        # エントリ選択時の処理
+        self.entry_list_facade.entry_selected.connect(self._update_editor_on_selection)
+        self.entry_list_facade.entry_selected.connect(self.update_metadata_panel)
+
+        # メタデータパネルのイベント接続
+        self.metadata_panel.edit_requested.connect(self.edit_metadata)
 
 
 def main():

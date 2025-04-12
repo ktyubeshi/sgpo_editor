@@ -46,6 +46,9 @@ class FilterComponent:
         # フィルタ関連のフラグ
         self.exact_match: bool = False
         self.case_sensitive: bool = False
+
+        # filter_status は translation_status の別名（後方互換性のため）
+        self.filter_status: Optional[Set[str]] = None
         
         logger.debug("FilterComponent: 初期化完了")
 

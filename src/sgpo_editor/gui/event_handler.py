@@ -1,19 +1,19 @@
 """イベント処理モジュール
 
 このモジュールは、GUIイベントの処理とハンドリングに関する機能を提供します。
-注意: このクラスはファサードパターンに移行中であり、徐々に廃止される予定です。
+注意: このクラスはファサードパターンに移行中であり、将来的には完全に廃止される予定です。
+新しいコードでは EntryListFacade と EntryEditorFacade を使用してください。
 """
 
 import logging
-from typing import Callable, Dict, Optional, TYPE_CHECKING
+from typing import Callable, Optional, TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
-from PySide6.QtWidgets import QApplication, QMessageBox, QTableWidget
+from PySide6.QtWidgets import QTableWidget
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.core.cache_manager import EntryCacheManager
-from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
-from sgpo_editor.types import EntryModelMap
+from sgpo_editor.gui.widgets.entry_editor import EntryEditor
 
 if TYPE_CHECKING:
     from sgpo_editor.models.entry import EntryModel
@@ -24,36 +24,16 @@ logger = logging.getLogger(__name__)
 class EventHandler(QObject):
     """イベント処理クラス
 
-    注意: このクラスはファサードパターンに移行中であり、将来的には完全に廃止される予定です。
-    新しいコードではEntryListFacadeとEntryEditorFacadeを使用してください。
+    注意: このクラスは廃止予定です。新しいコードでは EntryListFacade と EntryEditorFacade を使用してください。
+    このクラスは後方互換性のために維持されていますが、将来のバージョンで削除される予定です。
 
-    GUIイベントを処理し、エントリの選択、表示、編集、更新に関するロジックを提供します。
-
-    ファサードとの役割分担:
-        ファサード導入後のEventHandlerの主な役割:
-        1. テーブル操作に関連するイベント処理（セル選択、エントリ選択時のUI更新等）
-        2. エントリエディタとの直接的なインタラクション処理
-        3. キャッシュ管理とパフォーマンス最適化
-
-        ファサードに委譲された責務:
-        1. EntryListFacade: テーブル表示と更新、エントリリスト操作のカプセル化
-        2. EntryEditorFacade: エントリ編集操作のカプセル化
-
-        注意: このクラスは段階的にファサードに機能を移行中のため、一部の機能はファサードと
-        重複している場合があります。今後の開発では、以下の方針でリファクタリングを検討:
-        - ファサードを使った実装に一本化し、EventHandlerの役割を純粋なイベント連携に限定
-        - または、EventHandlerを完全にファサードに統合し、このクラスを廃止
-
-    キャッシュ管理:
-        キャッシュ管理は EntryCacheManager に集約されました。
-        このクラスはUIイベントと EntryCacheManager や Facade を連携させる役割を担います。
-
-        注意:
-            リファクタリング進行中のため、一部古いコメントが残っている可能性があります。
+    ファサードパターンへの移行:
+    - EntryListFacade: テーブル表示と更新、エントリリスト操作
+    - EntryEditorFacade: エントリ編集操作
     """
 
     # シグナル定義（互換性のために保持）
-    entry_updated = Signal(int)  # エントリが更新されたとき（引数：エントリ番号）
+    entry_updated = Signal(str)  # エントリが更新されたとき（引数：エントリキー）
     entry_selected = Signal(int)  # エントリが選択されたとき（引数：エントリ番号）
 
     def __init__(
@@ -79,42 +59,31 @@ class EventHandler(QObject):
         self.entry_cache_manager = entry_cache_manager
         self._get_current_po = get_current_po
         self._show_status = show_status
-        self._last_processed_row = -1
+
+        # 後方互換性のために使用しなくなったタイマーを保持
         self._drag_timer = QTimer()
         self._drag_timer.setSingleShot(True)
-        self._drag_timer.timeout.connect(self._process_drag_selection)
-        self._pending_row = -1
-
-        # プリフェッチタイマー
-        self._prefetch_timer = QTimer()
-        self._prefetch_timer.setSingleShot(True)
-
-        # 接続をセットアップ
-        self.setup_connections()
 
         logger.warning("EventHandlerは廃止予定です。新しいコードではEntryListFacadeとEntryEditorFacadeを使用してください。")
 
     def setup_connections(self) -> None:
-        """イベント接続をセットアップする"""
-        logger.debug("EventHandler.setup_connections: 開始")
-        # テーブルのダブルクリックシグナル
-        self.table.itemDoubleClicked.connect(self._on_item_double_clicked)
-        logger.debug("EventHandler.setup_connections: 完了")
+        """イベント接続をセットアップする
 
-    def _process_drag_selection(self) -> None:
-        """ドラッグ選択処理の遅延実行 (現在は不使用)"""
+        注意: このメソッドは後方互換性のために維持されていますが、
+        新しいコードでは EntryListFacade と EntryEditorFacade を使用してください。
+        """
+        logger.debug("EventHandler.setup_connections: このクラスは廃止予定です")
+        # 実際の接続はもう不要ですが、後方互換性のために一部を維持
         pass
 
+    # 一部の基本的なメソッドだけを保持し、他はすべて削除
     def _on_item_double_clicked(self, item) -> None:
-        """テーブルアイテムがダブルクリックされたときの処理"""
+        """テーブルアイテムがダブルクリックされたときの処理
+
+        注意: このメソッドは後方互換性のために維持されていますが、
+        新しいコードでは EntryListFacade を使用してください。
+        """
         row = item.row()
         key = self.entry_cache_manager.get_key_for_row(row)
         if key:
-            current_po = self._get_current_po()
-            if current_po:
-                entry = current_po.get_entry_by_key(key)
-                logger.debug(f"EventHandler: Item double clicked: row={row}, key={key}")
-
-    # 以下の不要メソッドは削除
-    # _on_entry_changed
-    # change_entry_layout は既に EntryEditorFacade に移行済み
+            logger.debug(f"EventHandler: Item double clicked: row={row}, key={key} (廃止予定のメソッド)")

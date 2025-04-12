@@ -345,10 +345,10 @@ class EntryListFacade(QObject):
 
             logger.debug(f"EntryListFacade: プリフェッチ対象: {len(keys_to_prefetch)}件 (表示範囲: {first_visible_row}-{last_visible_row})")
 
-            # EntryCacheManagerのプリフェッチ機能を使用 (ViewerPOFile経由)
-            current_po.cache_manager.prefetch_visible_entries(
+            # プリフェッチをバックグラウンドで開始
+            self._entry_cache_manager.prefetch_visible_entries(
                 keys_to_prefetch,
-                fetch_callback=current_po.get_entries_by_keys # ViewerPOFileRefactored のメソッドを渡す
+                fetch_callback=current_po.get_entries_by_keys # ViewerPOFile のメソッドを渡す
             )
 
         except Exception as e:
