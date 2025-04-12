@@ -7,7 +7,7 @@ ViewerPOFileUpdaterを継承し、統計情報と保存に関連する機能を�
 import logging
 from collections import namedtuple
 from pathlib import Path
-from typing import Dict, List, Optional, Union, cast
+from typing import Optional, Union, cast
 
 from sgpo_editor.core.po_factory import get_po_factory
 from sgpo_editor.core.viewer_po_file_updater import ViewerPOFileUpdater

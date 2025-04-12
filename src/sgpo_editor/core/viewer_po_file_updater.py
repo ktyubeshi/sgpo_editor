@@ -5,10 +5,9 @@ ViewerPOFileFilterを継承し、エントリ更新に関連する機能を実�
 """
 
 import logging
-from typing import Dict, Union
 
-from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.core.viewer_po_file_filter import ViewerPOFileFilter
+from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import EntryDict, EntryInput, EntryInputMap
 
 logger = logging.getLogger(__name__)

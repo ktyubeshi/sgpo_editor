@@ -5,11 +5,11 @@ ViewerPOFileEntryRetrieverを継承し、フィルタリングに関連する機
 """
 
 import logging
-from typing import Any, Dict, List, Optional, cast
+from typing import List, Optional, cast
 
-from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.core.constants import TranslationStatus
 from sgpo_editor.core.viewer_po_file_entry_retriever import ViewerPOFileEntryRetriever
+from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import FlagConditions
 
 logger = logging.getLogger(__name__)
