@@ -1,22 +1,25 @@
-"""イベント処理モジュール
+"""
+このモジュールは廃止されました。
 
-このモジュールは、GUIイベントの処理とハンドリングに関する機能を提供します。
-注意: このクラスはファサードパターンに移行中であり、将来的には完全に廃止される予定です。
-新しいコードでは EntryListFacade と EntryEditorFacade を使用してください。
+以下のファサードに完全に移行しました:
+- src/sgpo_editor/gui/facades/entry_list_facade.py
+- src/sgpo_editor/gui/facades/entry_editor_facade.py
+
+このファイルは互換性のために一時的に保持されていますが、将来のバージョンで削除されます。
 """
 
 import logging
 from typing import Callable, Optional, TYPE_CHECKING
 
-from PySide6.QtCore import QObject, Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import QTableWidget
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.core.cache_manager import EntryCacheManager
+from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor
 
 if TYPE_CHECKING:
-    from sgpo_editor.models.entry import EntryModel
+    pass
 
 logger = logging.getLogger(__name__)
 
