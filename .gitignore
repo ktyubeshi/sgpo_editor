@@ -14,3 +14,4 @@
 /profile_results/**
 /repomix-output.txt
 /testlog.txt
+*.mojibake-report.txt
