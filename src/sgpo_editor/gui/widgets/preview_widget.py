@@ -5,13 +5,9 @@
 """
 
 import logging
-import re
-import html
 from typing import Optional
-import codecs
 
-from PySide6.QtCore import Qt
-from sgpo_editor.gui.event_handler import EventHandler
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox,
@@ -24,7 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from sgpo_editor.models import EntryModel
+from sgpo_editor.models.entry import EntryModel
 
 logger = logging.getLogger(__name__)
 
@@ -208,9 +204,6 @@ class PreviewDialog(QDialog):
         self.resize(600, 400)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
 
-        # イベントハンドラーへの参照（後で設定）
-        self._event_handler = None
-
         # レイアウト設定
         layout = QVBoxLayout(self)
 
@@ -226,17 +219,17 @@ class PreviewDialog(QDialog):
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)
 
-    def set_event_handler(self, event_handler: EventHandler) -> None:
-        """イベントハンドラーを設定し、エントリ選択変更イベントを接続する
-
+    def set_update_signal(self, signal: Signal) -> None:
+        """エントリ更新シグナルを接続する
+        
         Args:
-            event_handler: イベントハンドラー
+            signal: エントリ更新シグナル (int)
         """
-        self._event_handler = event_handler
-
-        # エントリ選択変更イベントを接続
-        if hasattr(event_handler, "entry_updated"):
-            event_handler.entry_updated.connect(self._on_entry_updated)
+        # シグナルを保存
+        self._update_signal = signal
+        
+        # シグナルを接続
+        signal.connect(self._on_entry_updated)
 
     def _on_entry_updated(self, position: int) -> None:
         """エントリが更新されたときの処理
@@ -244,9 +237,11 @@ class PreviewDialog(QDialog):
         Args:
             position: 更新されたエントリの位置
         """
-        if self._event_handler:
-            current_entry = self._event_handler.get_current_entry()
-            self.set_entry(current_entry)
+        # 更新シグナルが来たときの処理
+        # 親ウィンドウに現在のエントリを要求する
+        parent = self.parent()
+        if parent and hasattr(parent, "_update_preview_dialog"):
+            parent._update_preview_dialog(position)
 
     def set_entry(self, entry: Optional[EntryModel]) -> None:
         """エントリを設定
