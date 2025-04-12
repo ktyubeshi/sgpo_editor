@@ -119,7 +119,12 @@ class EntryListFacade(QObject):
             # POファイルからフィルタリング＆ソート済みのエントリを取得
             # get_filtered_entries は内部で現在のソート条件を使用する
             logger.debug("EntryListFacade.update_table: POファイルからエントリ取得開始")
-            sorted_entries = current_po.get_filtered_entries(criteria)
+            # criteria オブジェクトから必要な値を取り出す
+            sorted_entries = current_po.get_filtered_entries(
+                filter_text=criteria.filter,
+                filter_keyword=criteria.filter_keyword,
+                match_mode=criteria.match_mode
+            )
             logger.debug(f"EntryListFacade.update_table: 取得したエントリ数: {len(sorted_entries)}件")
 
             # EntryCacheManager の行マッピングをクリア＆再構築

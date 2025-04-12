@@ -292,7 +292,9 @@ class TableManager:
 
         if column_widths_json:
             try:
-                column_widths = json.loads(column_widths_json)
+                # QSettings からの戻り値を str に明示的にキャスト
+                column_widths_str = str(column_widths_json)
+                column_widths = json.loads(column_widths_str)
                 # 保存された列幅を適用（最小幅10ピクセルを保証）
                 for col_idx_str, width in column_widths.items():
                     col_idx = int(col_idx_str)
@@ -504,7 +506,9 @@ class TableManager:
 
         if hidden_columns_json:
             try:
-                hidden_columns = json.loads(hidden_columns_json)
+                # QSettings からの戻り値を str に明示的にキャスト
+                hidden_columns_str = str(hidden_columns_json)
+                hidden_columns = json.loads(hidden_columns_str)
                 self._hidden_columns = set(int(col) for col in hidden_columns)
 
                 # 列の表示/非表示を設定
