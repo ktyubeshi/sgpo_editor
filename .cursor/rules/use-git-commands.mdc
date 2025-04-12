@@ -1,0 +1,42 @@
+---
+description: When use git commands
+globs: 
+alwaysApply: false
+---
+# Git Command Rules
+
+## Paging Commands
+
+When using Git commands that produce paginated output (such as `log`, `diff`, `status`), always append `| cat` to the command. This ensures consistent output handling and prevents the command from entering an interactive paging mode.
+
+### Affected Commands
+
+The following Git commands typically trigger pagination:
+- `git log`
+- `git diff`
+- `git status`
+- `git branch`
+- `git tag`
+- `git stash list`
+
+### Usage Examples
+
+Instead of:
+```bash
+git log
+git diff
+git status
+```
+
+Use:
+```bash
+git log | cat
+git diff | cat
+git status | cat
+```
+
+### Rationale
+
+- **Consistent Output Handling**: Prevents the command from entering interactive paging mode (less/more)
+- **Automation Friendly**: Makes it easier to process the output in scripts or automated workflows
+- **No User Interaction Required**: Output is displayed directly without requiring user input to navigate through pages
