@@ -16,15 +16,8 @@ from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.event_handler import EventHandler
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor
 
-# srcディレクトリをPYTHONPATHに追加
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-
 # ロギングを無効化
 logging.basicConfig(level=logging.CRITICAL)
-
-# Qt関連のインポート
-
-# SGPOエディタ関連のインポート
 
 # Qt設定
 QCoreApplication.setOrganizationName("SGPO")

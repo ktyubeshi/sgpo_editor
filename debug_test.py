@@ -4,9 +4,6 @@ import os
 import sys
 import traceback
 
-# srcディレクトリをPYTHONPATHに追加
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-
 try:
     # テストファイルを直接インポート
     print("テストファイルを直接インポートします...")
