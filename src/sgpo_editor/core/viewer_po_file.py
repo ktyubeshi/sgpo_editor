@@ -8,16 +8,16 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Union, Any
 
-from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.types import EntryDict, EntryDictList, FilterSettings, StatisticsInfo
-from sgpo_editor.core.po_factory import POLibraryType
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.database_accessor import DatabaseAccessor
 from sgpo_editor.core.po_components.base import POFileBaseComponent
-from sgpo_editor.core.po_components.retriever import EntryRetrieverComponent
 from sgpo_editor.core.po_components.filter import FilterComponent
-from sgpo_editor.core.po_components.updater import UpdaterComponent
+from sgpo_editor.core.po_components.retriever import EntryRetrieverComponent
 from sgpo_editor.core.po_components.stats import StatsComponent
+from sgpo_editor.core.po_components.updater import UpdaterComponent
+from sgpo_editor.core.po_factory import POLibraryType
+from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.types import FilterSettings, StatisticsInfo
 
 logger = logging.getLogger(__name__)
 

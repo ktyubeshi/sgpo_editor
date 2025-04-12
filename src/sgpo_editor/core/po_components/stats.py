@@ -6,12 +6,11 @@
 import logging
 import time
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Set, Union, Tuple
+from typing import Dict, Any, Optional, Union
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.database_accessor import DatabaseAccessor
 from sgpo_editor.core.po_factory import get_po_factory, POLibraryType
-from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import StatisticsInfo
 
 logger = logging.getLogger(__name__)

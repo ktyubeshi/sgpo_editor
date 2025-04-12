@@ -6,7 +6,7 @@ sgpoとpolibの両方に対応できるようにするためのインターフ�
 
 import abc
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Dict, Iterator, List, Optional, Union
 
 
 class POEntry(abc.ABC):
