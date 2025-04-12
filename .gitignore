@@ -10,6 +10,6 @@
 *.db-wal
 /build/
 /test_log.txt
-/inspection/
+/inspection/**
 /profile_results/**
 /repomix-output.txt
