@@ -25,6 +25,7 @@ from sgpo_editor.core.po_factory import POLibraryType
 from sgpo_editor.core.viewer_po_file_stats import ViewerPOFileStats
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.database_accessor import DatabaseAccessor
+from sgpo_editor.core.constants import TranslationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,14 @@ class ViewerPOFileRefactored(ViewerPOFileStats):
         """
         # 親クラスの初期化
         super().__init__(library_type, db_accessor, cache_manager)
+
+        # デフォルトのソート条件
+        self._sort_column: str = "position"  # ソート対象列名
+        self._sort_order: str = "ASC"       # ソート順序 (ASC or DESC)
+
+        # フィルタ関連のデフォルト値 (ViewerPOFileFilter からの移譲を想定)
+        self.exact_match: bool = False
+        self.case_sensitive: bool = False
 
         logger.debug("ViewerPOFileRefactored: 初期化完了")
 
@@ -203,6 +212,23 @@ class ViewerPOFileRefactored(ViewerPOFileStats):
             "translation_status": self.translation_status,
         }
 
+    def set_sort_criteria(self, column: str, order: str) -> None:
+        """ソート条件を設定する
+
+        Args:
+            column: ソートする列名
+            order: ソート順序 ('ASC' or 'DESC')
+        """
+        logger.debug(f"ViewerPOFileRefactored.set_sort_criteria: column={column}, order={order}")
+        valid_order = order.upper() if order else "ASC"
+        if valid_order not in ["ASC", "DESC"]:
+            valid_order = "ASC"
+            
+        if self._sort_column != column or self._sort_order != valid_order:
+            self._sort_column = column
+            self._sort_order = valid_order
+            self.invalidate_cache() # ソート条件が変わったらキャッシュを無効化
+
     def invalidate_cache(self) -> None:
         """キャッシュを無効化する
 
@@ -272,3 +298,154 @@ class ViewerPOFileRefactored(ViewerPOFileStats):
         if not self.path:
             return ""
         return Path(self.path).name
+
+    def get_filtered_entries(
+        self,
+        filter_text: str = "すべて",
+        filter_keyword: Optional[str] = None,
+        match_mode: str = "部分一致",
+        case_sensitive: bool = False,
+        filter_status: Optional[Set[str]] = None,
+        filter_obsolete: bool = True,
+        update_filter: bool = True,
+        search_text: Optional[str] = None,
+    ) -> List[EntryModel]:
+        """フィルタリングされたエントリのリストを取得する。
+
+        Args:
+            filter_text: フィルタテキスト (advanced_searchでは直接使用されない)
+            filter_keyword: フィルタキーワード (search_textがNoneの場合に使用)
+            match_mode: マッチモード (advanced_searchでは直接使用されない)
+            case_sensitive: 大文字小文字を区別するかどうか (インスタンス変数 self.case_sensitive に影響)
+            filter_status: 翻訳ステータスのセット (インスタンス変数 self.filter_status に影響)
+            filter_obsolete: 廃止エントリを含むかどうか (advanced_searchでは直接使用されない)
+            update_filter: フィルタを更新するかどうか (インスタンス変数とキャッシュに影響)
+            search_text: 検索テキスト (filter_keywordより優先、インスタンス変数 self.search_text に影響)
+
+        Returns:
+            List[EntryModel]: フィルタリングされたエントリのリスト
+        """
+        # --- フィルタ更新ロジック --- 
+        needs_update = False # Start assuming no update needed unless specified or changed
+        if update_filter:
+            needs_update = True # If update_filter is true, always assume an update is needed initially
+            
+            # Update search_text only if search_text or filter_keyword is provided and differs
+            current_search_text = search_text if search_text is not None else filter_keyword
+            if current_search_text is not None and self.search_text != current_search_text:
+                self.search_text = current_search_text
+                # needs_update = True # Already set by update_filter=True
+            # If both are None and self.search_text is not None, update to None
+            elif current_search_text is None and self.search_text is not None:
+                 self.search_text = None
+                 # needs_update = True
+
+            # Update filter_status only if filter_status parameter is provided and differs
+            if filter_status is not None and self.filter_status != filter_status:
+                self.filter_status = filter_status
+                # needs_update = True
+            # If parameter is None, don't change the instance variable unless it was already None (no real change)
+            
+            # Update case_sensitive only if provided and differs
+            if self.case_sensitive != case_sensitive:
+                self.case_sensitive = case_sensitive
+                # needs_update = True
+
+            # Update exact_match similarly (parameter missing, use self.exact_match?)
+            # Assuming exact_match parameter should exist or be derived from match_mode
+            # Let's assume self.exact_match is updated elsewhere or via a dedicated method
+            # if self.exact_match != exact_match: self.exact_match = exact_match; needs_update = True
+
+        # If update_filter is False, but cache is empty, we need an update
+        if not update_filter and not self.filtered_entries:
+            needs_update = True
+            
+        # Force update from cache manager overrides everything
+        force_update = self.cache_manager.is_force_filter_update() if self.cache_manager else False
+        if force_update:
+            needs_update = True
+
+        # --- キャッシュ利用 or DB検索 --- 
+        # 更新不要でキャッシュがあればキャッシュを返す
+        if not needs_update and self.filtered_entries is not None:
+            logger.debug(
+                "ViewerPOFileRefactored.get_filtered_entries: キャッシュされたフィルタ結果を使用"
+            )
+            return self.filtered_entries
+
+        # DBからフィルタリング実行
+        logger.debug(
+            f"ViewerPOFileRefactored.get_filtered_entries: DBからフィルタリング実行 update_filter={update_filter}, force_update={force_update}, needs_update={needs_update}"
+        )
+
+        # advanced_search に渡すパラメータはインスタンス変数から取得する
+        db_flag_conditions = self.flag_conditions.copy() if self.flag_conditions else {}
+
+        # DatabaseAccessor.advanced_search を使用してエントリを取得
+        filtered_entries_dicts = self.db_accessor.advanced_search(
+            search_text=self.search_text,             # Use instance variable
+            search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"], # 検索対象フィールド
+            sort_column=self._sort_column,             # Use instance variable
+            sort_order=self._sort_order,               # Use instance variable
+            flag_conditions=db_flag_conditions,       # Use instance variable
+            translation_status=self.filter_status,     # Use instance variable (assuming self.filter_status)
+            exact_match=self.exact_match,              # Use instance variable
+            case_sensitive=self.case_sensitive,        # Use instance variable
+            limit=None,
+            offset=0,
+        )
+
+        # 辞書のリストをEntryModelのリストに変換
+        filtered_entries = [
+            EntryModel.from_dict(cast(EntryDict, entry_dict))
+            for entry_dict in filtered_entries_dicts
+        ]
+
+        # フィルタリング結果をキャッシュ
+        self.filtered_entries = filtered_entries
+
+        # 強制更新フラグをリセット
+        if self.cache_manager and force_update:
+            self.cache_manager.set_force_filter_update(False)
+
+        logger.debug(
+            f"ViewerPOFileRefactored.get_filtered_entries: DBから {len(filtered_entries)} 件取得"
+        )
+        return filtered_entries
+
+    def get_filtered_entries_from_db(
+        self,
+        filter_text: str,
+        filter_keyword: str,
+        match_mode: str,
+        case_sensitive: bool,
+        filter_status: Optional[Set[str]],
+        filter_obsolete: bool
+    ) -> List[EntryModel]:
+        """データベースからフィルタリングされたエントリのリストを取得する
+
+        Args:
+            filter_text: フィルタテキスト
+            filter_keyword: フィルタキーワード
+            match_mode: マッチモード
+            case_sensitive: 大文字小文字を区別するかどうか
+            filter_status: 翻訳ステータスのセット
+            filter_obsolete: 廃止エントリを含むかどうか
+
+        Returns:
+            List[EntryModel]: フィルタリングされたエントリのリスト
+        """
+        # データベースからフィルタリングされたエントリを取得
+        entries_dict = self.db_accessor.get_filtered_entries(
+            filter_text=filter_text,
+            filter_keyword=filter_keyword,
+            match_mode=match_mode,
+            case_sensitive=case_sensitive,
+            filter_status=filter_status,
+            filter_obsolete=filter_obsolete
+        )
+
+        # リストからEntryModelオブジェクトのリストに変換
+        entries = [EntryModel.from_dict(entry_dict) for entry_dict in entries_dict]
+
+        return entries
