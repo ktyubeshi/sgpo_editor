@@ -7,11 +7,11 @@ import json
 import logging
 import os
 import sqlite3
-from typing import Dict, List, Optional, Union, cast
+from typing import List, Optional, cast
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.models.evaluation_state import EvaluationState
-from sgpo_editor.types import ReviewCommentType, ReviewDataDict, EvaluationResult, MetricScores, CategoryScores
+from sgpo_editor.types import ReviewCommentType, ReviewDataDict, MetricScores, CategoryScores
 
 logger = logging.getLogger(__name__)
 

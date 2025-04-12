@@ -2,10 +2,10 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast, Literal, ForwardRef
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast, Literal
 
 if TYPE_CHECKING:
-    from sgpo_editor.types import CheckResults, EntryDict
+    from sgpo_editor.types import EntryDict
     from sgpo_editor.utils.metadata_utils import MetadataDict
 
 from polib import POEntry

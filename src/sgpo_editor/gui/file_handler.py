@@ -5,14 +5,14 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import traceback
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union, cast
-import json
+from typing import Callable, List, Optional
 
 from PySide6.QtCore import QSettings
-from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
+from PySide6.QtWidgets import QApplication, QFileDialog, QWidget
 
 from sgpo_editor.core import ViewerPOFile
 from sgpo_editor.types import StatsDict

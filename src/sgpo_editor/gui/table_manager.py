@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Callable, Dict, List, Optional, Set, Union
+from typing import Callable, Dict, List, Optional, Set
 
 from PySide6.QtCore import QSettings, Qt
-from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
 from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
 
-from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.core.cache_manager import EntryCacheManager
+from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.widgets.search import SearchCriteria
 from sgpo_editor.models.entry import EntryModel
 
@@ -209,7 +209,7 @@ class TableManager:
 
     def update_table(
         self,
-        entries: List[EntryModel],
+        entries: Optional[List[EntryModel]],
         criteria: Optional[SearchCriteria] = None,
     ) -> List[EntryModel]:
         """テーブルを更新する
@@ -228,7 +228,7 @@ class TableManager:
             EntryCacheManager.add_row_key_mapping で設定されている想定です。
         """
         logger.debug(
-            f"TableManager.update_table: 開始 (表示予定エントリ数: {len(entries)}件)"
+            f"TableManager.update_table: 開始 (表示予定エントリ数: {len(entries) if entries else 0}件)"
         )
 
         # 現在の列の表示/非表示状態を内部状態と同期

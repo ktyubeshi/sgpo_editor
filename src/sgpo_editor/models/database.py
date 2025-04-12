@@ -15,7 +15,6 @@ from sgpo_editor.types import (
     MetadataValueType, ReviewDataDict, ReviewCommentType
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -401,7 +400,6 @@ class InMemoryEntryStore:
             # レビュー関連データを取得
             entry["review_data"] = self._get_review_data(entry_id)
 
-            from sgpo_editor.types import EntryDict
             return entry  # type: ignore
 
     def get_entry_by_key(self, key: str) -> Optional[EntryDict]:
@@ -441,7 +439,6 @@ class InMemoryEntryStore:
             # レビュー関連データを取得
             entry["review_data"] = self._get_review_data(entry["id"])
 
-            from sgpo_editor.types import EntryDict
             return entry  # type: ignore
             
     def get_entry_basic_info(self, key: str) -> Optional[EntryDict]:

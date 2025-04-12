@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Union, TypedDict, cast
+from typing import Dict, List, Optional, cast
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -25,11 +25,10 @@ from PySide6.QtWidgets import (
     QMainWindow,
 )
 
+from sgpo_editor.models.database import InMemoryEntryStore
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.models.evaluation_state import EvaluationState
-from sgpo_editor.models.database import InMemoryEntryStore
 from sgpo_editor.types import LLMResponseMetricScores
-from sgpo_editor.utils.llm_utils import LLMEvaluationResponse
 
 logger = logging.getLogger(__name__)
 

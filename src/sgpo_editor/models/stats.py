@@ -1,10 +1,8 @@
 """統計情報のデータモデル"""
 
-from typing import Any, Dict, Union, cast
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
-from sgpo_editor.types import StatsDataDict
 
 
 class StatsModel(BaseModel):

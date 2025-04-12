@@ -6,7 +6,7 @@ POファイルのコメントとしてメタデータを保存・読み込みす
 import json
 import logging
 import re
-from typing import Any, Dict, Optional, Union, List, TypedDict
+from typing import Dict, Optional, Union, List, TypedDict
 
 logger = logging.getLogger(__name__)
 

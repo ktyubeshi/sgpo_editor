@@ -8,6 +8,7 @@ from typing import Any, Dict, List, TypeAlias, Union, Tuple, Callable, Optional,
 
 if TYPE_CHECKING:
     from sgpo_editor.models.entry import EntryModel
+    from sgpo_editor.core.constants import TranslationStatus
 
 class EntryDictType(TypedDict, total=False):
     """POエントリの辞書表現の型定義"""

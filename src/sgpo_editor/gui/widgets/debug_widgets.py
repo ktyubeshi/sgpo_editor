@@ -4,9 +4,7 @@
 """
 
 import json
-from typing import Any, Dict, List, Optional, Union, TypeAlias, cast
-
-from sgpo_editor.types import EntryDict
+from typing import Any, List, Optional, Union
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -19,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.types import EntryDict
 
 
 class EntryDebugWidget(QWidget):

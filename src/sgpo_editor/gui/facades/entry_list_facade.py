@@ -8,7 +8,7 @@ import logging
 from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal, Qt, QTimer
-from PySide6.QtWidgets import QTableWidget, QApplication
+from PySide6.QtWidgets import QTableWidget
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.viewer_po_file import ViewerPOFile

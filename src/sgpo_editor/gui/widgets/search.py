@@ -1,8 +1,7 @@
 """フィルタリング用ウィジェット"""
 
-from typing import Callable, Dict, Optional
+from typing import Dict, Optional
 
-from pydantic import BaseModel, ConfigDict
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (
     QComboBox,
@@ -12,6 +11,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QWidget,
 )
+from pydantic import BaseModel, ConfigDict
 
 from sgpo_editor.core.constants import TranslationStatus, TRANSLATION_STATUS_ORDER
 from sgpo_editor.i18n import translate

@@ -2,9 +2,10 @@
 
 import json
 import logging
-from typing import Dict, List, Optional, Any, Union, cast
+from typing import Dict, Optional, Union
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -21,7 +22,6 @@ from PySide6.QtWidgets import (
     QMenu,
     QWidget,
 )
-from PySide6.QtGui import QAction
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import MetadataValueType

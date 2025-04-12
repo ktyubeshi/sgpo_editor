@@ -21,11 +21,9 @@ dependencies = [
     "pytest-asyncio>=0.24.0",
 ]
 
-[tool.setuptools]
-py-modules = ["src"]
-
 [tool.setuptools.packages.find]
-where = ["src/"]
+where = ["src"]
+include = ["sgpo_editor*"]  # sgpo_editorパッケージとそのサブパッケージを含める
 
 [project.optional-dependencies]
 test = [
@@ -45,7 +43,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build]
-packages = ["src"]
+packages = ["src/sgpo_editor"]  # srcディレクトリ内のsgpo_editorパッケージを指定
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

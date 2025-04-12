@@ -861,17 +861,82 @@ class DatabaseAccessor:
         return flags
 
     def count_entries(self) -> int:
-        """データベース内のエントリ総数を取得する
+        """データベース内のエントリ数を取得する
 
         Returns:
-            エントリの総数
+            int: エントリの総数
         """
         logger.debug("DatabaseAccessor.count_entries: エントリ数を取得")
+        with self.db.transaction() as cur:
+            cur.execute("SELECT COUNT(*) FROM entries")
+            return cur.fetchone()[0]
+
+    def count_entries_with_condition(self, condition: Dict) -> int:
+        """条件に一致するエントリの数を取得する
+
+        Args:
+            condition: 条件を表す辞書 {"field": フィールド名, "value": 値, "operator": 演算子}
+                演算子は "=", "!=", ">", "<", ">=", "<=" のいずれか
+
+        Returns:
+            int: 条件に一致するエントリの数
+        """
+        field = condition.get("field")
+        value = condition.get("value")
+        operator = condition.get("operator", "=")
+        
+        logger.debug(f"DatabaseAccessor.count_entries_with_condition: field={field}, value={value}, operator={operator}")
+
+        valid_operators = ["=", "!=", ">", "<", ">=", "<="]
+        if operator not in valid_operators:
+            logger.error(f"無効な演算子: {operator}")
+            return 0
 
         with self.db.transaction() as cur:
-            cur.execute("SELECT COUNT(*) as count FROM entries")
-            row = cur.fetchone()
-            return row["count"] if row else 0
+            # None値の場合の特別処理
+            if value is None:
+                if operator == "=":
+                    sql = f"SELECT COUNT(*) FROM entries WHERE {field} IS NULL"
+                    cur.execute(sql)
+                elif operator == "!=":
+                    sql = f"SELECT COUNT(*) FROM entries WHERE {field} IS NOT NULL"
+                    cur.execute(sql)
+                else:
+                    logger.error(f"None値に対して無効な演算子: {operator}")
+                    return 0
+            else:
+                sql = f"SELECT COUNT(*) FROM entries WHERE {field} {operator} ?"
+                cur.execute(sql, (value,))
+                
+            return cur.fetchone()[0]
+
+    def count_entries_with_flag(self, flag: str) -> int:
+        """特定のフラグを持つエントリの数を取得する
+
+        Args:
+            flag: カウントするフラグ名
+
+        Returns:
+            int: 指定されたフラグを持つエントリの数
+        """
+        logger.debug(f"DatabaseAccessor.count_entries_with_flag: flag={flag}")
+        
+        if flag == "fuzzy":
+            # fuzzyはエントリテーブルの列として存在
+            with self.db.transaction() as cur:
+                cur.execute("SELECT COUNT(*) FROM entries WHERE fuzzy = 1")
+                return cur.fetchone()[0]
+        else:
+            # その他のフラグはフラグテーブルで保持
+            with self.db.transaction() as cur:
+                cur.execute(
+                    """
+                    SELECT COUNT(*) FROM entry_flags
+                    WHERE flag = ?
+                    """,
+                    (flag,)
+                )
+                return cur.fetchone()[0]
 
     def get_unique_msgid_count(self) -> int:
         """一意のmsgid数を取得する

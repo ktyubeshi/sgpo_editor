@@ -11,20 +11,26 @@
   <component name="ChangeListManager">
     <list default="true" id="839a3ece-7d0e-4aa6-9209-4399dd5eea63" name="変更" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/__init__.pyi" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/__init__.pyi" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/filter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/retriever.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/retriever.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/updater.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/updater.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/evaluation_dialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/evaluation_dialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/facades/entry_editor_facade.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/facades/entry_editor_facade.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/demo_widget/entry_editor_demo.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/demo_widget/entry_editor_demo.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/cache_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/cache_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/database_accessor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/database_accessor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/facades/entry_list_facade.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/facades/entry_list_facade.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/file_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/file_handler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/main_window.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/metadata_dialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/metadata_dialog.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/table_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/table_manager.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/translation_evaluate_dialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/translation_evaluate_dialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/po_format_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/po_format_editor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/debug_widgets.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/debug_widgets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/search.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/search.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/models/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/models/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/models/entry.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/models/entry.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/models/evaluation_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/models/evaluation_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/models/stats.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/models/stats.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sgpo_editor/types.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/types.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/utils/llm_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/utils/llm_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/utils/metadata_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/utils/metadata_utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,7 +90,7 @@
       <workItem from="1740835697729" duration="4243000" />
       <workItem from="1741799885881" duration="83000" />
       <workItem from="1741799977632" duration="1000" />
-      <workItem from="1744457993395" duration="5511000" />
+      <workItem from="1744457993395" duration="10584000" />
     </task>
     <servers />
   </component>

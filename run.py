@@ -4,12 +4,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-
-# srcディレクトリをPYTHONPATHに追加
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-
 from PySide6.QtCore import QCoreApplication
-
 from sgpo_editor.gui.main_window import main
 
 # データディレクトリ作成
