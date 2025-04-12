@@ -183,7 +183,7 @@ class MainWindow(QMainWindow):
         current_po = self._get_current_po()
         if current_po:
             logger.debug("MainWindow._open_file: ファサード経由でデータベースを設定")
-            self.entry_editor_facade.set_database(current_po.db)
+            self.entry_editor_facade.set_database(current_po.db_accessor)
             logger.debug("MainWindow._open_file: データベース設定完了")
 
         # 最近使用したファイルメニューを更新
@@ -211,7 +211,7 @@ class MainWindow(QMainWindow):
                 logger.debug(
                     "MainWindow._open_recent_file: ファサード経由でデータベースを設定"
                 )
-                self.entry_editor_facade.set_database(current_po.db)
+                self.entry_editor_facade.set_database(current_po.db_accessor)
                 logger.debug("MainWindow._open_recent_file: データベース設定完了")
 
             # 最近使用したファイルメニューを更新

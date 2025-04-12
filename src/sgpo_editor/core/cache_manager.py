@@ -371,10 +371,18 @@ class EntryCacheManager:
             self._filtered_entries_cache_key = ""
 
     def is_force_filter_update(self) -> bool:
-        """フィルタ更新フラグの状態を返す
+        """フィルタ更新フラグの状態を取得する
 
         Returns:
-            フィルタを強制更新する場合はTrue、しない場合はFalse
+            bool: フィルタ更新フラグがTrueの場合はTrue、それ以外はFalse
+        """
+        return self._force_filter_update
+
+    def get_force_filter_update(self) -> bool:
+        """フィルタ更新フラグの状態を取得する
+
+        Returns:
+            bool: フィルタ更新フラグがTrueの場合はTrue、それ以外はFalse
         """
         return self._force_filter_update
 
@@ -662,31 +670,73 @@ class EntryCacheManager:
     def cache_filtered_entries(
         self, filter_conditions: FilterConditions, entries: EntryModelList
     ) -> None:
-        """フィルタ結果をキャッシュに保存する
-
-        最適化されたキャッシュ戦略：
-        - 高速なキー生成によるキャッシュアクセスの効率化
-        - 条件の正規化によるキャッシュヒット率の向上
-        - 強制更新フラグのクリアによるキャッシュの有効化
+        """フィルタリング結果をキャッシュする
 
         Args:
-            filter_conditions: フィルタ条件の辞書
-            entries: フィルタ結果のエントリリスト
+            filter_conditions: フィルタ条件
+            entries: フィルタリング結果のエントリリスト
         """
         if not self._cache_enabled:
+            logger.debug("キャッシュが無効化されているため、フィルタリング結果をキャッシュしません")
             return
 
-        # フィルタ条件からキャッシュキーを生成
+        # キャッシュキーを生成
         cache_key = self._generate_filter_cache_key(filter_conditions)
-
+        
         # キャッシュを更新
-        logger.debug(
-            f"EntryCacheManager.cache_filtered_entries: キャッシュ更新 key={cache_key}, "
-            f"エントリ数={len(entries)}"
-        )
         self._filtered_entries_cache = entries
         self._filtered_entries_cache_key = cache_key
-        self._force_filter_update = False  # 強制更新フラグをクリア
+        self._force_filter_update = False
+        
+        logger.debug(
+            f"EntryCacheManager.cache_filtered_entries: フィルタ結果をキャッシュしました ({len(entries)}件)"
+        )
+        
+    def set_filter_cache(self, entries: EntryModelList) -> None:
+        """フィルタリング結果を直接キャッシュする
+
+        こちらは簡易バージョンで、キャッシュキーは使用せず、エントリリストのみをキャッシュします。
+        キャッシュの一貫性を確保するため、通常は cache_filtered_entries メソッドの使用を推奨します。
+
+        Args:
+            entries: フィルタリング結果のエントリリスト
+        """
+        if not self._cache_enabled:
+            logger.debug("キャッシュが無効化されているため、フィルタリング結果をキャッシュしません")
+            return
+            
+        # キャッシュを更新
+        self._filtered_entries_cache = entries
+        self._force_filter_update = False
+        
+        logger.debug(
+            f"EntryCacheManager.set_filter_cache: フィルタ結果をキャッシュしました ({len(entries)}件)"
+        )
+
+    def get_filter_cache(self) -> Optional[EntryModelList]:
+        """キャッシュされたフィルタリング結果を取得する
+
+        Returns:
+            Optional[EntryModelList]: キャッシュされたフィルタリング結果、もしくはNone
+        """
+        if not self._cache_enabled:
+            logger.debug("キャッシュが無効化されているため、null を返します")
+            return None
+            
+        if self._force_filter_update:
+            logger.debug("強制更新フラグが立っているため、null を返します")
+            return None
+            
+        if not self._filtered_entries_cache:
+            logger.debug("フィルタキャッシュが空のため、null を返します")
+            return None
+            
+        # キャッシュヒットのカウントを増加
+        self._filter_cache_hits += 1
+        self._check_and_log_performance()
+        
+        logger.debug(f"EntryCacheManager.get_filter_cache: キャッシュヒット ({len(self._filtered_entries_cache)}件)")
+        return self._filtered_entries_cache
 
     def evaluate_cache_efficiency(self) -> CacheEfficiency:
         """キャッシュ効率の評価情報を取得する
