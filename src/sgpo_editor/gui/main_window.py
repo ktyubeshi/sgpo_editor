@@ -2,9 +2,7 @@
 
 import logging
 import sys
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
-
-from sgpo_editor.types import StatsDict, StatsDataDict, EvaluationResult
+from typing import Any, Dict, Optional, Union, cast
 
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QAction
@@ -16,34 +14,28 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QMessageBox,
     QDialog,
-    QMenu,
-    QMenuBar,
-    QStatusBar,
-    QTableWidgetItem,
 )
-
-from sgpo_editor.gui.metadata_dialog import MetadataEditDialog
-from sgpo_editor.gui.metadata_panel import MetadataPanel
-from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.i18n import setup_translator
 
 from sgpo_editor.core import ViewerPOFile
 from sgpo_editor.core.cache_manager import EntryCacheManager
-from sgpo_editor.gui.event_handler import EventHandler
+from sgpo_editor.gui.evaluation_dialog import EvaluationDialog
 from sgpo_editor.gui.facades.entry_editor_facade import EntryEditorFacade
 from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
 from sgpo_editor.gui.file_handler import FileHandler
+from sgpo_editor.gui.metadata_dialog import MetadataEditDialog
+from sgpo_editor.gui.metadata_panel import MetadataPanel
 from sgpo_editor.gui.table_manager import TableManager
+from sgpo_editor.gui.translation_evaluate_dialog import TranslationEvaluateDialog
 from sgpo_editor.gui.ui_setup import UIManager
-
 # 必要なクラスをインポート
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.gui.widgets.po_format_editor import POFormatEditor
 from sgpo_editor.gui.widgets.preview_widget import PreviewDialog
 from sgpo_editor.gui.widgets.search import SearchWidget
 from sgpo_editor.gui.widgets.stats import StatsWidget
-from sgpo_editor.gui.translation_evaluate_dialog import TranslationEvaluateDialog
-from sgpo_editor.gui.evaluation_dialog import EvaluationDialog
+from sgpo_editor.i18n import setup_translator
+from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.types import StatsDict, EvaluationResult
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +58,7 @@ class MainWindow(QMainWindow):
         self.table = QTableWidget()
 
         # SearchWidgetの初期化（コールバック関数を渡さないように変更）
-        self.search_widget = SearchWidget(
-            # on_filter_changed=lambda: self._update_table(), # 削除
-            # on_search_changed=lambda: self._update_table(), # 削除
-        )
+        self.search_widget = SearchWidget()
 
         # 各マネージャの初期化
         self.table_manager = TableManager(
@@ -98,16 +87,6 @@ class MainWindow(QMainWindow):
             self.search_widget,
             self.entry_cache_manager,
             self._get_current_po,
-        )
-
-        # 既存のイベントハンドラ（レガシー互換用）
-        # 注意: EventHandlerは将来のバージョンで削除される予定です
-        self.event_handler = EventHandler(
-            self.table,
-            self.entry_editor,
-            self.entry_cache_manager,
-            self._get_current_po,
-            self.statusBar().showMessage, # 5番目の引数として show_status
         )
 
         # メタデータパネルの初期化
@@ -358,9 +337,9 @@ class MainWindow(QMainWindow):
         self.entry_editor_facade.change_layout(layout_type) # ファサード経由で呼び出す
 
     def _show_preview_dialog(self) -> None:
-        """プレビューダイアログを表示する
+        """プレビューダイアログを表示
 
-        ファサードパターンを使用して、エントリ編集ファサードから現在のエントリを取得します。
+        ファサードから現在のエントリを取得し、プレビューダイアログを表示します。
         """
         # ファサードから現在のエントリを取得
         current_entry = self.entry_editor_facade.get_current_entry()
@@ -370,10 +349,10 @@ class MainWindow(QMainWindow):
 
         # プレビューダイアログを表示
         dialog = PreviewDialog(self)
-        # ファサードを使用してイベントハンドラを設定
-        dialog.set_event_handler(
-            self.event_handler
-        )  # 互換性のためにイベントハンドラを使用
+        
+        # 更新シグナルを設定
+        dialog.set_update_signal(self.entry_list_facade.entry_selected)
+        
         # entry_selected シグナルを切断するスロット
         def disconnect_preview_update():
             try:
@@ -384,8 +363,6 @@ class MainWindow(QMainWindow):
                 # TypeError: 引数の型が正しくない場合（通常発生しないはず）
                 logger.debug("PreviewDialog: entry_selected シグナルは既に切断されているか、接続されていませんでした")
 
-        # 現在のエントリを設定
-        dialog.set_entry(current_entry)
         # ダイアログを表示
         dialog.show()
         dialog.raise_()
@@ -919,23 +896,16 @@ class MainWindow(QMainWindow):
         self.entry_editor_facade.display_entry(entry)
 
     def _setup_connections(self) -> None:
-        """イベント接続の設定
-        
-        注意: EventHandlerは将来のバージョンで削除される予定です。
-        新しいコードでは EntryListFacade と EntryEditorFacade を使用してください。
-        """
-        # レガシーな接続（後方互換用、将来的に削除予定）
-        # TODO: 以下の接続はファサードパターンに完全に移行する際に削除する
-        self.event_handler.entry_updated.connect(self._on_entry_updated)
-        self.event_handler.entry_selected.connect(self._on_entry_selected)
-
-        # ファサードを使用した新しい接続
+        """イベント接続の設定"""
+        # ファサードを使用した接続
         # エントリ適用時に更新を通知
         self.entry_editor_facade.entry_applied.connect(self.entry_list_facade.update_table_and_reselect)
         self.entry_editor_facade.entry_applied.connect(self.update_metadata_panel)
+        self.entry_editor_facade.entry_applied.connect(self._on_entry_updated)
 
         # エントリ選択時の処理
         self.entry_list_facade.entry_selected.connect(self._update_editor_on_selection)
+        self.entry_list_facade.entry_selected.connect(self._on_entry_selected)
         self.entry_list_facade.entry_selected.connect(self.update_metadata_panel)
 
         # メタデータパネルのイベント接続
