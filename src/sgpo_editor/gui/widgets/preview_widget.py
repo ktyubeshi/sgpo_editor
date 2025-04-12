@@ -8,6 +8,7 @@ import logging
 import re
 import html
 from typing import Optional
+import codecs
 
 from PySide6.QtCore import Qt
 from sgpo_editor.gui.event_handler import EventHandler
@@ -91,72 +92,19 @@ class PreviewWidget(QWidget):
         self._update_preview()
 
     def _process_escape_sequences(self, text: str) -> str:
-        """エスケープシーケンスを処理する
-
-        標準的なPython文字列のエスケープシーケンスとHTML実体参照を解決します。
-
-        Args:
-            text: 処理対象のテキスト
-
-        Returns:
-            処理後のテキスト
-        """
-        if not text:
-            return ""
-
-        # デバッグ用に入力テキストをログ出力
-        logger.debug(f"Processing escape sequences in: {repr(text)}")
-
-        # HTMLエンティティをデコード
-        text = html.unescape(text)
-        logger.debug(f"After HTML unescape: {repr(text)}")
-
-        # Pythonのエスケープシーケンスを処理するための関数
-        def replace_escapes(match):
-            escape_seq = match.group(0)
-            # 一般的なエスケープシーケンスを処理
-            escape_map = {
-                "\\n": "\n",  # 改行
-                "\\r": "\r",  # キャリッジリターン
-                "\\t": "\t",  # タブ
-                '\\"': '"',  # ダブルクォート
-                "\\'": "'",  # シングルクォート
-                "\\\\": "\\",  # バックスラッシュ
-                "\\a": "\a",  # ベル
-                "\\b": "\b",  # バックスペース
-                "\\f": "\f",  # フォームフィード
-                "\\v": "\v",  # 垂直タブ
-            }
-
-            # 正規表現のエスケープシーケンスを処理
-            regex_escape_chars = "dwsDS+*?.()[]{}|^$"
-            if (
-                len(escape_seq) == 2
-                and escape_seq[0] == "\\"
-                and escape_seq[1] in regex_escape_chars
-            ):
-                return escape_seq[1]
-
-            # マップに定義されたエスケープシーケンスを置換
-            return escape_map.get(escape_seq, escape_seq)
-
-        # 正規表現でエスケープシーケンスを検出して置換
-        processed_text = re.sub(
-            r'\\[nrtabfv"\'\\]|\\[dwsDS+*?.()\[\]{}|^$]', replace_escapes, text
-        )
-
-        # 16進数エスケープシーケンス (\xHH) の処理
-        processed_text = re.sub(
-            r"\\x([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), processed_text
-        )
-
-        # Unicodeエスケープシーケンス (\uHHHH) の処理
-        processed_text = re.sub(
-            r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), processed_text
-        )
-
-        logger.debug(f"After processing escapes: {repr(processed_text)}")
-        return processed_text
+        """文字列内のエスケープシーケンスを処理する"""
+        # \\r や \\n を \r や \n に変換 (より直接的な方法)
+        try:
+            # まず二重バックスラッシュを一時的なプレースホルダに置換
+            temp_text = text.replace("\\\\", "__BACKSLASH__")
+            # \r, \n などを置換
+            processed_text = temp_text.replace("\\r", "\r").replace("\\n", "\n").replace("\\t", "\t") # 他のエスケープも必要なら追加
+            # プレースホルダを元に戻す
+            return processed_text.replace("__BACKSLASH__", "\\")
+        except Exception as e:
+            # エラー発生時は元のテキストを返す
+            logger.error(f"Error processing escape sequences: {e}")
+            return text
 
     def _process_html_tags(self, text: str) -> str:
         """HTMLタグを処理する
