@@ -4,11 +4,11 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Optional, Set
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
-from sgpo_editor.core.database_accessor import DatabaseAccessor
 from sgpo_editor.core.constants import TranslationStatus
+from sgpo_editor.core.database_accessor import DatabaseAccessor
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import FlagConditions, FilterSettings
 

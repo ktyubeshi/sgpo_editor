@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Any, Union
+from typing import Any
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.database_accessor import DatabaseAccessor
