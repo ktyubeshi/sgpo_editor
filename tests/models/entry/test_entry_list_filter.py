@@ -94,17 +94,20 @@ def mock_entries():
 
 
 @pytest.fixture
-def table_manager():
+def table_manager(mock_entries):
     """テーブルマネージャのフィクスチャ"""
     mock_po = MagicMock()
-    mock_po.get_entries_by_keys.return_value = {e.key: e for e in mock_entries()}
+    mock_po.get_entries_by_keys.return_value = {e.key: e for e in mock_entries}
     mock_table = MagicMock(spec=QTableWidget)
     mock_cache_manager = MagicMock(spec=EntryCacheManager)
     table_manager = TableManager(mock_table, mock_cache_manager, lambda: mock_po)
 
-    entry_list = EntryListFacade(mock_table, table_manager, lambda: mock_po)
+    mock_search_widget = MagicMock()
+    entry_list = EntryListFacade(
+        mock_table, table_manager, mock_search_widget, mock_cache_manager, lambda: mock_po
+    )
 
-    return table_manager
+    return entry_list
 
 
 class TestEntryListFilter:
@@ -112,8 +115,7 @@ class TestEntryListFilter:
 
     @pytest.fixture(autouse=True)
     def setup_method(self, qtbot, table_manager):
-        # ... (setup_method の実装は変更なし)
-        pass # インデントエラー解消のため pass を追加
+        self.manager = table_manager
 
     def test_filter_by_status(self, mock_entries):
         """状態によるフィルタリングテスト"""
@@ -134,9 +136,8 @@ class TestEntryListFilter:
         # SearchCriteriaを作成
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
 
-        # テーブル更新処理をモック
-        with patch.object(self.manager, "_update_table_contents"):
-            self.manager.update_table(entries, criteria)
+        # テーブル更新処理を直接呼び出し
+        self.manager.update_table()
 
         assert len(entries) == 1
         assert entries[0].get_status() == TranslationStatus.UNTRANSLATED
@@ -148,8 +149,7 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
 
-        with patch.object(self.manager, "_update_table_contents"):
-            self.manager.update_table(entries, criteria)
+        self.manager.update_table()
 
         assert len(entries) == 2
         for entry in entries:
@@ -162,8 +162,7 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
 
-        with patch.object(self.manager, "_update_table_contents"):
-            self.manager.update_table(entries, criteria)
+        self.manager.update_table()
 
         assert len(entries) == 1
         assert entries[0].get_status() == TranslationStatus.FUZZY
@@ -175,8 +174,7 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword="")
 
-        with patch.object(self.manager, "_update_table_contents"):
-            self.manager.update_table(entries, criteria)
+        self.manager.update_table()
 
         assert len(entries) == 1
         assert entries[0].get_status() == TranslationStatus.OBSOLETE
@@ -202,8 +200,7 @@ class TestEntryListFilter:
         criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
 
         # テーブル更新
-        with patch.object(self.manager, "_update_table_contents"):
-            self.manager.update_table(entries, criteria)
+        self.manager.update_table()
 
         assert len(entries) == 1
         assert "Testing" == entries[0].msgid
@@ -215,8 +212,7 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
 
-        with patch.object(self.manager, "_update_table_contents"):
-            self.manager.update_table(entries, criteria)
+        self.manager.update_table()
 
         assert len(entries) == 1
         assert "廃止されたエントリ" == entries[0].msgstr
@@ -228,8 +224,7 @@ class TestEntryListFilter:
         )
         criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
 
-        with patch.object(self.manager, "_update_table_contents"):
-            self.manager.update_table(entries, criteria)
+        self.manager.update_table()
 
         assert len(entries) == 1
         assert "quality" == entries[0].msgctxt
@@ -342,8 +337,7 @@ class TestEntryListFilter:
             criteria = SearchCriteria(filter=filter_text, filter_keyword=keyword)
 
             # テーブル更新
-            with patch.object(self.manager, "_update_table_contents"):
-                self.manager.update_table(filtered_entries, criteria)
+            self.manager.update_table()
 
             # 結果の確認 - フィルタリング結果の数が期待値と一致するか
             assert len(filtered_entries) == expected_count, (
@@ -365,9 +359,8 @@ class TestEntryListFilter:
             filter=TranslationStatus.TRANSLATED, filter_keyword=""
         )
 
-        # テーブル更新処理をモック
-        with patch.object(self.manager, "_update_table_contents"):
-            self.manager.update_table(translated_entries, criteria)
+        # テーブル更新処理を直接呼び出し
+        self.manager.update_table()
 
         # フィルタリング結果の確認
         assert len(translated_entries) == 2  # 2つの翻訳済みエントリ
