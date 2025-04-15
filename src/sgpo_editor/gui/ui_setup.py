@@ -29,15 +29,16 @@ logger = logging.getLogger(__name__)
 
 
 # 非同期メソッドを呼び出すためのヘルパー関数
-def run_async(async_func):
-    """非同期関数をQtイベントループで実行するためのヘルパー関数"""
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        # イベントループがすでに実行中の場合は、新しいタスクを作成
-        return asyncio.create_task(async_func())
-    else:
-        # イベントループが実行されていない場合は、一時的にイベントループを実行
-        return asyncio.run(async_func())
+def run_async(coro):
+    """非同期関数（コルーチンオブジェクト）をQtイベントループで実行するためのヘルパー関数"""
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        if loop.is_running():
+            return loop.create_task(coro)
+    except RuntimeError:
+        pass
+    return asyncio.run(coro)
 
 
 class UIManager:
@@ -380,8 +381,8 @@ class UIManager:
         self.recent_files_menu.clear()
         self.recent_file_actions.clear()
 
-        # 設定から最近使ったファイルリストを取得 (FileHandlerから取得するように変更が必要かも)
-        settings = QSettings("SGPOEditor", "RecentFiles")
+        # 設定から最近使ったファイルリストを取得（FileHandlerと同じストアを使う）
+        settings = QSettings()
         recent_files_json = settings.value("recent_files", "[]")
         try:
             recent_files = json.loads(recent_files_json)
@@ -404,7 +405,7 @@ class UIManager:
             action = QAction(action_text, self.main_window)
             action.setData(file_path_str) # ファイルパスをデータとして保持
             # functools.partial を使ってコールバックに関数を渡す
-            action.triggered.connect(lambda checked=False, p=file_path_str: callback(p))
+            action.triggered.connect(lambda checked=False, p=file_path_str: run_async(callback(p)))
             self.recent_files_menu.addAction(action)
             self.recent_file_actions.append(action)
 
@@ -434,7 +435,7 @@ class UIManager:
 
     def _clear_recent_files(self) -> None:
         """最近使用したファイル履歴をクリアする内部メソッド"""
-        settings = QSettings("SGPOEditor", "RecentFiles")
+        settings = QSettings()
         settings.setValue("recent_files", json.dumps([]))
         settings.sync()
         self.update_recent_files_menu(lambda _: None)

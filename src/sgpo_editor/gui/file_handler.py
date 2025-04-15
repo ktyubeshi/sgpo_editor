@@ -93,43 +93,22 @@ class FileHandler:
         return []
 
     def _save_recent_files(self) -> None:
-        """最近使用したファイルのリストを保存する"""
+        """最近使用したファイルのリストをJSON形式で保存する（新形式のみ対応）"""
         settings = QSettings()
-        # リストをセミコロンで連結した文字列に変換して保存
-        if self.recent_files:
-            recent_files_str = ";".join(self.recent_files)
-            settings.setValue("recent_files_str", recent_files_str)
-            # レガシーサポートのために以前のキーも更新
-            settings.setValue("recent_files", self.recent_files)
-            # 変更を確実に保存
-            settings.sync()
+        settings.setValue("recent_files", json.dumps(self.recent_files))
+        settings.sync()
 
     def add_recent_file(self, filepath: str) -> None:
-        """最近使用したファイルを追加する
-
-        Args:
-            filepath: ファイルパス
-        """
-        # 既存のエントリを除去（同じファイルが既にリストにある場合）
+        """最近使用したファイルを追加し、保存する（新形式のみ対応）"""
         if filepath in self.recent_files:
             self.recent_files.remove(filepath)
-
-        # リストの先頭に追加
         self.recent_files.insert(0, filepath)
-
-        # 最大数を超えた場合、古いものを削除
         if len(self.recent_files) > MAX_RECENT_FILES:
             self.recent_files = self.recent_files[:MAX_RECENT_FILES]
-
-        # 設定に保存
         self._save_recent_files()
 
-    def get_recent_files(self) -> List[str]:
-        """最近使用したファイルのリストを取得する
-
-        Returns:
-            最近使用したファイルのリスト
-        """
+    def get_recent_files(self) -> list[str]:
+        """最近使用したファイルのリストを取得（新形式のみ対応）"""
         return self.recent_files
 
     async def open_file(self, filepath: Optional[str] = None) -> bool:

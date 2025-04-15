@@ -23,6 +23,14 @@ logger = logging.getLogger(__name__)
 
 
 class ViewerPOFile:
+    def get_entries_by_keys(self, keys: list[str]) -> dict[str, 'EntryModel']:
+        """複数のキーに対応するエントリを一括取得"""
+        return self.retriever.get_entries_by_keys(keys)
+
+    def get_entry_by_number(self, position: int) -> Optional[EntryModel]:
+        """エントリ番号（インデックス）からエントリを取得"""
+        return self.retriever.get_entry_at(position)
+
     """POファイルを読み込み、表示するためのクラス
 
     @property

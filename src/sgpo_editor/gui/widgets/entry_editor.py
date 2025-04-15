@@ -88,6 +88,11 @@ class EditBox(QWidget):
 class EntryEditor(QWidget):
     """POエントリ編集用ウィジェット"""
 
+    def get_entry(self) -> Optional[EntryModel]:
+        """現在のエントリを返す"""
+        return self._current_entry
+
+
     text_changed = Signal()
     apply_clicked = Signal()
     entry_changed = Signal(int)  # エントリが変更されたときのシグナル
