@@ -25,6 +25,14 @@ logger = logging.getLogger(__name__)
 class ViewerPOFile:
     """POファイルを読み込み、表示するためのクラス
 
+    @property
+    def search_text(self) -> str:
+        return self.filter.search_text
+
+    @search_text.setter
+    def search_text(self, value: str):
+        self.filter.search_text = value
+
     このクラスは、コンポジションパターンを使用して実装されており、
     各機能コンポーネントを内部に保持し、その機能を利用します。
 
@@ -298,10 +306,13 @@ class ViewerPOFile:
         Returns:
             List[EntryModel]: フィルタ条件に一致するエントリのリスト
         """
-        return self.filter.get_filtered_entries(
+        entries = self.filter.get_filtered_entries(
             filter_text, filter_keyword, match_mode, case_sensitive,
             filter_status, filter_obsolete, update_filter, search_text
         )
+        # FilterComponent 側の filter_status を同期
+        self.filter_status = self.filter.filter_status
+        return entries
 
     def update_entry(self, key: str, field: str, value: Any) -> bool:
         """エントリの特定のフィールドを更新する

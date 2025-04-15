@@ -68,7 +68,7 @@ class ViewerPOFileBase:
         # フィルタリング関連の状態
         self.filtered_entries = []
         self.filter_text = TranslationStatus.ALL
-        self.search_text = ""
+        # self.search_text はプロパティで管理するためインスタンス変数としては定義しない
         self.sort_column = None
         self.sort_order = None
         self.flag_conditions: FlagConditions = {}

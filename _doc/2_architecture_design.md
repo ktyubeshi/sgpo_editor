@@ -350,6 +350,12 @@ class FileHandler:
 11. StatsWidgetが統計情報を更新
 
 ### 4.3 検索とフィルタリング
+
+#### データベースアクセスにおける search_text（キーワード検索）仕様
+- `DatabaseAccessor.get_filtered_entries` および `advanced_search` の両メソッドは、`search_text` が `None` または空文字列 `""` の場合、「フィルタなし」として全件返す。
+- SQLレベルでは `if search_text:` の分岐により、WHERE句にキーワード条件が追加されない。
+- 今後は「フィルタなし＝必ず空文字列 `""`」に統一し、UI/Facade/Component間で `None` を使わない方針とする。
+
 1. ユーザーが検索条件を入力
 2. SearchWidgetがイベントを発行
 3. EntryListFacadeがイベントを処理し、update_filterメソッドを呼び出す

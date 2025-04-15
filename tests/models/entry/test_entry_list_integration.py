@@ -13,7 +13,7 @@ from sgpo_editor.gui.widgets.search import SearchWidget
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
 from unittest.mock import MagicMock, call, patch
-from tests.core.filter.test_filter_reset_advanced import create_mock_entries
+from tests.core.filter.test_filter_reset_advanced import create_mock_entry_dicts
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ async def test_entry_list_status_display(app, sample_po_path):
     """エントリリストのステータス表示統合テスト"""
     # テーブルとテーブルマネージャの用意
     mock_po = MagicMock()
-    entries = create_mock_entries(4) # 例として4件作成
+    entries = create_mock_entry_dicts(4) # 例として4件作成
 
     mock_po.get_entries_by_keys.return_value = {e.key: e for e in entries}
     mock_table = MagicMock(spec=QTableWidget)

@@ -201,23 +201,38 @@ class DatabaseAccessor:
     def get_filtered_entries(
         self,
         filter_text: str = "すべて",
-        filter_keyword: Optional[str] = None,
+        filter_keyword: str = "",
         match_mode: str = "部分一致",
         case_sensitive: bool = False,
         filter_status: Optional[Set[str]] = None,
         filter_obsolete: bool = True,
-        search_text: Optional[str] = None,
+        search_text: str = "",
     ) -> List[EntryModel]:
-        # search_text を filter_keyword から取得 (後方互換性のため)
-        if search_text is None:
-            search_text = filter_keyword
+        """
+        フィルタ条件に一致するエントリを取得する
 
-        # 検索テキストの前後の空白を除去
-        cleaned_search_text = search_text.strip() if search_text else None
+        Args:
+            filter_text: フィルタテキスト
+            filter_keyword: フィルタキーワード（空文字列の場合はフィルタなしで全件取得。Noneは不可）
+            match_mode: 一致モード（'部分一致'または'完全一致'）
+            case_sensitive: 大文字小文字を区別するかどうか
+            filter_status: フィルタするステータスのセット
+            filter_obsolete: 廃止されたエントリをフィルタするかどうか
+            search_text: 検索テキスト（空文字列の場合はフィルタなしで全件取得。Noneは不可）
+
+        Returns:
+            List[EntryModel]: フィルタ条件に一致するエントリのリスト
+        """
+        # search_text を filter_keyword から取得（後方互換性のため）
+        # 空白のみの場合も空文字列として扱う
+        norm_filter_keyword = filter_keyword.strip()
+        norm_search_text = search_text.strip()
+        if norm_search_text == "":
+            norm_search_text = norm_filter_keyword
 
         logger.debug(
             f"DatabaseAccessor.get_filtered_entries (Python filter): filter_status={filter_status}, "
-            f"filter_obsolete={filter_obsolete}, search_text={cleaned_search_text}, "
+            f"filter_obsolete={filter_obsolete}, search_text={norm_search_text}, "
             f"match_mode={match_mode}, case_sensitive={case_sensitive}"
         )
 
@@ -237,9 +252,9 @@ class DatabaseAccessor:
                     continue
 
             # キーワードフィルタリング
-            if cleaned_search_text:
+            if norm_search_text:
                 if not self._match_keyword(
-                    entry, cleaned_search_text, match_mode, case_sensitive
+                    entry, norm_search_text, match_mode, case_sensitive
                 ):
                     continue
 

@@ -66,11 +66,11 @@ class TestDatabaseKeywordHandling:
         all_count = len(all_entries)
         print(f"\n[TEST] データベースからの全エントリ数: {all_count}件")
 
-        # 2. 検索テキストがNoneの場合
-        none_entries = db_accessor.get_filtered_entries(search_text=None)
+        # 2. 検索テキストが空文字列の場合（Noneは不可）
+        none_entries = db_accessor.get_filtered_entries(search_text="")
         none_count = len(none_entries)
-        print(f"[TEST] search_text=Noneの場合のエントリ数: {none_count}件")
-        assert none_count == all_count, "Noneでの検索結果が全エントリと一致しません"
+        print(f"[TEST] search_text=''（None不可）の場合のエントリ数: {none_count}件")
+        assert none_count == all_count, "空文字列での検索結果が全エントリと一致しません"
 
         # 3. 検索テキストが空文字列の場合
         empty_entries = db_accessor.get_filtered_entries(search_text="")

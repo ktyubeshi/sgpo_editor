@@ -92,14 +92,14 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         self,
         update_filter: bool = False,
         translation_status: Optional[str] = None,
-        filter_keyword: Optional[str] = None,
+        filter_keyword: str = "",
     ) -> List[EntryModel]:
         """フィルタ条件に合ったエントリーを取得する
 
         Args:
             update_filter: フィルター条件を強制的に更新するフラグ
             translation_status: 翻訳ステータス（TranslationStatus定数を使用）
-            filter_keyword: 検索キーワード
+            filter_keyword: 検索キーワード（空文字列の場合はフィルタなしで全件取得。Noneは不可）
 
         Returns:
             フィルター条件に一致するEntryModelのリスト
@@ -117,7 +117,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             self._force_filter_update = True
 
         # 検索キーワードの更新
-        if filter_keyword is not None:
+        if filter_keyword != "":
             self.search_text = filter_keyword
             self._force_filter_update = True
 
@@ -175,7 +175,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
 
     def set_filter(
         self,
-        search_text: Optional[str] = None,
+        search_text: str = "",
         sort_column: Optional[str] = None,
         sort_order: Optional[str] = None,
         flag_conditions: Optional[FlagConditions] = None,
@@ -184,7 +184,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         """フィルタを設定する
 
         Args:
-            search_text: 検索キーワード
+            search_text: 検索キーワード（空文字列の場合はフィルタなしで全件取得。Noneは不可）
             sort_column: ソート列
             sort_order: ソート順序
             flag_conditions: フラグ条件
@@ -207,7 +207,7 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             update_needed = True
 
         # 検索テキスト
-        if search_text is not None and search_text != self.search_text:
+        if search_text != self.search_text:
             self.search_text = search_text
             update_needed = True
 

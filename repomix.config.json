@@ -17,7 +17,7 @@
     }
   },
   "include": [],
-  "forceInclude": ["inspection/**"],
+  "forceInclude": ["inspection/**", "test_Result.txt"],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,

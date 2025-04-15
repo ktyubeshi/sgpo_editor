@@ -125,9 +125,7 @@ def viewer_po_file(mock_db_accessor: MagicMock) -> ViewerPOFileRefactored:
         "sgpo_editor.core.database_accessor.DatabaseAccessor",
         return_value=mock_db_accessor,
     ):
-        po_file = ViewerPOFileRefactored("dummy.po")
-        # 内部のdb_accessorを明示的に設定 (初期化で設定されることを期待)
-        po_file.db_accessor = mock_db_accessor
+        po_file = ViewerPOFileRefactored("dummy.po", db_accessor=mock_db_accessor)
         # 初期状態ではすべてのステータスが選択されていると仮定
         po_file.filter_status = {
             TranslationStatus.TRANSLATED,
@@ -151,19 +149,19 @@ def test_filter_reset_after_complex_filter(
     mock_db_accessor.advanced_search.assert_called_once_with(
         search_text=viewer_po_file.search_text,      # 初期値: ""
         search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
-        sort_column=viewer_po_file._sort_column,      # 初期値: "position"
-        sort_order=viewer_po_file._sort_order,        # 初期値: "ASC"
+        sort_column=viewer_po_file.get_sort_column(),      # 初期値: "position"
+        sort_order=viewer_po_file.get_sort_order(),        # 初期値: "ASC"
         flag_conditions={},                           # 初期値: {}
         translation_status=viewer_po_file.filter_status, # 初期値: {TRANSLATED, UNTRANSLATED}
-        exact_match=viewer_po_file.exact_match,       # 初期値: False
-        case_sensitive=viewer_po_file.case_sensitive, # 初期値: False
+        exact_match=viewer_po_file.filter.exact_match,       # 初期値: False
+        case_sensitive=viewer_po_file.filter.case_sensitive, # 初期値: False
         limit=None,
         offset=0,
     )
     assert len(initial_entries) == 1000
     # get_filtered_entries によりインスタンス変数が更新されているはず
-    # デフォルト呼び出しでは search_text は None に設定される
-    assert viewer_po_file.search_text is None
+    # デフォルト呼び出しでは search_text は "" に設定される
+    assert viewer_po_file.search_text == ""
     assert viewer_po_file.filter_status == {TranslationStatus.TRANSLATED, TranslationStatus.UNTRANSLATED}
     mock_db_accessor.reset_mock()
 
@@ -181,12 +179,12 @@ def test_filter_reset_after_complex_filter(
     mock_db_accessor.advanced_search.assert_called_once_with(
         search_text=keyword_param,
         search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
-        sort_column=viewer_po_file._sort_column,
-        sort_order=viewer_po_file._sort_order,
+        sort_column=viewer_po_file.get_sort_column(),
+        sort_order=viewer_po_file.get_sort_order(),
         flag_conditions={},
         translation_status=filter_status_param,
-        exact_match=viewer_po_file.exact_match,
-        case_sensitive=viewer_po_file.case_sensitive,
+        exact_match=viewer_po_file.filter.exact_match,
+        case_sensitive=viewer_po_file.filter.case_sensitive,
         limit=None,
         offset=0,
     )
@@ -208,12 +206,12 @@ def test_filter_reset_after_complex_filter(
     mock_db_accessor.advanced_search.assert_called_once_with(
         search_text=None,
         search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
-        sort_column=viewer_po_file._sort_column,
-        sort_order=viewer_po_file._sort_order,
+        sort_column=viewer_po_file.get_sort_column(),
+        sort_order=viewer_po_file.get_sort_order(),
         flag_conditions={},
         translation_status=filter_status_param, # 前回の filter_status が維持される
-        exact_match=viewer_po_file.exact_match,
-        case_sensitive=viewer_po_file.case_sensitive,
+        exact_match=viewer_po_file.filter.exact_match,
+        case_sensitive=viewer_po_file.filter.case_sensitive,
         limit=None,
         offset=0,
     )
