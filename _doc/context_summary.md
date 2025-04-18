@@ -1,100 +1,46 @@
-# SGPO Editor: コーディングエージェント向け開発ガイド (コンポジション優先版)
+# Context Summary: New Cache Design Implementation
 
-## 1. プロジェクト概要 (Context)
+## 1. Codebase Overview
 
-*   **アプリケーション:** SGPO Editor は、gettext PO ファイル（翻訳リソース）を効率的に編集・管理するためのデスクトップ GUI アプリケーションです。
-*   **目的:** 翻訳者やローカライゼーション担当者向けに、PO ファイルの表示、編集、検索、フィルタリング、統計表示、翻訳品質評価 (LLM 利用) などの機能を提供します。
-*   **技術スタック:**
-    *   言語: Python (>=3.8)
-    *   GUI: PySide6 (Qt for Python)
-    *   PO 操作: `sgpo` ライブラリ (または `polib`) - 現在は `sgpo` が主に使われている
-    *   依存関係管理: `uv`
-    *   データモデル: Pydantic (`EntryModel`)
-    *   テスト: `pytest`, `pytest-qt`
-    *   リンター/フォーマッタ: Ruff, flake8
-    *   型チェック: mypy
-    *   データベース: インメモリ SQLite (`InMemoryEntryStore`), 評価データ用サイドカー SQLite (`EvaluationDatabase`)
-    *   キャッシュ: `EntryCacheManager` による2層キャッシュ（CompleteEntryCache / FilterResultCache）
+Based on the provided file structure and content (`repomix-output.txt`), this codebase appears to be for a **Python-based application or service, likely focused on translation or localization management.**
 
-## 2. 現在のアーキテクチャと課題 (Current State & Challenges)
+Key characteristics and components include:
 
-*   **基本アーキテクチャ:** Model-View-Controller (MVC) パターンを基本とし、UI・ロジック・データの分離を目指しています。ファサードパターン (`EntryEditorFacade`, `EntryListFacade`, `ReviewDialogFacade`) が導入されています。`ViewerPOFile` はコンポジションパターンで再設計済みです。
-*   **進行中のリファクタリング:** 現在、キャッシュ管理の一元化とファサードパターンの徹底が進行中です。
-*   **主な課題:**
-    1.  **キャッシュ管理:** `EntryCacheManager` は Complete/Filter の 2層キャッシュに統一済み。行⇄キー マッピングは UI 層 (`EntryListFacade.RowKeyMapper`) へ完全移管。性能監視は `pytest-benchmark` で実施。
-    2.  **ファサードパターン適用の不徹底:** `EventHandler` にまだロジック（コメントアウト含む）が残っており、ファサードへの完全な移譲が完了していません。`MainWindow` や他のUIウィジェットからコア層/モデル層への直接アクセスも残っている可能性があります。
-    3.  **UI とロジックの結合度:** `TableManager` は表示責務に特化し、ソート／フィルタは FTS5 クエリ経由で Facade が担当。大量データ時には `fetchMore()` でオンデマンドロードへ切替える計画。
-    4.  **インスペクションエラー:** 未解決参照、型エラー、不正な引数リストなど、リファクタリング途中に起因する可能性のあるクリティカルなエラーが多数検出されています。これらはコードの安定性と信頼性に影響します。
-    5.  **重複コード:** キャッシュ管理、DBアクセス、UI更新処理などで重複コードが検出されており、保守性を低下させています。
+* **Architecture:** A layered architecture is suggested by the directory structure:
+    * `src/api/`: Handles API endpoints, suggesting a web service interface (possibly RESTful).
+    * `src/logic/`: Contains core business logic, with `translation_core.py` indicating a central role for translation-related processes.
+    * `src/db/`: Manages data persistence and caching (`db_operations.py`, `dbcash.py`).
+    * `src/models/`: Defines data structures and types (`data_models.py`, `type_definitions.py`), utilizing Python's type hinting (`TypedDict`, `TypeAlias`). Models relate to translation statistics, filters, review comments, and evaluations.
+    * `src/utils/`: Provides utility functions.
+* **Technology:**
+    * Written in Python.
+    * Extensive use of type hinting for improved code quality and maintainability.
+    * Includes a testing suite (`tests/`).
+    * Uses a configuration file (`src/config.py`).
+* **Functionality:** The presence of files and types related to PO files, translation statistics, fuzzy matching, and review comments strongly indicates functionality related to managing translation workflows, potentially integrating with localization tools or standards.
+* **Caching:** The codebase includes a database caching component (`src/db/dbcash.py`), which is the subject of the current modification effort.
 
-## 3. 目指すべきアーキテクチャ (Target Architecture / "あるべき姿")
+## 2. Purpose of Current Changes: Implementing New Cache Design
 
-リファクタリングを通じて、以下の状態を目指します。コード生成・修正の際は、これらの原則に従ってください。
+The primary goal of the tasks outlined in `ToDo.md` is to **replace the existing database caching implementation (`dbcash`) with a newly designed caching system.**
 
-*   **責務の明確化と分離 (コンポジション優先):**
-    *   `ViewerPOFile` は機能コンポーネント (`EntryRetrieverComponent`等) の調整役として機能します (**達成済み**)。
-    *   各機能コンポーネントは単一責務を持ち、独立してテスト可能です。
-    *   UI ウィジェット (`src/sgpo_editor/gui/widgets/`, `TableManager`) は、表示とユーザー操作のイベント発行に専念し、データ処理ロジック（ソート、キャッシュ管理等）を持たないようにします。
-*   **キャッシュ管理の完全な一元化:**
-    *   エントリデータに関するキャッシュ管理は `src/sgpo_editor/core/cache_manager.py` の `EntryCacheManager` に**完全に集約**します。UI層での独自キャッシュは**廃止**します。
-    *   キャッシュの更新や無効化は `EntryCacheManager` のAPIを通じて行います。
-*   **ファサードパターンの徹底:**
-    *   UI 層 (`gui` パッケージ) からコアロジック層 (`core` パッケージ) やデータモデル層 (`models` パッケージ) へのアクセスは、**原則として** `src/sgpo_editor/gui/facades/` 以下のファサードクラスを経由して行います。
-    *   `EventHandler` が持つデータ操作ロジックは、適切なファサードに**完全に移譲**します。EventHandlerは最終的に廃止される可能性があります。
-*   **明確な依存関係:**
-    *   依存関係の方向を UI → Facade → Core (ViewerPOFile + Components) → Cache / DB Access → Data Models となるように維持します。
-    *   下位レイヤーから上位レイヤーへの直接的な依存は避けてください。
-*   **テスト容易性:**
-    *   クラス間の依存関係は、コンストラクタやメソッド引数を通じた**依存性注入 (DI)** を基本とし、テスト時にモックオブジェクトを注入しやすくします。
-    *   GUI テストでは、`_doc/test_guideline.md` のベストプラクティス（ダイアログモック等）に従います。
-*   **型安全性:**
-    *   `typing` モジュールと Pydantic モデルを積極的に活用し、`Any` の使用を避け、可能な限り具体的な型ヒントを付与します。`src/sgpo_editor/types.py` の型エイリアスも活用してください。**インスペクションで指摘された型エラーは修正してください。**
+* **New Design Specification:** The details, API, behavior, and configuration of the new cache system are defined in the document: `2_2_dbcash_architecture.md`.
+* **Motivation (General):** While specific motivations are detailed in the design document, common reasons for such redesigns include:
+    * Improving application performance (reducing latency, increasing throughput).
+    * Enhancing scalability to handle larger loads.
+    * Increasing the reliability or maintainability of the caching layer.
+    * Implementing more sophisticated caching strategies (e.g., improved invalidation, tiered caching).
+    * Switching underlying caching technology (e.g., moving from simple in-memory to Redis/Memcached, or vice-versa).
+* **Scope of Work:** The changes involve:
+    1.  Implementing the new cache module according to the specification.
+    2.  Refactoring all parts of the codebase (database operations, business logic, API endpoints, utilities) that currently use the old cache system to use the new one.
+    3.  Updating configuration files.
+    4.  Writing new unit tests for the cache module and updating existing integration tests.
+    5.  Updating all relevant documentation, including rewriting `ToDo.md` to reflect the project's current state post-implementation.
 
-## 4. コーディングガイドライン (Coding Guidelines)
+## 3. Impact and Considerations
 
-*   **スタイル:**
-    *   フォーマット: Ruff (`uv run ruff format`)。
-    *   リンター: flake8 (`.flake8`) および Ruff。エラー修正時はまずフォーマッタ実行 (`.cursor/rules/linter-error-python.mdc` 参照)。
-    *   原則: PEP 8 準拠。
-*   **言語:**
-    *   識別子、コメントは英語。
-    *   UIテキストは `src/sgpo_editor/i18n/translator.py` の `translate()` で国際化。
-*   **設計原則:**
-    *   単一責任の原則 (SRP)。
-    *   疎結合。**継承よりコンポジションを優先**。
-*   **エラーハンドリング:**
-    *   `try...except` で適切な例外処理。
-    *   `logging` モジュールで情報記録 (`.cursor/rules/debug.mdc` 参照)。
-    *   ユーザーには `QMessageBox` で分かりやすいエラー表示。
-*   **テスト:**
-    *   機能追加/バグ修正時には対応するテストコード (`pytest`) を `tests/` に追加/更新推奨。
-    *   GUIテストは `pytest-qt` 利用、`_doc/test_guideline.md` 参照。
-*   **依存関係管理:**
-    *   新規ライブラリ追加は `uv add <package_name>`、`pyproject.toml` に記録。
-*   **ドキュメント:**
-    *   クラスや複雑な関数にはdocstring記述。
-    *   大きな設計変更時は関連ドキュメント更新推奨。
+* **Pervasiveness:** Caching is often used across multiple application layers. Therefore, this change potentially impacts database interactions, core logic execution speed, and API response times.
+* **Testing:** Thorough testing (unit, integration, performance, regression) is crucial to ensure the new cache functions correctly and does not negatively impact existing functionality or overall application performance. Adherence to the behavior defined in `2_2_dbcash_architecture.md` must be verified.
 
-## 5. 重要なコンポーネントとファイル (Key Components & Files)
-
-*   **UI 層:** `src/sgpo_editor/gui/`
-    *   `main_window.py`: メインウィンドウ、UI 統合、イベントディスパッチ（ファサードへ移行中）
-    *   `facades/`: UI 操作の抽象化レイヤー (**修正の中心**)
-    *   `widgets/`: 各種 UI 部品 (EntryEditor, SearchWidget, StatsWidget)
-    *   `event_handler.py`: GUI イベント処理 (**廃止予定、ロジックはファサードへ**)
-    *   `table_manager.py`: テーブル表示管理 (**表示責務に特化、キャッシュ削除**)
-    *   `ui_setup.py`: メニュー、ツールバー、ドック管理
-*   **コア層:** `src/sgpo_editor/core/`
-    *   `viewer_po_file.py`: PO データ管理の中心（コンポジション化済み）
-    *   `po_components/`: `ViewerPOFile` の機能別コンポーネント
-    *   `cache_manager.py`: キャッシュ管理の責任クラス (**修正の中心**)
-    *   `database_accessor.py`: DB アクセスの責任クラス
-    *   `po_factory.py`, `po_interface.py`, `polib_adapter.py`, `sgpo_adapter.py`: PO ライブラリ抽象化
-*   **モデル層:** `src/sgpo_editor/models/`
-    *   `entry.py`: `EntryModel` (Pydantic)
-    *   `database.py`: `InMemoryEntryStore` (インメモリ DB)
-    *   `evaluation_db.py`: `EvaluationDatabase` (永続 DB)
-*   **設定/国際化:** `src/sgpo_editor/config.py`, `src/sgpo_editor/i18n/`
-*   **ドキュメント:** `_doc/` (特に `todo.md`, `2_architecture_design.md`, `test_guideline.md`, この `context_summary.md`)
-*   **プロジェクト定義:** `pyproject.toml`
-*   **インスペクション結果:** `inspection/`
+This summary provides the necessary background for understanding the context and importance of the tasks listed in `ToDo.md`. All specific implementation details should be derived from `2_2_dbcash_architecture.md`.

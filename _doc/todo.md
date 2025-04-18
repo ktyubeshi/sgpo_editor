@@ -1,77 +1,86 @@
-# SGPO Editor 改善タスクリスト (更新版: コンポジション優先, インスペクション対応)
+# ToDo - Implement New Cache Design
 
-コードの保守性、拡張性、テスト容易性を向上させるためのリファクタリングタスクリストです。コンポジションを優先し、インスペクション結果を反映しています。
+**Objective:** Replace the existing cache system with the new design specified in `2_2_dbcash_architecture.md`. This involves implementing the new cache module and refactoring all existing code that uses the old cache to use the new one.
 
-## 優先度: 高
+**Primary Reference:** `2_2_dbcash_architecture.md` (All implementation details, API definitions, configurations, and behaviors must strictly follow this document).
 
-1.  **[/] タスク 1: クリティカルなインスペクションエラー修正 (進行中)**
-    *   **対象:** `inspection/PyUnresolvedReferencesInspection.xml`, `inspection/PyTypeCheckerInspection.xml`, `inspection/PyTypedDictInspection.xml`, `inspection/PyArgumentListInspection.xml` 指摘ファイル。
-    *   **内容:** 未解決参照、型エラー、TypedDictエラー、不正な引数リストを修正。特に `.pyi` ファイル、ファサード、ウィジェット間のインターフェース、データベース/キャッシュアクセス部分を重点的に確認。
-    *   **進捗:** `gui/metadata_dialog.py`の型エラーを修正し、`EntryModel`との連携を改善（`Union[EntryModel, QWidget]`型対応）。`ViewerPOFile` のコンポジション化に伴う型エラー、引数エラーを修正中。
-    *   **ゴール:** コードの基本的な安定性を確保し、他のリファクタリングの基盤を整える。
+---
 
-2.  **[/] タスク 2: キャッシュ管理の一元化完了 (進行中)**
-    *   **対象:** `src/sgpo_editor/core/cache_manager.py`, `src/sgpo_editor/gui/table_manager.py`, `src/sgpo_editor/gui/event_handler.py` (確認), `src/sgpo_editor/gui/facades/entry_list_facade.py`
-    *   **内容:**
-        *   `TableManager` 等のUI層に残存するキャッシュ関連ロジック (`_entry_cache`, `_row_key_map` 利用箇所など) を削除し、`EntryCacheManager` の API (`add_row_key_mapping`, `get_key_for_row`, `find_row_by_key`) を使用するように `EntryListFacade` 経由で修正。
-        *   キャッシュ無効化ロジックが `EntryCacheManager` に完全に集約されているか最終確認。
-        *   `_force_filter_update` フラグの管理が `EntryCacheManager` にカプセル化されているか確認。
-    *   **ゴール:** キャッシュロジックの完全な一元化。UI層からキャッシュ実装の詳細を隠蔽する。
+## Task List
 
-3.  **[/] タスク 3: ファサードパターンの徹底 (進行中)**
-    *   **対象:** `src/sgpo_editor/gui/event_handler.py`, `src/sgpo_editor/gui/facades/`, UIウィジェット (`TableManager`, `EntryEditor` を含む), `src/sgpo_editor/gui/main_window.py`
-    *   **内容:**
-        *   `EventHandler` に残っているロジック（コメントアウト含む）を完全に削除または適切なファサードに移譲。最終的に `EventHandler` を廃止する。
-        *   `MainWindow` や他のUIウィジェットからコア層 (`ViewerPOFile`, `EntryCacheManager`, `DatabaseAccessor` 等) やモデル層 (`EntryModel`) への直接アクセスがないか確認し、あればファサード経由に修正。
-    *   **ゴール:** UI層とコア/モデル層間の依存関係がファサードに集約される。UIコンポーネントが自身の表示とイベント発行に集中する。
+**IMPORTANT:** Perform all changes within a dedicated feature branch (e.g., `feature/new-cache-design`).
 
-## 優先度: 中
+### 1. Implement New Cache Module
 
-4.  **[ ] タスク 4: `TableManager` の責務削減 (未着手)**
-    *   **対象:** `src/sgpo_editor/gui/table_manager.py`, `src/sgpo_editor/gui/facades/entry_list_facade.py`
-    *   **内容:**
-        *   `TableManager` が表示ロジック (`_update_table_contents`, `_get_status_color` など) と列管理（表示/非表示、幅）に特化しているか確認。
-        *   ソート要求の処理が `_sort_request_callback` に委譲されているか確認。データ取得やキャッシュ関連ロジック (`get_key_at_row`, `find_row_by_key` など) があれば削除し、`EntryListFacade` 経由で `EntryCacheManager` や `ViewerPOFile` に委譲する。
-    *   **ゴール:** `TableManager` の責務が明確化され、テスト容易性が向上する。
+* **File:** `src/db/dbcash.py` (Or create a new file/module as specified in `2_2_dbcash_architecture.md` if the structure changes)
+    * `[ ]` **Implement Core Cache Logic:**
+        * Define and implement the main cache class(es) and functions as per the API specification in `2_2_dbcash_architecture.md`.
+        * Ensure all public methods (e.g., `get`, `set`, `delete`, `exists`, `clear`, `initialize`) are implemented according to the specified signatures, behavior, and error handling.
+        * Implement logic for cache expiration (TTL), size limits, and invalidation as defined in the design document.
+    * `[ ]` **Implement Configuration Handling:**
+        * Read necessary configuration parameters (e.g., connection details, default TTL, max size) from the application's configuration system (likely involving `src/config.py`). Refer to `2_2_dbcash_architecture.md` for required parameters.
+    * `[ ]` **Add Type Hinting:** Use appropriate type hints for all functions and methods, referencing types from `src/models/type_definitions.py` or defining new ones if necessary.
 
-5.  **[ ] タスク 5: 重複コードの削減 (未着手)**
-    *   **対象:** `inspection/DuplicatedCode_aggregate.xml` 指摘ファイル (`cache_manager.py`, `database_accessor.py`, `models/database.py`, ファサード/MainWindowなど)
-    *   **内容:** 指摘された重複コードをリファクタリング。共通関数の作成、ロジックの集約（特にキャッシュ、DBアクセス、ファサード内の共通処理）などを検討。`database_accessor.py` と `models/database.py` の重複は解消する。
-    *   **ゴール:** コードの冗長性を減らし、保守性を向上させる。
+### 2. Update Configuration
 
-6.  **[ ] タスク 6: クラス設計の改善 (未着手)**
-    *   **対象:** `inspection/PyAttributeOutsideInitInspection.xml`, `inspection/PyNestedDecoratorsInspection.xml`, `inspection/PyMethodMayBeStaticInspection.xml` など
-    *   **内容:** インスペクション警告に基づき、`__init__`での属性初期化、デコレーター順序修正、staticメソッド化などを実施。
-    *   **ゴール:** クラス設計を改善し、コードの堅牢性と可読性を高める。
+* **File:** `src/config.py`
+    * `[ ]` **Add New Cache Settings:** Define and add all configuration variables required by the new cache module, as specified in `2_2_dbcash_architecture.md`. Include sensible default values where appropriate.
+    * `[ ]` **(Optional) Mark Old Cache Settings as Obsolete:** Add comments indicating that configuration variables related to the *old* cache system are deprecated and will be removed. (Actual removal will happen later).
 
-## 優先度: 低
+### 3. Refactor Cache Usage in Data Operations
 
-7.  **[ ] タスク 7: その他のインスペクション警告修正 (未着手)**
-    *   **対象:** `inspection/*.xml` (上記以外)
-    *   **内容:** 未使用変数/インポート削除 (`PyUnusedLocalInspection`), 命名規則修正 (`PyPep8NamingInspection`), 冗長な括弧 (`PyRedundantParenthesesInspection`) などを修正。
-    *   **ゴール:** コードのクリーンアップと全体的な品質向上。
+* **File:** `src/db/db_operations.py` (And potentially other files in `src/db/`)
+    * `[ ]` **Identify Old Cache Usage:** Locate all instances where the old cache system is imported and used (e.g., function calls for getting, setting, deleting cached data).
+    * `[ ]` **Replace with New Cache API:**
+        * Modify the code to import and use the *new* cache module/class(es) implemented in Step 1.
+        * Replace calls to old cache functions/methods with the corresponding calls to the new API.
+        * Adjust function arguments, data serialization/deserialization (if cache format changed), and error handling as required by the new API and `2_2_dbcash_architecture.md`.
+        * Update cache key generation logic if the new design specifies changes.
 
-## 完了済み
+### 4. Refactor Cache Usage in Business Logic
 
-*   **[x] `ViewerPOFile` のコンポジションによる再設計**
-    *   **対象ファイル:** `src/sgpo_editor/core/viewer_po_file*.py`, `ViewerPOFile` 参照箇所
-    *   **内容:** `ViewerPOFile` をコンポジション構造に再設計し、継承を廃止。各機能コンポーネントが独立してテスト可能になった。
+* **File:** `src/logic/translation_core.py` (And potentially other files in `src/logic/`)
+    * `[ ]` **Identify Old Cache Usage:** Locate all usages of the old cache system within the business logic layer.
+    * `[ ]` **Replace with New Cache API:** Perform the same replacement steps as described for `src/db/db_operations.py`, ensuring adherence to the new cache's API and behavior as defined in `2_2_dbcash_architecture.md`. Pay close attention to how application-level data is cached and invalidated.
 
-*   **[x] `MetadataEditDialog` クラスの改良**
-    *   **対象ファイル:** `src/sgpo_editor/gui/metadata_dialog.py`
-    *   **内容:** `EntryModel`オブジェクトから直接メタデータを編集できるように、コンストラクタの引数を`Union[EntryModel, QWidget]`型に対応させ、型安全性とクラス間連携を改善。
+### 5. Refactor Cache Usage in API Endpoints
 
-## 次のアクション
+* **Files:** `src/api/endpoints/*.py`
+    * `[ ]` **Identify Old Cache Usage:** Locate any caching mechanisms used at the API endpoint level (e.g., response caching, caching results of expensive operations) that utilize the old cache system. This might involve decorators or direct calls.
+    * `[ ]` **Replace with New Cache API:** Update the code to use the new cache system. Refactor decorators or function calls, ensuring correct cache keys, TTLs, and conditional caching logic align with `2_2_dbcash_architecture.md`.
 
-以下の順序でタスクを進めることを推奨します：
+### 6. Refactor Cache Usage in Utilities
 
-1.  **最優先:** タスク1（クリティカルエラー修正）の継続。未解決参照、型エラー、引数エラーの解消。
-2.  **高優先度:** タスク2（キャッシュ一元化完了）、タスク3（ファサード徹底）。これらは密接に関連するため連携して進める。`EventHandler` のロジックをファサードに移し、最終的な廃止を目指す。
-3.  **中優先度:** タスク4（TableManager責務削減）はタスク2, 3と連携して実施。タスク5（重複コード）のDBアクセス重複解消、タスク6（クラス設計）の修正。
-4.  **低優先度:** タスク5（その他重複コード）、タスク7（その他警告）の修正。
+* **Files:** `src/utils/*.py`
+    * `[ ]` **Identify Old Cache Usage:** Search for any utility functions that interact with or depend on the old cache system.
+    * `[ ]` **Update or Remove Utilities:**
+        * If utilities are still needed, refactor them to use the *new* cache API.
+        * If utilities were specific to the old cache, mark them for removal or remove them if clearly unused elsewhere.
+        * Implement any *new* utility functions required by the new cache design (as specified in `2_2_dbcash_architecture.md`).
 
-## 注意事項
+### 7. Update Data Models (If Necessary)
 
-*   変更を加える際は、関連するユニットテスト・統合テストを作成・更新してください。
-*   リファクタリングによってインターフェースが変更される場合は、影響範囲を特定し、関連箇所を修正してください。
-*   不明点や設計上の判断が必要な場合は、追加の指示を仰いでください。
+* **Files:** `src/models/data_models.py`, `src/models/type_definitions.py`
+    * `[ ]` **Review Cache Data Structures:** Check `2_2_dbcash_architecture.md` to see if the structure or format of data stored in the cache has changed significantly.
+    * `[ ]` **Update Type Definitions:** If necessary, update relevant `TypedDict`, `TypeAlias`, Pydantic models, or other type definitions to reflect the new structure of cached data.
+
+### 8. Implement/Update Tests
+
+* **Files:** `tests/` (specifically tests related to cache, db, logic, api)
+    * `[ ]` **Write Unit Tests for New Cache Module:** Create comprehensive unit tests for the new cache module (`src/db/dbcash.py` or equivalent). Test all public methods, configuration options, edge cases (e.g., cache full, item expired, key not found), and error handling as defined in `2_2_dbcash_architecture.md`. Use mocking where appropriate (e.g., for external dependencies like Redis if used).
+    * `[ ]` **Update Integration Tests:** Identify existing integration tests that implicitly or explicitly tested behavior involving the *old* cache. Modify these tests:
+        * Update test setup/teardown related to caching.
+        * Adjust mocks and assertions to work with the *new* cache API and behavior.
+        * Ensure tests correctly validate scenarios like cache hits, misses, and invalidation within the application flow.
+    * `[ ]` **Remove Obsolete Tests:** Delete test files or individual test cases that were solely dedicated to testing the *old*, now removed, cache system.
+
+### 9. Final Cleanup (After all steps above are complete and verified)
+
+* **Files:** Entire Codebase
+    * `[ ]` **Remove Old Cache Code:** Search and remove all code related to the old cache system (imports, function/class definitions, utility functions).
+    * `[ ]` **Remove Old Cache Configuration:** Remove the deprecated configuration settings from `src/config.py` identified in Step 2.
+    * `[ ]` **Remove Old Cache Dependencies:** If the old cache had specific library dependencies that are no longer needed, remove them from the project's dependency file (e.g., `requirements.txt`, `pyproject.toml`).
+
+---
+
+**Final Verification:** After completing all tasks, run the entire test suite (unit, integration, etc.) to ensure all tests pass and no regressions have been introduced. Manually verify key functionalities if necessary. Ensure the implementation strictly adheres to `2_2_dbcash_architecture.md`.
