@@ -151,26 +151,26 @@ class ViewerPOFileBase:
     
     def __init__(
         self,
-        cache_manager: Optional[EntryCacheManager] = None,
-        db_accessor: Optional[DatabaseAccessor] = None,
+        cager: Optional[EntryCacheManager] = None,
+        db: Optional[DatabaseAccessor] = None,
     ):
         """初期化
         
         Args:
-            cache_manager: キャッシュマネージャ（Noneの場合は新規作成）
-            db_accessor: データベースアクセサ（Noneの場合はDBなし）
+            cager: キャッシュマネージャ（Noneの場合は新規作成）
+            db: データベースアクセサ（Noneの場合はDBなし）
         """
         self.path = None
         self.library_type = POLibraryType.SGPO
         
         # 依存性注入によるキャッシュとデータベースの連携
-        self.cache_manager = cache_manager or EntryCacheManager()
-        self.db_accessor = db_accessor
+        self.cager = cager or EntryCacheManager()
+        self.db = db
         
         # データベースがない場合は新規作成して接続
-        if not self.db_accessor:
+        if not self.db:
             db = InMemoryEntryStore()
-            self.db_accessor = DatabaseAccessor(db)
+            self.db = DatabaseAccessor(db)
 ```
 
 ### 2.4 データベースクラス構造
@@ -303,25 +303,21 @@ class EntryCacheManager:
     """POエントリのキャッシュを管理するクラス
     
     このクラスは、POエントリの各種キャッシュを管理し、キャッシュの一貫性を保つための
-    機能を提供します。主に以下の3種類のキャッシュを管理します：
+    機能を提供します。主に以下の2種類のキャッシュを管理します：
     
     1. complete_entry_cache: 完全なEntryModelオブジェクトのキャッシュ
        - 用途: エントリの詳細情報が必要な場合（編集時など）に使用
        - キー: エントリのキー（通常は位置を表す文字列）
        - 値: 完全なEntryModelオブジェクト（すべてのフィールドを含む）
     
-    2. entry_basic_info_cache: 基本情報のみのEntryModelオブジェクトのキャッシュ
-       - 用途: エントリのリスト表示など、基本情報のみが必要な場合に使用
-       - キー: エントリのキー
-       - 値: 基本情報のみを含むEntryModelオブジェクト
-    
-    3. filtered_entries_cache: フィルタリング結果のキャッシュ
+    2. filtered_entries_cache: フィルタリング結果のキャッシュ
        - 用途: 同じフィルタ条件での再検索を高速化
-       - キー: フィルタ条件を表す文字列（_filtered_entries_cache_key）
+       - キー: フィルタ条件を表す文字列（filtered_entries_cache_key）
        - 値: フィルタ条件に一致するEntryModelオブジェクトのリスト
+
+※ 行番号とキーのマッピングは UI 側（EntryListFacade）が管理します。
        
     最適化機能:
-    - 使用頻度ベースのキャッシュ保持: アクセス頻度の高いエントリを優先的に保持
     - キャッシュサイズの自動調整: メモリ使用量に基づいてキャッシュサイズを動的に調整
     - 非同期プリフェッチ: バックグラウンドでの先読みによるUI応答性の向上
     """
@@ -333,137 +329,59 @@ class EntryCacheManager:
     def __init__(self):
         """キャッシュマネージャの初期化"""
         # 完全なEntryModelオブジェクトのキャッシュ
-        self._complete_entry_cache: EntryModelMap = {}
-        
-        # 基本情報のみのキャッシュ
-        self._entry_basic_info_cache: EntryModelMap = {}
+        self.complete_entry_cache: EntryModelMap = {}
         
         # フィルタ結果のキャッシュ
-        self._filtered_entries_cache: EntryModelList = []
-        self._filtered_entries_cache_key: str = ""
+        self.filtered_entries_cache: EntryModelList = []
+        self.filtered_entries_cache_key: str = ""
         
         # キャッシュ制御フラグ
-        self._cache_enabled: bool = True
-        self._force_filter_update: bool = False
-        
-        # パフォーマンス計測用カウンター
-        self._complete_cache_hits: int = 0
-        self._complete_cache_misses: int = 0
-        self._basic_cache_hits: int = 0
-        self._basic_cache_misses: int = 0
-        self._filter_cache_hits: int = 0
-        self._filter_cache_misses: int = 0
-        
-        # 最適化関連
-        self._access_counter: Counter = Counter()
-        self._last_access_time: Dict[str, float] = {}
-        self._max_cache_size: int = self.DEFAULT_MAX_CACHE_SIZE
-        self._lru_size: int = self.DEFAULT_LRU_SIZE
+        self.cache_enabled: bool = True
+        self.force_filter_update: bool = False
         
         # 非同期プリフェッチ関連
-        self._prefetch_lock = threading.RLock()
-        self._prefetch_queue: Set[str] = set()
-        self._prefetch_in_progress: bool = False
+        self.prefetch_lock = threading.RLock()
+        self.prefetch_queue: Set[str] = set()
+        self.prefetch_in_progress: bool = False
         
-        # UI連携用マッピング
-        self._row_key_map: Dict[int, str] = {}
+    def get_complete_entry(self, key: str) -> Optional[EntryModel]:
+        """完全なエントリをキャッシュから取得する"""
+        if not self.cache_enabled:
+            return None
+
+        entry = self.complete_entry_cache.get(key)
+        if entry:
+            # キャッシュヒット
+            return entry
+        else:
+            # キャッシュミス
+            return None
+
+    def cache_complete_entry(self, key: str, entry: EntryModel) -> None:
+        """完全なエントリをキャッシュに保存する"""
+        if not self.cache_enabled:
+            return
+
+        self.complete_entry_cache[key] = entry
+        self.update_access_stats(key)
+        self.check_cache_size()
+
+    def update_entry_in_cache(self, key: str, entry: EntryModel) -> None:
+        """エントリの更新をキャッシュに反映する"""
+        if not self.cache_enabled:
+            return
+
+        # 完全なエントリキャッシュを更新
+        self.complete_entry_cache[key] = entry
+
+        # フィルタ結果キャッシュを無効化
+        self.set_force_filter_update(True)
 ```
 
 ### 3.2 キャッシュ基本操作
 
 ```python
 # EntryCacheManagerのメソッド
-def get_complete_entry(self, key: str) -> Optional[EntryModel]:
-    """完全なエントリをキャッシュから取得する"""
-    if not self._cache_enabled:
-        return None
-
-    entry = self._complete_entry_cache.get(key)
-    if entry:
-        # キャッシュヒット
-        self._complete_cache_hits += 1
-        self._check_and_log_performance()
-        self._update_access_stats(key)
-        return entry
-    else:
-        # キャッシュミス
-        self._complete_cache_misses += 1
-        return None
-
-def cache_complete_entry(self, key: str, entry: EntryModel) -> None:
-    """完全なエントリをキャッシュに保存する"""
-    if not self._cache_enabled:
-        return
-
-    self._complete_entry_cache[key] = entry
-    self._update_access_stats(key)
-    self._check_cache_size()
-
-def update_entry_in_cache(self, key: str, entry: EntryModel) -> None:
-    """エントリの更新をキャッシュに反映する"""
-    if not self._cache_enabled:
-        return
-
-    # 完全なエントリキャッシュを更新
-    self._complete_entry_cache[key] = entry
-
-    # 基本情報キャッシュも更新
-    if key in self._entry_basic_info_cache:
-        basic_info = EntryModel(
-            key=entry.key,
-            msgid=entry.msgid,
-            msgstr=entry.msgstr,
-            fuzzy="fuzzy" in entry.flags,
-            obsolete=entry.obsolete,
-            position=entry.position,
-            flags=entry.flags,
-        )
-        self._entry_basic_info_cache[key] = basic_info
-
-    # フィルタ結果キャッシュを無効化
-    self.set_force_filter_update(True)
-```
-
-### 3.3 UI連携機能
-
-```python
-# EntryCacheManagerのUI連携メソッド
-def add_row_key_mapping(self, row: int, key: str) -> None:
-    """行インデックスとエントリキーのマッピングを追加する
-    
-    UI層からのアクセスを効率化するために、テーブルの行インデックスと
-    エントリキーのマッピングを管理します。これにより、UI層（TableManager,
-    EventHandler）の独自キャッシュを排除し、キャッシュ管理を一元化できます。
-    
-    Args:
-        row: テーブルの行インデックス
-        key: エントリキー
-    """
-    self._row_key_map[row] = key
-
-def get_key_for_row(self, row: int) -> Optional[str]:
-    """行インデックスに対応するエントリキーを取得する
-    
-    Args:
-        row: テーブルの行インデックス
-        
-    Returns:
-        エントリキー、マッピングがなければNone
-    """
-    return self._row_key_map.get(row)
-
-def clear_row_key_mappings(self) -> None:
-    """行インデックスとキーのマッピングをクリアする
-    
-    テーブルの内容が完全に更新された場合などに呼び出されます。
-    """
-    self._row_key_map.clear()
-```
-
-### 3.4 プリフェッチ機能
-
-```python
-# EntryCacheManagerのプリフェッチメソッド
 def prefetch_visible_entries(self, visible_keys: List[str], fetch_callback=None) -> None:
     """表示中のエントリをプリフェッチする
     
@@ -475,28 +393,28 @@ def prefetch_visible_entries(self, visible_keys: List[str], fetch_callback=None)
         visible_keys: 表示中または表示予定のエントリキーのリスト
         fetch_callback: キーのリストを受け取り、EntryModelのリストを返すコールバック関数
     """
-    if not self._cache_enabled or not visible_keys:
+    if not self.cache_enabled or not visible_keys:
         return
         
     # すでにキャッシュにあるキーを除外
     keys_to_fetch = [
-        key for key in visible_keys if key not in self._complete_entry_cache
+        key for key in visible_keys if key not in self.complete_entry_cache
     ]
     
     if not keys_to_fetch:
         return
         
-    with self._prefetch_lock:
-        self._prefetch_queue.update(keys_to_fetch)
+    with self.prefetch_lock:
+        self.prefetch_queue.update(keys_to_fetch)
         
-        if self._prefetch_in_progress:
+        if self.prefetch_in_progress:
             return
             
-        self._prefetch_in_progress = True
+        self.prefetch_in_progress = True
         
     # 非同期でプリフェッチを実行
     threading.Thread(
-        target=self._async_prefetch, 
+        target=self.async_prefetch, 
         args=(fetch_callback,), 
         daemon=True
     ).start()
@@ -533,17 +451,13 @@ def prefetch_visible_entries(self, visible_keys: List[str], fetch_callback=None)
 ```
 ユーザー入力 → ViewerPOFile.get_filtered_entries → EntryCacheManager(キャッシュ確認)
                                                     ↓ (キャッシュミス/強制更新)
-                                                  DatabaseAccessor(クエリ実行)
-                                                    ↓
-                                                  EntryModel変換
-                                                    ↓
-                                                  EntryCacheManager(キャッシュ保存)
+                                      ager(キャッシュ保存)
                                                     ↓
                                                   結果返却 → TableManagerによる表示
 ```
 
 ### 4.3 エントリ編集
-
+{{ ... }}
 1. ユーザーがテーブルでエントリを選択
 2. EntryListFacadeがViewerPOFileからEntryModelを取得（完全キャッシュ優先）
 3. EntryEditorFacadeを通じてEntryEditorにEntryModelが設定される
@@ -555,7 +469,7 @@ def prefetch_visible_entries(self, visible_keys: List[str], fetch_callback=None)
 9. TableManagerが更新され、変更が画面に反映される
 
 ```
-ユーザー選択 → EntryListFacade → ViewerPOFile.get_entry → EntryCacheManager(キャッシュ取得) → EntryModel → EntryEditorFacade → EntryEditor
+ユーザー選択 → EntryListFacade → ViewerPOFile.y → EntryCacheManager(キャッシュ取得) → EntryModel → EntryEditorFacade → EntryEditor
                                                                                                 ↑
 ユーザー編集 → EntryEditor → EntryEditorFacade → ViewerPOFile.update_entry → DatabaseAccessor → InMemoryEntryStore（DB更新）
                                                                              → EntryCacheManager(キャッシュ更新)
@@ -587,7 +501,7 @@ class EntryModel(BaseModel):
     key: str
     position: int
     msgid: str
-    msgstr: str = ""
+    tr: str = ""
     
     # LLM評価関連フィールド
     quality_score: Optional[float] = None  # 0.0～1.0の品質スコア
@@ -603,11 +517,11 @@ EntryModelクラスは、複数形翻訳をサポートするフィールドを�
 class EntryModel(BaseModel):
     # 基本フィールド
     msgid: str
-    msgstr: str = ""
+    tr: str = ""
     
     # 複数形関連フィールド
     msgid_plural: Optional[str] = None    # 複数形の原文
-    msgstr_plural: Dict[int, str] = {}    # インデックスごとの複数形訳文
+    tr_plural: Dict[int, str] = {}    # インデックスごとの複数形訳文
 ```
 
 ### 6.3 カスタムメタデータ

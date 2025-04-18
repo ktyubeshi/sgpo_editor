@@ -141,9 +141,8 @@ UIと連携するためのPOファイル表示モデル。エントリのフィ�
 class EntryCacheManager:
     """POエントリのキャッシュを管理するクラス
     
-    複数種類のキャッシュを管理し、ViewerPOFileの責務を軽減します:
-    1. complete_entry_cache: 完全なEntryModelオブジェクトのキャッシュ
-    2. entry_basic_info_cache: 基本情報のみのキャッシュ
+    複数2種類のキャッシュを管理し、ViewerPOFileの責務を軽減します:
+    1. complete_: 完全なEntryModelオブジェクトのキャッシュ
     3. filtered_entries_cache: フィルタリング結果のキャッシュ
     
     最適化機能:
@@ -154,8 +153,7 @@ class EntryCacheManager:
     
     def __init__(self):
         # キャッシュデータ構造
-        self._complete_entry_cache = {}
-        self._entry_basic_info_cache = {}
+        self._complete_ = {}
         self._filtered_entries_cache = []
         # キャッシュ管理フラグ
         self._force_filter_update = False
@@ -402,67 +400,18 @@ class FileHandler:
                               └─────────────────┘
 ```
 
-## 6. キャッシュ戦略
+### 6. キャッシュ戦略
 
-SGPO Editorでは、パフォーマンスを向上させるために多層的なキャッシュ戦略を採用しています。
+SGPO Editor のキャッシュは **2層構成**（CompleteEntryCache / FilterResultCache）に統一されています。詳細は「2_2_dbcash_architecture.md」を参照してください。
 
-### 6.1 キャッシュレイヤー
+- 行番号とキーの対応付けは UI 側 (`EntryListFacade.Rper`) が保持
+- FTS5 `MATCH` 検索を前提とし、大量データでも 500ms 以内の応答をKPIとする
+- キャッシュ無効化APIは `invalidate_filter_cache()` に統一
+- カウンタは廃止し、性能監視は `pytest-benchmark` で実施
 
-1. **完全なエントリキャッシュ** (EntryCacheManager._complete_entry_cache)
-   - 詳細な編集操作に使用される完全なEntryModelオブジェクトを保持
-   - ユースケース: エントリの詳細表示や編集時
-   - キー: エントリID（通常は位置を表す文字列）
-   - 値: すべてのフィールドを持つEntryModelオブジェクト
-
-2. **基本情報キャッシュ** (EntryCacheManager._entry_basic_info_cache)
-   - テーブル表示に必要な基本情報のみを持つEntryModelオブジェクトを保持
-   - ユースケース: テーブル一覧表示など、基本情報のみ必要な場合
-   - キー: エントリID
-   - 値: 基本フィールド（msgid, msgstr, fuzzy, obsoleteなど）のみのEntryModelオブジェクト
-
-3. **フィルタ結果キャッシュ** (EntryCacheManager._filtered_entries_cache)
-   - 特定のフィルタ条件に対する結果リストを保持
-   - ユースケース: 同じフィルタ条件で繰り返し検索する場合
-   - キー: フィルタ条件のハッシュ
-   - 値: フィルタリングされたEntryModelオブジェクトのリスト
-
-4. **行インデックスマッピング** (EntryCacheManager._row_key_map)
-   - テーブルの行インデックスとエントリキーのマッピングを保持
-   - ユースケース: UI操作でのエントリ参照
-   - キー: テーブルの行インデックス
-   - 値: エントリのキー
-
-### 6.2 キャッシュ最適化機能
-
-1. **使用頻度ベースのキャッシュ保持**
-   - アクセス回数をカウントし、頻繁に使用されるエントリを優先的に保持
-   - 実装: `_access_counter`と`_last_access_time`を使用
-
-2. **キャッシュサイズの自動調整**
-   - メモリ使用量に応じてキャッシュサイズを動的に調整
-   - 最大キャッシュサイズと最小必須サイズ（LRU）の設定
-
-3. **非同期プリフェッチ**
-   - バックグラウンドスレッドでの先読みにより、UI応答性を向上
-   - ユーザーの表示エリアに基づいて、次に必要となるエントリを予測
-
-4. **キャッシュ無効化メカニズム**
-   - エントリ更新時に関連するキャッシュを無効化
-   - フラグベースのシステムにより、キャッシュの一貫性を確保
-
-### 6.3 キャッシュパフォーマンスの監視
-
-1. **ヒット率計測**
-   - 各キャッシュレイヤーでのヒット/ミスを計測
-   - 実装: `_complete_cache_hits`, `_complete_cache_misses`などのカウンター
-
-2. **定期的ログ出力**
-   - 設定された間隔でキャッシュパフォーマンス指標をログに出力
-   - 実装: `_check_and_log_performance`メソッド
-
-3. **メモリ使用量監視**
-   - キャッシュの合計サイズと潜在的なメモリリークを監視
-   - 実装: キャッシュサイズの監視と調整機能
+    *   **キャッシュ管理:** `EntryCacheManager` は Complete/Filter の 2 層キャッシュを LRU + メモリ制限で管理します。
+    *   **プリフェッチ:** UI (`EntryListFacade`) が可視範囲を通知し、バックグラウンドで先読みします。
+    *   **無効化:** SQLite `update_hook` から呼ばれる `invalidate_entry()` と `invalidate_filter_cache()` で整合性を保ちます。
 
 ## 7. エラー処理戦略
 

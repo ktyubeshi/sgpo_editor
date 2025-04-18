@@ -17,11 +17,11 @@
     }
   },
   "include": [],
-  "forceInclude": ["inspection/**", "test_Result.txt"],
+  "forceInclude": [],
   "ignore": {
     "useGitignore": true,
     "useDefaultPatterns": true,
-    "customPatterns": ["_doc/.obsidian/**", "**/repomix*.*"]
+    "customPatterns": []
   },
   "security": {
     "enableSecurityCheck": true

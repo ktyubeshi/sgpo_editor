@@ -39,7 +39,7 @@ graph TD
 
     subgraph キャッシュ層
         CacheManager[EntryCacheManager]
-        CompleteCache[(Complete Entry Cache<br/>key → EntryModel<br/>LRU + Mem Limit)]
+        CompleteCache[(CompleteEntryCache<br/>key → EntryModel<br/>LRU + Mem Limit)]
         FilterCache[(Filter Result Cache<br/>hash → List[EntryModel]<br/>LRU + Mem Limit)]
         Prefetch[Prefetch Mechanism]
     end

@@ -14,16 +14,16 @@
     *   リンター/フォーマッタ: Ruff, flake8
     *   型チェック: mypy
     *   データベース: インメモリ SQLite (`InMemoryEntryStore`), 評価データ用サイドカー SQLite (`EvaluationDatabase`)
-    *   キャッシュ: `EntryCacheManager` による複数レベルキャッシュ
+    *   キャッシュ: `EntryCacheManager` による2層キャッシュ（CompleteEntryCache / FilterResultCache）
 
 ## 2. 現在のアーキテクチャと課題 (Current State & Challenges)
 
 *   **基本アーキテクチャ:** Model-View-Controller (MVC) パターンを基本とし、UI・ロジック・データの分離を目指しています。ファサードパターン (`EntryEditorFacade`, `EntryListFacade`, `ReviewDialogFacade`) が導入されています。`ViewerPOFile` はコンポジションパターンで再設計済みです。
 *   **進行中のリファクタリング:** 現在、キャッシュ管理の一元化とファサードパターンの徹底が進行中です。
 *   **主な課題:**
-    1.  **キャッシュ機構の完全な一元化未完了:** `EntryCacheManager` が中心となっていますが、`TableManager` 等のUI層にまだキャッシュ関連のコードや状態（例: `_entry_cache`, `_row_key_map` の使用）が残存している可能性があり、`EntryCacheManager` のAPI利用への完全移行が必要です。
+    1.  **キャッシュ管理:** `EntryCacheManager` は Complete/Filter の 2層キャッシュに統一済み。行⇄キー マッピングは UI 層 (`EntryListFacade.RowKeyMapper`) へ完全移管。性能監視は `pytest-benchmark` で実施。
     2.  **ファサードパターン適用の不徹底:** `EventHandler` にまだロジック（コメントアウト含む）が残っており、ファサードへの完全な移譲が完了していません。`MainWindow` や他のUIウィジェットからコア層/モデル層への直接アクセスも残っている可能性があります。
-    3.  **UI とロジックの結合度:** `TableManager` が依然として表示以外のロジック（例: ソート状態の保持？）を含んでいる可能性があり、表示責務への特化が未完了です。
+    3.  **UI とロジックの結合度:** `TableManager` は表示責務に特化し、ソート／フィルタは FTS5 クエリ経由で Facade が担当。大量データ時には `fetchMore()` でオンデマンドロードへ切替える計画。
     4.  **インスペクションエラー:** 未解決参照、型エラー、不正な引数リストなど、リファクタリング途中に起因する可能性のあるクリティカルなエラーが多数検出されています。これらはコードの安定性と信頼性に影響します。
     5.  **重複コード:** キャッシュ管理、DBアクセス、UI更新処理などで重複コードが検出されており、保守性を低下させています。
 
@@ -37,7 +37,6 @@
     *   UI ウィジェット (`src/sgpo_editor/gui/widgets/`, `TableManager`) は、表示とユーザー操作のイベント発行に専念し、データ処理ロジック（ソート、キャッシュ管理等）を持たないようにします。
 *   **キャッシュ管理の完全な一元化:**
     *   エントリデータに関するキャッシュ管理は `src/sgpo_editor/core/cache_manager.py` の `EntryCacheManager` に**完全に集約**します。UI層での独自キャッシュは**廃止**します。
-    *   UI層が必要とする行とキーのマッピング機能は `EntryCacheManager` が提供するAPI (`add_row_key_mapping` 等) を利用します。
     *   キャッシュの更新や無効化は `EntryCacheManager` のAPIを通じて行います。
 *   **ファサードパターンの徹底:**
     *   UI 層 (`gui` パッケージ) からコアロジック層 (`core` パッケージ) やデータモデル層 (`models` パッケージ) へのアクセスは、**原則として** `src/sgpo_editor/gui/facades/` 以下のファサードクラスを経由して行います。

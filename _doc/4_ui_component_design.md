@@ -88,6 +88,10 @@ SGPO Editorは複数のレイアウトタイプを提供し、ユーザーの好
 
 ### 3.2 エントリテーブル
 
+#### EntryListFacade.RowKeyMapper
+- テーブル上の行番号とエントリキーの対応付けを管理するUI側コンポーネント。
+- TableManager等から可視行範囲の通知を受けて、行番号→エントリキーのマッピングを保持・提供する。
+
 エントリテーブルは、POファイル内のすべての翻訳エントリを表形式で表示します。
 
 #### 列構成
@@ -115,6 +119,7 @@ class TableManager:
         self._setup_table()
     
     def update_table(self, filter_text="", search_text="", match_mode="部分一致"):
+        """FTS5 MATCH を用いた高速更新。可視行を EntryListFacade.RowKeyMapper に通知"""
         """テーブルを更新する"""
         # 実装詳細...
     
