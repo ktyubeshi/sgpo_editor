@@ -94,7 +94,7 @@ class FilterComponent:
 
         # キャッシュを無効化
         if self.cache_manager:
-            self.cache_manager.set_force_filter_update(True)
+            self.cache_manager.clear_filter_cache()
             self.cache_manager.invalidate_filter_cache()
 
         # フィルタリング結果をリセット
@@ -120,7 +120,7 @@ class FilterComponent:
 
             # キャッシュを無効化
             if self.cache_manager:
-                self.cache_manager.set_force_filter_update(True)
+                self.cache_manager.clear_filter_cache()
                 self.cache_manager.invalidate_filter_cache()
 
             # フィルタリング結果をリセット
@@ -197,16 +197,16 @@ class FilterComponent:
             if norm_filter_keyword != "":
                 self.search_text = norm_filter_keyword
                 if self.cache_manager:
-                    self.cache_manager.set_force_filter_update(True)
+                    self.cache_manager.clear_filter_cache()
             elif norm_search_text != "":
                 self.search_text = norm_search_text
                 if self.cache_manager:
-                    self.cache_manager.set_force_filter_update(True)
+                    self.cache_manager.clear_filter_cache()
         # --- ここまで必ずsearch_textを反映 ---
 
         cached_entries = None
         force_update = (
-            self.cache_manager.get_force_filter_update()
+            False  # 新キャッシュ設計では常にFalse（強制更新フラグは廃止）
             if self.cache_manager
             else False
         )
@@ -251,7 +251,7 @@ class FilterComponent:
         # 結果をキャッシュに保存
         if self.cache_manager:
             self.cache_manager.set_filter_cache(db_filtered)
-            self.cache_manager.set_force_filter_update(False)
+            self.cache_manager.clear_filter_cache()
 
         self.filtered_entries = db_filtered
         return self.filtered_entries

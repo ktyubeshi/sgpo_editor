@@ -19,6 +19,9 @@ class TestKeywordFilter(unittest.TestCase):
         self.mock_db_accessor = MagicMock(spec=DatabaseAccessor)
 
         self.po_file = ViewerPOFileRefactored(db_accessor=self.mock_db_accessor)
+        self.po_file.filter.db_accessor = self.mock_db_accessor
+        self.po_file.filter.filtered_entries = []
+        self.po_file.filter.cache_manager = None
 
         # モックの戻り値を設定
         self.mock_entries_dict = [
@@ -26,15 +29,15 @@ class TestKeywordFilter(unittest.TestCase):
             {"key": "2", "msgid": "test2", "msgstr": "テスト2", "position": 1},
             {"key": "3", "msgid": "keyword", "msgstr": "キーワード", "position": 2},
         ]
-        self.mock_db_accessor.get_filtered_entries.return_value = self.mock_entries_dict
+        self.mock_db_accessor.advanced_search = MagicMock(return_value=self.mock_entries_dict)
 
     def test_filter_keyword_is_passed_to_database(self):
         """キーワードフィルタがデータベースに正しく渡されることを確認するテスト"""
         # get_filtered_entriesを呼び出し
         self.po_file.get_filtered_entries(filter_keyword="keyword")
 
-        self.mock_db_accessor.get_filtered_entries.assert_called_once()
-        args, kwargs = self.mock_db_accessor.get_filtered_entries.call_args
+        self.mock_db_accessor.advanced_search.assert_called_once()
+        args, kwargs = self.mock_db_accessor.advanced_search.call_args
 
         # キーワードが正しく渡されていることを確認
         self.assertEqual(kwargs.get("search_text"), "keyword")
@@ -44,10 +47,10 @@ class TestKeywordFilter(unittest.TestCase):
         # 翻訳ステータスを設定 (内部状態ではなくメソッド呼び出しで渡す想定)
         # self.po_file.translation_status = "translated"
         # get_filtered_entriesを呼び出し
-        self.po_file.get_filtered_entries(filter_keyword="keyword", translation_status="translated", update_filter=True)
+        self.po_file.get_filtered_entries(filter_keyword="keyword", filter_status="translated", update_filter=True)
 
-        self.mock_db_accessor.get_filtered_entries.assert_called_once()
-        args, kwargs = self.mock_db_accessor.get_filtered_entries.call_args
+        self.mock_db_accessor.advanced_search.assert_called_once()
+        args, kwargs = self.mock_db_accessor.advanced_search.call_args
 
         # 翻訳ステータスとキーワードが正しく渡されていることを確認
         self.assertEqual(kwargs.get("translation_status"), "translated")

@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 DEFAULT_CONFIG = {
     # 使用するPOライブラリ（"polib" または "sgpo"）
     "po_library": "sgpo",
+    # キャッシュ設定
+    "cache": {
+        "complete_cache_max_size": 10000,
+        "filter_cache_max_size": 100,
+        "enabled": True,
+        "ttl": 0,
+    },
     # UIの設定
     "ui": {
         # テーブルの列幅
@@ -194,6 +201,21 @@ class Config:
 
 # シングルトンインスタンス
 _config_instance = None
+
+def get_cache_config() -> dict:
+    """
+    キャッシュ設定値を辞書で取得する
+    Returns:
+        dict: キャッシュ設定
+    """
+    config = get_config()
+    cache_conf = config.get("cache", {})
+    return {
+        "COMPLETE_CACHE_MAX_SIZE": cache_conf.get("complete_cache_max_size", 10000),
+        "FILTER_CACHE_MAX_SIZE": cache_conf.get("filter_cache_max_size", 100),
+        "CACHE_ENABLED": cache_conf.get("enabled", True),
+        "CACHE_TTL": cache_conf.get("ttl", 0),
+    }
 
 
 def get_config() -> Config:

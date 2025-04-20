@@ -50,8 +50,8 @@ class TableManager:
     - テーブル内容の更新と描画最適化
 
     キャッシュ管理:
-    - エントリのキャッシュは EntryCacheManager に完全に委譲
-    - 行とキーのマッピングも EntryCacheManager が管理
+    # エントリのキャッシュは EntryCacheManager に完全に委譲
+    # 行とキーのマッピングは TableManager 側で管理（新キャッシュ設計）
 
     ソート処理:
     - ソート条件の設定と実際のソート処理は ViewerPOFile に委譲
@@ -65,6 +65,10 @@ class TableManager:
         get_current_po: Optional[Callable[[], Optional[ViewerPOFile]]] = None,
         sort_request_callback: Optional[Callable[[str, str], None]] = None,
     ) -> None:
+        # ... 既存初期化処理 ...
+        self._row_key_map: Dict[int, str] = {}
+        self._key_row_map: Dict[str, int] = {}
+
         """初期化
 
         Args:

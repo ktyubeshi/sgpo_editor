@@ -10,7 +10,8 @@ from typing import Callable, Optional
 from PySide6.QtCore import QObject, Signal, Qt, QTimer
 from PySide6.QtWidgets import QTableWidget
 
-from sgpo_editor.core.cache_manager import EntryCacheManager
+from sgpo_editor.core.cache_manager import EntryCacheManager  # 新APIに準拠
+
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.widgets.search import SearchWidget
@@ -129,12 +130,9 @@ class EntryListFacade(QObject):
             
             logger.debug(f"EntryListFacade.update_table: 取得したエントリ数: {len(sorted_entries)}件")
 
-            # EntryCacheManager の行マッピングをクリア＆再構築
-            logger.debug("EntryListFacade.update_table: EntryCacheManager の行マッピングを更新")
-            self._entry_cache_manager.clear_row_key_mappings()
-            for i, entry in enumerate(sorted_entries):
-                self._entry_cache_manager.add_row_key_mapping(i, entry.key)
-            logger.debug(f"EntryListFacade.update_table: EntryCacheManager に新しい行マッピングを追加: {len(sorted_entries)}件")
+            # 新キャッシュ設計：TableManagerで行マッピングを管理
+            logger.debug("EntryListFacade.update_table: TableManagerの行マッピングを更新（新キャッシュ設計）")
+            self._table_manager.update_row_key_mappings(sorted_entries)
 
             # テーブルを更新（ソート済みリストとフィルタ条件を渡す）
             logger.debug("EntryListFacade.update_table: TableManagerのupdate_table呼び出し")

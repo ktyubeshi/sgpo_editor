@@ -126,6 +126,9 @@ def viewer_po_file(mock_db_accessor: MagicMock) -> ViewerPOFileRefactored:
         return_value=mock_db_accessor,
     ):
         po_file = ViewerPOFileRefactored("dummy.po", db_accessor=mock_db_accessor)
+        po_file.filter.db_accessor = mock_db_accessor
+        po_file.filter.filtered_entries = []
+        po_file.filter.cache_manager = None
         # 初期状態ではすべてのステータスが選択されていると仮定
         po_file.filter_status = {
             TranslationStatus.TRANSLATED,
@@ -170,7 +173,7 @@ def test_filter_reset_after_complex_filter(
     keyword_param = "test"
     # フィルタ条件をパラメータで渡す
     filtered_entries_complex = viewer_po_file.get_filtered_entries(
-        filter_status=filter_status_param, 
+        translation_status=filter_status_param, 
         filter_keyword=keyword_param, # filter_keyword 経由で search_text を設定
         update_filter=True
     )
