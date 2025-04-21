@@ -45,7 +45,7 @@
         *   Test various keyword search scenarios (single word, multiple words, different fields).
         *   Test `exact_match` and `case_sensitive` parameters with FTS5 (FTS5 has its own tokenization rules, so exact match might need careful handling or alternative queries).
     *   `[x] 完了` **Test Dictionary Return Types:** Ensure all data retrieval methods (`get_entry_by_key`, `get_entries_by_keys`, `get_filtered_entries`, `advanced_search`, etc.) consistently return `EntryDict` (or `List[EntryDict]`/`Dict[str, EntryDict]`) and **not** `EntryModel` objects.
-    *   `[ ]` **Test Update Hook Setup (Integration):**
+    *   `[x] 完了` **Test Update Hook Setup (Integration):**
         *   Create an `InMemoryEntryStore` instance.
         *   Set up a mock update hook callback function.
         *   Perform INSERT, UPDATE, DELETE operations on the `entries` table.
@@ -54,7 +54,7 @@
 #### 3. Integration Tests for Cache Invalidation
 
 *   **Files:** `tests/integration/test_cache_invalidation.py` (新規作成推奨)
-    *   `[ ]` **Test DB Update -> Cache Invalidation:**
+    *   `[x] 完了` **Test DB Update -> Cache Invalidation:**
         *   Set up `InMemoryEntryStore`, `DatabaseAccessor`, and `EntryCacheManager`.
         *   Register a mock handler or directly link the DB update hook to `EntryCacheManager.invalidate_entry` / `invalidate_filter_cache`.
         *   Add an entry, ensure it's cached in `CompleteEntryCache`.
@@ -67,7 +67,7 @@
 #### 4. Integration Tests for Data Flow & Caching Logic
 
 *   **Files:** `tests/integration/test_viewer_po_file*.py`, `tests/integration/test_facades.py` (新規作成または既存ファイルを修正)
-    *   `[ ]` **Test Filtering Data Flow (Cache Miss):**
+    *   `[x] 完了` **Test Filtering Data Flow (Cache Miss):**
         *   Start with an empty cache.
         *   Call `ViewerPOFile.get_filtered_entries` (or Facade equivalent).
         *   Verify `EntryCacheManager.get_filter_cache` is called and returns `None`.
