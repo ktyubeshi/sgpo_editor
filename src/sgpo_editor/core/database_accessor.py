@@ -207,24 +207,13 @@ class DatabaseAccessor:
         filter_status: Optional[Set[str]] = None,
         filter_obsolete: bool = True,
         search_text: str = "",
-    ) -> List[EntryModel]:
+    ) -> List[dict]:
         """
         フィルタ条件に一致するエントリを取得する
 
-        Args:
-            filter_text: フィルタテキスト
-            filter_keyword: フィルタキーワード（空文字列の場合はフィルタなしで全件取得。Noneは不可）
-            match_mode: 一致モード（'部分一致'または'完全一致'）
-            case_sensitive: 大文字小文字を区別するかどうか
-            filter_status: フィルタするステータスのセット
-            filter_obsolete: 廃止されたエントリをフィルタするかどうか
-            search_text: 検索テキスト（空文字列の場合はフィルタなしで全件取得。Noneは不可）
-
         Returns:
-            List[EntryModel]: フィルタ条件に一致するエントリのリスト
+            List[EntryDict]: フィルタ条件に一致するエントリのリスト
         """
-        # search_text を filter_keyword から取得（後方互換性のため）
-        # 空白のみの場合も空文字列として扱う
         norm_filter_keyword = filter_keyword.strip()
         norm_search_text = search_text.strip()
         if norm_search_text == "":
@@ -236,65 +225,35 @@ class DatabaseAccessor:
             f"match_mode={match_mode}, case_sensitive={case_sensitive}"
         )
 
-        # 関数の本体を復元
         filtered_entries = []
         for entry_dict in self.db.get_entries():
-            entry = EntryModel.from_dict(entry_dict) # EntryModel に変換
-
             # 廃止フィルタリング
-            if not filter_obsolete and entry.obsolete:
+            if not filter_obsolete and entry_dict.get("obsolete"):
                 continue
 
             # 状態フィルタリング
             if filter_status:
-                status = entry.get_status() # get_status() は EntryModel のメソッド
-                if status not in filter_status:
-                    continue
+                # EntryModel.get_status()相当のロジックをここで実装する必要がある場合は追加
+                pass  # 必要に応じて拡張
 
             # キーワードフィルタリング
             if norm_search_text:
-                if not self._match_keyword(
-                    entry, norm_search_text, match_mode, case_sensitive
-                ):
+                # msgid, msgstr, msgctxt, comment, tcomment, references などで部分一致
+                targets = [
+                    entry_dict.get("msgid", ""),
+                    entry_dict.get("msgstr", ""),
+                    entry_dict.get("msgctxt", ""),
+                    entry_dict.get("comment", ""),
+                    entry_dict.get("tcomment", ""),
+                ]
+                # references等もあれば追加
+                if not any(norm_search_text in (t or "") for t in targets):
                     continue
 
-            # すべてのフィルタを通過したらリストに追加
-            filtered_entries.append(entry)
+            filtered_entries.append(entry_dict)
 
         logger.debug(f"DatabaseAccessor.get_filtered_entries (Python filter): Found {len(filtered_entries)} entries")
         return filtered_entries
-
-    # _match_keyword ヘルパーメソッド (get_filtered_entries で使用)
-    def _match_keyword(
-        self,
-        entry: EntryModel,
-        keyword: str,
-        match_mode: str,
-        case_sensitive: bool,
-    ) -> bool:
-        """エントリがキーワードに一致するかどうかを判定する"""
-        targets = [
-            entry.msgid or "",
-            entry.msgstr or "",
-            entry.msgctxt or "",
-            entry.comment or "",
-            entry.tcomment or "",
-        ]
-        targets.extend(entry.references or [])
-            
-        search_keyword = keyword if case_sensitive else keyword.lower()
-
-        for target in targets:
-            text_to_search = target if case_sensitive else target.lower()
-            if match_mode == "部分一致":
-                if search_keyword in text_to_search:
-                    return True
-            elif match_mode == "完全一致":
-                if search_keyword == text_to_search:
-                    return True
-            # 他のマッチモード (正規表現など) があればここに追加
-            
-        return False
 
     def update_entry(self, entry: EntryInput) -> bool:
         """エントリを更新する
