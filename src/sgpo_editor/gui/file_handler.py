@@ -28,6 +28,11 @@ MAX_RECENT_FILES = 10
 class FileHandler:
     """ファイル処理クラス"""
 
+    def _clear_recent_files(self) -> None:
+        """最近使ったファイルリストをクリアし、保存する"""
+        self.recent_files = []
+        self._save_recent_files()
+
     def __init__(
         self,
         parent: QWidget,

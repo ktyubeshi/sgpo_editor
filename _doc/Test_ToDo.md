@@ -40,11 +40,11 @@
 #### 2. Unit/Integration Tests for `DatabaseAccessor` & `InMemoryEntryStore`
 
 *   **Files:** `tests/core/test_database_accessor.py`, `tests/models/test_database.py` (新規作成または既存ファイルを修正)
-    *   `[x]` **Test FTS5 Search (`advanced_search`):**
+    *   `[x] 完了` **Test FTS5 Search (`advanced_search`):**
         *   Verify that `advanced_search` uses `MATCH` operator when `search_text` is provided. (Mock `sqlite3.Cursor.execute` to check the generated SQL or test against a real `InMemoryEntryStore` with FTS5 enabled).
         *   Test various keyword search scenarios (single word, multiple words, different fields).
         *   Test `exact_match` and `case_sensitive` parameters with FTS5 (FTS5 has its own tokenization rules, so exact match might need careful handling or alternative queries).
-    *   `[x]` **Test Dictionary Return Types:** Ensure all data retrieval methods (`get_entry_by_key`, `get_entries_by_keys`, `get_filtered_entries`, `advanced_search`, etc.) consistently return `EntryDict` (or `List[EntryDict]`/`Dict[str, EntryDict]`) and **not** `EntryModel` objects.
+    *   `[x] 完了` **Test Dictionary Return Types:** Ensure all data retrieval methods (`get_entry_by_key`, `get_entries_by_keys`, `get_filtered_entries`, `advanced_search`, etc.) consistently return `EntryDict` (or `List[EntryDict]`/`Dict[str, EntryDict]`) and **not** `EntryModel` objects.
     *   `[ ]` **Test Update Hook Setup (Integration):**
         *   Create an `InMemoryEntryStore` instance.
         *   Set up a mock update hook callback function.

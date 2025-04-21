@@ -153,6 +153,38 @@ class SgpoEntry(POEntry):
         """ネイティブのPOEntryオブジェクトを取得"""
         return self._entry
 
+    def __getitem__(self, key):
+        # str型: 属性アクセス, int型: _entryの辞書アクセス
+        if isinstance(key, str):
+            if hasattr(self, key):
+                return getattr(self, key)
+            if hasattr(self._entry, key):
+                return getattr(self._entry, key)
+            raise KeyError(f"SgpoEntryオブジェクトに '{key}' キーがありません")
+        elif isinstance(key, int):
+            raise KeyError(
+                "SgpoEntryオブジェクトはint型キーアクセスをサポートしません。msgstr_plural等の辞書を明示的に取得してからintアクセスしてください。"
+            )
+        else:
+            raise KeyError(
+                f"SgpoEntryのキーはstrまたはint型のみ対応（type={type(key)}）"
+            )
+
+    def __setitem__(self, key, value):
+        if isinstance(key, str):
+            if hasattr(self, key):
+                setattr(self, key, value)
+            elif hasattr(self._entry, key):
+                setattr(self._entry, key, value)
+            else:
+                raise KeyError(f"SgpoEntryオブジェクトに '{key}' キーがありません")
+        elif isinstance(key, int):
+            self._entry[key] = value
+        else:
+            raise KeyError(
+                f"SgpoEntryのキーはstrまたはint型のみ対応（type={type(key)}）"
+            )
+
 
 class SgpoFile(POFile):
     """sgpoのPOFileアダプター"""

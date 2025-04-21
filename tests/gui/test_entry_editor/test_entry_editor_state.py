@@ -36,6 +36,9 @@ def mock_entry():
     entry.overall_quality_score = 0
     entry.category_quality_scores = {}
     entry.check_results = []
+    entry.__getitem__ = lambda self, key: getattr(self, key)
+    entry.__setitem__ = lambda self, key, value: setattr(self, key, value)
+    entry.__contains__ = lambda self, key: hasattr(self, key)
     return entry
 
 

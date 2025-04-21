@@ -364,11 +364,11 @@ def setup_mock_po_file(monkeypatch):
     mock_po_file.entries = []
     mock_po_file.is_modified = False
 
-    # entriesメソッドをモック化
-    def get_entries():
+    # get_filtered_entriesメソッドをモック化
+    def get_filtered_entries(*args, **kwargs):
         return []
 
-    mock_po_file.get_entries = get_entries
+    mock_po_file.get_filtered_entries = get_filtered_entries
     mock_po_file.load = MagicMock(return_value=True)
     mock_po_file.save = MagicMock(return_value=True)
 

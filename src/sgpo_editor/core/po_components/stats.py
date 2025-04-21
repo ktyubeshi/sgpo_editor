@@ -159,7 +159,7 @@ class StatsComponent:
             factory = get_po_factory(self.library_type)
 
             # POファイルを作成
-            pofile = factory.create_new_file()
+            pofile = factory.create_file()
 
             # メタデータを設定
             if self.metadata:
@@ -168,11 +168,11 @@ class StatsComponent:
 
             # エントリをPOファイルに追加
             for entry_dict in entries_dict:
-                po_entry = factory.create_entry_from_dict(entry_dict)
+                po_entry = factory.create_entry(**entry_dict)
                 pofile.append(po_entry)
 
-            # 非同期でファイルを保存
-            await factory.save_file_async(pofile, save_path)
+            # SGPOの場合は同期的に保存
+            pofile.save(str(save_path))
 
             elapsed_time = time.time() - start_time
             logger.debug(

@@ -88,7 +88,13 @@ class DatabaseAccessor:
             エントリの辞書、存在しない場合はNone
         """
         logger.debug(f"DatabaseAccessor.get_entry_by_key: キー={key}のエントリを取得")
-        return self.db.get_entry_by_key(key)
+        with self.db.transaction() as cur:
+            cur.execute("SELECT * FROM entries WHERE key = ?", (key,))
+            row = cur.fetchone()
+            if row:
+                columns = [desc[0] for desc in cur.description]
+                return dict(zip(columns, row))
+            return None
 
     def get_entries_by_keys(self, keys: List[str]) -> Dict[str, EntryDict]:
         """複数のキーに対応するエントリを一度に取得する
@@ -131,6 +137,22 @@ class DatabaseAccessor:
 
         return entries_dict
 
+    def get_all_entries(self) -> list:
+        """すべてのエントリを取得する
+
+        Returns:
+            List[EntryDict]: すべてのエントリのリスト
+        """
+        logger.debug("DatabaseAccessor.get_all_entries: すべてのエントリを取得")
+        entries = []
+        with self.db.transaction() as cur:
+            cur.execute("SELECT * FROM entries")
+            columns = [desc[0] for desc in cur.description]
+            for row in cur.fetchall():
+                entry_dict = dict(zip(columns, row))
+                entries.append(entry_dict)
+        return entries
+
     def get_all_entries_basic_info(self) -> Dict[str, EntryDict]:
         """すべてのエントリの基本情報を取得する
 
@@ -150,17 +172,30 @@ class DatabaseAccessor:
                 FROM entries
                 """
             )
-            for row in cur.fetchall():
-                key = row["key"]
+            # 件数デバッグ出力
+            cur.execute(
+                """
+                SELECT key, msgid, msgstr, fuzzy, obsolete
+                FROM entries
+                """
+            )
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            print(f"[DEBUG] 取得時の件数: {len(rows)}")
+            for row in rows:
+                print(f"columns: {columns}, row: {row}, type(row): {type(row)}")
+                row_dict = dict(zip(columns, row))
+                key = row_dict["key"]
                 entries[key] = {
                     "key": key,
-                    "msgid": row["msgid"],
-                    "msgstr": row["msgstr"],
-                    "fuzzy": bool(row["fuzzy"]),
-                    "obsolete": bool(row["obsolete"]),
+                    "msgid": row_dict["msgid"],
+                    "msgstr": row_dict["msgstr"],
+                    "fuzzy": bool(row_dict["fuzzy"]),
+                    "obsolete": bool(row_dict["obsolete"]),
                     "position": 0,  # デフォルト値を設定
                 }
 
+        print(f"entries(keys): {list(entries.keys())}, entries: {entries}")
         return entries
 
     def get_entry_basic_info(self, key: str) -> Optional[EntryDict]:
@@ -304,7 +339,7 @@ class DatabaseAccessor:
         )
         from typing import cast
 
-        result = self.db.update_entry(cast(EntryDict, entry_dict))
+        result = self.db.update_entry(entry_dict["key"], cast(EntryDict, entry_dict))
         logger.debug(
             f"DatabaseAccessor.update_entry: データベース更新結果 result={result}"
         )
@@ -1018,15 +1053,20 @@ class DatabaseAccessor:
         #     cur.execute(
         #         "UPDATE entries SET invalidated = 1 WHERE key = ?",
         #         (key,)
+
     def _row_to_entry_dict(self, row: sqlite3.Row) -> EntryDict:
         from typing import cast
-        if not hasattr(row, 'keys') and isinstance(row, tuple):
-            if hasattr(self, 'last_cursor_description') and self.last_cursor_description:
+
+        if not hasattr(row, "keys") and isinstance(row, tuple):
+            if (
+                hasattr(self, "last_cursor_description")
+                and self.last_cursor_description
+            ):
                 keys = [desc[0] for desc in self.last_cursor_description]
                 row = dict(zip(keys, row))
             else:
-                raise TypeError('rowがtuple型ですがカラム名情報がありません')
-        elif hasattr(row, 'keys'):
+                raise TypeError("rowがtuple型ですがカラム名情報がありません")
+        elif hasattr(row, "keys"):
             row = dict(row)
 
         entry_dict: EntryDict = {
@@ -1052,22 +1092,44 @@ class DatabaseAccessor:
         entry_id = row["id"]
         with self.db.transaction() as cur:
             cur.execute("SELECT flag FROM entry_flags WHERE entry_id = ?", (entry_id,))
-            flags = [r["flag"] for r in cur.fetchall()]
+            flags = [
+                r["flag"]
+                if isinstance(r, dict)
+                or hasattr(r, "__getitem__")
+                and not isinstance(r, tuple)
+                else r[0]
+                for r in cur.fetchall()
+            ]
             if flags:
                 entry_dict["flags"] = flags
 
-            cur.execute("SELECT reference FROM entry_references WHERE entry_id = ?", (entry_id,))
-            references = [r["reference"] for r in cur.fetchall()]
+            cur.execute(
+                "SELECT reference FROM entry_references WHERE entry_id = ?", (entry_id,)
+            )
+            references = [
+                r["reference"]
+                if isinstance(r, dict)
+                or hasattr(r, "__getitem__")
+                and not isinstance(r, tuple)
+                else r[0]
+                for r in cur.fetchall()
+            ]
             if references:
                 entry_dict["references"] = references
 
-            cur.execute("SELECT id, overall_score FROM quality_scores WHERE entry_id = ?", (entry_id,))
+            cur.execute(
+                "SELECT id, overall_score FROM quality_scores WHERE entry_id = ?",
+                (entry_id,),
+            )
             quality_score_row = cur.fetchone()
             if quality_score_row:
                 entry_dict["overall_quality_score"] = quality_score_row["overall_score"]
 
                 quality_score_id = quality_score_row["id"]
-                cur.execute("SELECT category, score FROM category_scores WHERE quality_score_id = ?", (quality_score_id,))
+                cur.execute(
+                    "SELECT category, score FROM category_scores WHERE quality_score_id = ?",
+                    (quality_score_id,),
+                )
                 category_scores = {r["category"]: r["score"] for r in cur.fetchall()}
                 if category_scores:
                     entry_dict["category_quality_scores"] = category_scores

@@ -11,7 +11,7 @@ def setup_db_and_cache():
     # インメモリDBとアクセサ、キャッシュマネージャをセットアップ
     db = InMemoryEntryStore()
     accessor = DatabaseAccessor(db)
-    cache_manager = EntryCacheManager(accessor)
+    cache_manager = EntryCacheManager()
     return db, accessor, cache_manager
 
 

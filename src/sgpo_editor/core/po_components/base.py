@@ -119,6 +119,8 @@ class POFileBaseComponent:
                 logger.debug(
                     f"エントリ変換処理完了: {len(entries_to_add)}件のエントリを変換"
                 )
+                # デバッグ: 追加予定エントリ件数
+                logger.debug(f"entries_to_add件数: {len(entries_to_add)}")
             except Exception as e:
                 logger.error(f"エントリ変換処理失敗: {e}")
                 raise RuntimeError(f"POエントリの変換に失敗しました: {e}") from e
@@ -127,9 +129,7 @@ class POFileBaseComponent:
             try:
                 logger.debug(f"データベース一括追加処理開始: {len(entries_to_add)}件")
                 if entries_to_add:
-                    await asyncio.to_thread(
-                        self.db_accessor.add_entries_bulk, entries_to_add
-                    )
+                    self.db_accessor.add_entries_bulk(entries_to_add)
                 logger.debug("データベース一括追加処理完了")
             except Exception as e:
                 logger.error(f"データベース一括追加処理失敗: {e}")
@@ -140,7 +140,7 @@ class POFileBaseComponent:
             # 基本情報をキャッシュにロード（CPU負荷の高い処理を非同期実行）
             try:
                 logger.debug("基本情報キャッシュロード処理開始")
-                await asyncio.to_thread(self._load_all_basic_info)
+                self._load_all_basic_info()
                 logger.debug("基本情報キャッシュロード処理完了")
             except Exception as e:
                 logger.error(f"基本情報キャッシュロード処理失敗: {e}")
@@ -211,8 +211,11 @@ class POFileBaseComponent:
         Returns:
             EntryDict: 変換されたディクショナリ
         """
-        # キーは位置（文字列型）
-        key = str(position)
+        # キーは論理キー（msgctxtがあればmsgctxt+区切り+msgid、なければmsgid）
+        if getattr(entry, "msgctxt", None):
+            key = f"{entry.msgctxt}|{entry.msgid}"
+        else:
+            key = entry.msgid
 
         # エントリの属性をディクショナリに変換
         entry_dict: EntryDict = {
@@ -220,30 +223,18 @@ class POFileBaseComponent:
             "position": position,
             "msgid": entry.msgid,
             "msgstr": entry.msgstr,
-            "msgctxt": entry.msgctxt if hasattr(entry, "msgctxt") else None,
-            "flags": list(entry.flags) if hasattr(entry, "flags") else [],
-            "obsolete": entry.obsolete if hasattr(entry, "obsolete") else False,
-            "msgid_plural": entry.msgid_plural
-            if hasattr(entry, "msgid_plural")
-            else None,
-            "msgstr_plural": dict(entry.msgstr_plural)
-            if hasattr(entry, "msgstr_plural")
-            else {},
-            "previous_msgid": entry.previous_msgid
-            if hasattr(entry, "previous_msgid")
-            else None,
-            "previous_msgid_plural": entry.previous_msgid_plural
-            if hasattr(entry, "previous_msgid_plural")
-            else None,
-            "previous_msgctxt": entry.previous_msgctxt
-            if hasattr(entry, "previous_msgctxt")
-            else None,
-            "linenum": entry.linenum if hasattr(entry, "linenum") else None,
-            "comment": entry.comment if hasattr(entry, "comment") else None,
-            "tcomment": entry.tcomment if hasattr(entry, "tcomment") else None,
-            "occurrences": list(entry.occurrences)
-            if hasattr(entry, "occurrences")
-            else [],
+            "msgctxt": getattr(entry, "msgctxt", None),
+            "flags": list(getattr(entry, "flags", [])),
+            "obsolete": getattr(entry, "obsolete", False),
+            "msgid_plural": getattr(entry, "msgid_plural", None),
+            "msgstr_plural": dict(getattr(entry, "msgstr_plural", {})),
+            "previous_msgid": getattr(entry, "previous_msgid", None),
+            "previous_msgid_plural": getattr(entry, "previous_msgid_plural", None),
+            "previous_msgctxt": getattr(entry, "previous_msgctxt", None),
+            "linenum": getattr(entry, "linenum", None),
+            "comment": getattr(entry, "comment", None),
+            "tcomment": getattr(entry, "tcomment", None),
+            "occurrences": list(getattr(entry, "occurrences", [])),
         }
 
         return entry_dict

@@ -38,6 +38,7 @@ def mock_entry():
     entry.score = None
 
     entry.__getitem__ = lambda self, key: getattr(self, key)
+    entry.__setitem__ = lambda self, key, value: setattr(self, key, value)
     entry.__contains__ = lambda self, key: hasattr(self, key)
 
     return entry

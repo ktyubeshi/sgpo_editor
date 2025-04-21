@@ -37,7 +37,7 @@ class FilterComponent:
 
         # フィルタリング関連の状態
         self.filtered_entries: List[EntryModel] = []
-        self.search_text: str = ""
+        self._search_text: str = ""
         self.sort_column: str = "position"
         self.sort_order: str = "ASC"
         self.flag_conditions: FlagConditions = {}
@@ -80,7 +80,7 @@ class FilterComponent:
         )
 
         # 検索テキスト
-        self.search_text = search_text
+        self._search_text = search_text
 
         # ソート条件
         self.sort_column = sort_column or "position"
@@ -133,7 +133,7 @@ class FilterComponent:
             FilterSettings: 現在のフィルタ設定
         """
         return {
-            "search_text": self.search_text,
+            "search_text": self._search_text,
             "sort_column": self.sort_column,
             "sort_order": self.sort_order,
             "flag_conditions": self.flag_conditions.copy()
@@ -167,11 +167,16 @@ class FilterComponent:
         update_filter: bool = True,
         search_text: str = "",
     ) -> List[EntryModel]:
-        # Noneは空文字列として扱う
-        if filter_keyword is None:
-            filter_keyword = ""
-        if search_text is None:
-            search_text = ""
+        print(
+            f"[DEBUG] get_filtered_entries: called with filter_text={filter_text}, filter_keyword={filter_keyword}, match_mode={match_mode}, case_sensitive={case_sensitive}, filter_status={filter_status}, filter_obsolete={filter_obsolete}, update_filter={update_filter}, search_text={search_text}"
+        )
+        # None と空文字列は意味が異なるため区別して扱う
+        #   filter_keyword が None   : キーワードフィルタをリセットしたい意図
+        #   filter_keyword が ""    : キーワードフィルタを空文字列に設定（= フィルタなしと同義）
+        # search_text も同様に None はリセット、空文字列は値の設定を示す
+        # ユーザー入力が None の場合には後続の strip() 呼び出しを避ける
+        keyword_param = filter_keyword if filter_keyword is not None else None
+        search_param = search_text if search_text is not None else None
         """フィルタ条件に一致するエントリを取得する
 
         Args:
@@ -188,18 +193,26 @@ class FilterComponent:
             List[EntryModel]: フィルタ条件に一致するエントリのリスト
         """
         # フィルタ条件をセットアップ
-        # キャッシュヒット前に必ずself.search_textを更新
+        # キャッシュヒット前に必ずself._search_textを更新
         # 空白のみの場合も空文字列として扱う
-        norm_filter_keyword = filter_keyword.strip()
-        norm_search_text = search_text.strip()
+        norm_filter_keyword = (
+            keyword_param.strip() if isinstance(keyword_param, str) else ""
+        )
+        norm_search_text = search_param.strip() if isinstance(search_param, str) else ""
 
         if update_filter:
-            if norm_filter_keyword != "":
-                self.search_text = norm_filter_keyword
+            # filter_keywordがNoneでなければ必ずself._search_textを更新（空文字列も含む）
+            if filter_keyword is not None:
+                self._search_text = norm_filter_keyword
                 if self.cache_manager:
                     self.cache_manager.clear_filter_cache()
-            elif norm_search_text != "":
-                self.search_text = norm_search_text
+            elif search_text is not None:
+                self._search_text = norm_search_text
+                if self.cache_manager:
+                    self.cache_manager.clear_filter_cache()
+            else:
+                # 両方Noneならリセット
+                self._search_text = ""
                 if self.cache_manager:
                     self.cache_manager.clear_filter_cache()
         # --- ここまで必ずsearch_textを反映 ---
@@ -211,14 +224,26 @@ class FilterComponent:
             else False
         )
 
-        if not force_update and self.filtered_entries:
+        # update_filter=True の場合はフィルタ条件が変更される可能性があるため、キャッシュヒットでも再計算する
+        if (
+            not update_filter
+            and not force_update
+            and self.filtered_entries
+            and len(self.filtered_entries) > 0
+        ):
+            print(
+                f"[DEBUG] get_filtered_entries: self.filtered_entriesヒット {len(self.filtered_entries)}件"
+            )
             # 既に計算済みのフィルタ結果がある場合はそれを使用
             return self.filtered_entries
 
         if not force_update and self.cache_manager:
             # キャッシュ上の計算済みフィルタ結果をチェック
             cached_entries = self.cache_manager.get_filter_cache()
-            if cached_entries is not None:
+            if cached_entries is not None and len(cached_entries) > 0:
+                print(
+                    f"[DEBUG] get_filtered_entries: cache_managerヒット {len(cached_entries)}件"
+                )
                 # キャッシュヒット
                 logger.debug(
                     f"FilterComponent.get_filtered_entries: キャッシュヒット, {len(cached_entries)}件"
@@ -250,10 +275,31 @@ class FilterComponent:
 
         # 結果をキャッシュに保存
         if self.cache_manager:
-            self.cache_manager.set_filter_cache(db_filtered)
-            self.cache_manager.clear_filter_cache()
+            # フィルタ条件を構築してキャッシュに保存
+            from sgpo_editor.types import FilterConditionsType
+
+            filter_conditions: FilterConditionsType = {
+                "search_text": search_text or filter_text or "",
+                "search_fields": None,
+                "sort_column": None,
+                "sort_order": None,
+                "flag_conditions": self.flag_conditions
+                if hasattr(self, "flag_conditions")
+                else None,
+                "translation_status": filter_status,
+                "exact_match": match_mode == "完全一致",
+                "case_sensitive": case_sensitive,
+                "limit": None,
+                "offset": None,
+            }
+            self.cache_manager.set_filtered_entries(filter_conditions, db_filtered)
+            # 必要に応じてキャッシュクリア（通常は不要）
+            # self.cache_manager.clear_filter_cache()
 
         self.filtered_entries = db_filtered
+        print(
+            f"[DEBUG] get_filtered_entries: DBフィルタ結果 {len(self.filtered_entries)}件返却"
+        )
         return self.filtered_entries
 
     def get_filtered_entries_from_db(
@@ -296,7 +342,7 @@ class FilterComponent:
             self.filter_status if self.filter_status is not None else None
         )
         entries = self.db_accessor.advanced_search(
-            search_text=self.search_text,
+            search_text=self._search_text,
             search_fields=search_fields,
             sort_column=self.sort_column,
             sort_order=self.sort_order,
@@ -306,6 +352,13 @@ class FilterComponent:
             case_sensitive=self.case_sensitive,
             limit=None,
             offset=0,
+        )
+        print(
+            f"[DEBUG] get_filtered_entries_from_db: translation_status={translation_status}"
+        )
+        print(f"[DEBUG] get_filtered_entries_from_db: entries件数={len(entries)}")
+        print(
+            f"[DEBUG] get_filtered_entries_from_db: entries(keys)={[e.get('key') for e in entries] if entries and isinstance(entries[0], dict) else entries}"
         )
         return [
             EntryModel.from_dict(e) if not isinstance(e, EntryModel) else e
@@ -337,3 +390,11 @@ class FilterComponent:
             str: ソート順序 ('ASC' or 'DESC')
         """
         return self.sort_order
+
+    @property
+    def search_text(self) -> str:
+        return self._search_text if self._search_text is not None else ""
+
+    @search_text.setter
+    def search_text(self, value: str):
+        self._search_text = value

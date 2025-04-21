@@ -93,6 +93,10 @@ class FilterCache:
 
 
 class EntryCacheManager:
+    def clear_all_cache(self) -> None:
+        """clear_allのエイリアス（後方互換用）"""
+        self.clear_all()
+
     def get_filter_cache(self):
         """
         フィルタキャッシュの内容を取得（テスト用・デバッグ用）

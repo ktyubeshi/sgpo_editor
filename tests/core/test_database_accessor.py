@@ -185,7 +185,6 @@ def test_dict_return_types(db_accessor, db_store):
         assert isinstance(r, dict)
 
 
-@pytest.mark.skip(reason="update hook登録APIが未実装のためスキップ")
 def test_update_hook_called_on_insert_update_delete(db_store):
     # コールバックの呼び出し履歴を記録するリスト
     calls = []
@@ -193,18 +192,25 @@ def test_update_hook_called_on_insert_update_delete(db_store):
     def mock_hook(operation, db_name, table_name, rowid):
         calls.append((operation, table_name, rowid))
 
-    # update hookを登録（API実装後に有効化）
-    # db_store.set_update_hook(mock_hook)
+    # update hookを登録
+    db_store.set_update_hook(mock_hook)
 
-    # INSERT/UPDATE/DELETEのテスト（API実装後に有効化）
-    # db_store.add_entry(...)
-    # db_store.update_entry(...)
-    # db_store.delete_entry(...)
+    # INSERT/UPDATE/DELETEのテスト
+    entry = {
+        "key": "test_key",
+        "msgid": "test_msgid",
+        "msgstr": "test_msgstr",
+        "fuzzy": False,
+        "obsolete": False,
+    }
+    db_store.add_entry(entry)
+    db_store.update_entry("test_key", {"msgstr": "updated_msgstr"})
+    db_store.delete_entry("test_key")
 
     # 3回呼ばれること
-    # assert len(calls) >= 3
+    assert len(calls) >= 3
     # 操作種別が含まれること（1:INSERT, 2:DELETE, 23:UPDATE など sqlite3の仕様に依存）
-    # op_types = [c[0] for c in calls]
-    # assert any(op in op_types for op in (1, 18))  # 1:INSERT, 18:REPLACE
-    # assert any(op in op_types for op in (2, 9))   # 2:DELETE, 9:TRUNCATE
-    # assert any(op in op_types for op in (23, 18))  # 23:UPDATE, 18:REPLACE
+    op_types = [c[0] for c in calls]
+    assert any(op in op_types for op in (1, 18))  # 1:INSERT, 18:REPLACE
+    assert any(op in op_types for op in (2, 9))  # 2:DELETE, 9:TRUNCATE
+    assert any(op in op_types for op in (23, 18))  # 23:UPDATE, 18:REPLACE

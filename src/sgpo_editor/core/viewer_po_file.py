@@ -23,6 +23,14 @@ logger = logging.getLogger(__name__)
 
 
 class ViewerPOFile:
+    @property
+    def path(self):
+        return self.base.path
+
+    def get_stats(self):
+        """統計情報を取得する"""
+        return self.stats.get_statistics()
+
     def get_entries_by_keys(self, keys: list[str]) -> dict[str, "EntryModel"]:
         """複数のキーに対応するエントリを一括取得"""
         return self.retriever.get_entries_by_keys(keys)
@@ -298,6 +306,7 @@ class ViewerPOFile:
         filter_obsolete: bool = True,
         update_filter: bool = True,
         search_text: Optional[str] = None,
+        translation_status: Optional[Set[str]] = None,
     ) -> List[EntryModel]:
         """フィルタ条件に一致するエントリを取得する
 
@@ -310,16 +319,22 @@ class ViewerPOFile:
             filter_obsolete: 廃止されたエントリをフィルタするかどうか
             update_filter: フィルタ条件を更新するかどうか
             search_text: 検索テキスト（update_filter=Trueの場合に使用）
+            translation_status: 翻訳状態フィルタ
 
         Returns:
             List[EntryModel]: フィルタ条件に一致するエントリのリスト
         """
+        # translation_status が指定されていれば優先して使用（後方互換性のためのエイリアス）
+        effective_status = (
+            translation_status if translation_status is not None else filter_status
+        )
+
         entries = self.filter.get_filtered_entries(
             filter_text,
             filter_keyword,
             match_mode,
             case_sensitive,
-            filter_status,
+            effective_status,
             filter_obsolete,
             update_filter,
             search_text,

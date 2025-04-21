@@ -124,13 +124,19 @@ class EntryModel(BaseModel):
     @property
     def fuzzy(self) -> bool:
         """ファジーかどうか（大文字小文字無視）"""
-        return any(isinstance(flag, str) and flag.lower() == "fuzzy" for flag in self.flags)
+        return any(
+            isinstance(flag, str) and flag.lower() == "fuzzy" for flag in self.flags
+        )
 
     @fuzzy.setter
     def fuzzy(self, value: bool) -> None:
         """ファジーフラグを設定（大文字小文字無視）"""
         # 既存の'fuzzy'フラグ（大文字小文字無視）をすべて除去
-        self.flags = [flag for flag in self.flags if not (isinstance(flag, str) and flag.lower() == "fuzzy")]
+        self.flags = [
+            flag
+            for flag in self.flags
+            if not (isinstance(flag, str) and flag.lower() == "fuzzy")
+        ]
         if value:
             self.flags.append("fuzzy")
 
@@ -580,9 +586,7 @@ class EntryModel(BaseModel):
 
         # 基本モデルを作成（check_resultsも引数として渡す）
         model = cls(
-            **data,
-            review_comments=review_comments,
-            check_results=check_results
+            **data, review_comments=review_comments, check_results=check_results
         )
 
         if overall_quality_score is not None:
@@ -596,12 +600,18 @@ class EntryModel(BaseModel):
 
     def add_flag(self, flag: str) -> None:
         """フラグを追加（大文字小文字無視で重複防止）"""
-        if not any(isinstance(f, str) and f.lower() == flag.lower() for f in self.flags):
+        if not any(
+            isinstance(f, str) and f.lower() == flag.lower() for f in self.flags
+        ):
             self.flags.append(flag)
 
     def remove_flag(self, flag: str) -> None:
         """フラグを削除（大文字小文字無視）"""
-        self.flags = [f for f in self.flags if not (isinstance(f, str) and f.lower() == flag.lower())]
+        self.flags = [
+            f
+            for f in self.flags
+            if not (isinstance(f, str) and f.lower() == flag.lower())
+        ]
 
     # 自動チェック結果の追加
     def add_check_result(
@@ -750,9 +760,6 @@ class EntryModel(BaseModel):
 
         # 新しいPOEntryを返す
         return POEntry(**kwargs)
-
-
-
 
 
 EntryModel.model_rebuild()

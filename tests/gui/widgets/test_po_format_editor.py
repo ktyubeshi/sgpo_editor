@@ -54,7 +54,7 @@ def mock_po_file() -> Any:
     ]
 
     # モックPOファイルのメソッドを設定
-    mock_po.get_entries.return_value = entries
+    mock_po.get_filtered_entries.return_value = entries
     mock_po.get_entry_by_key.side_effect = lambda key: next(
         (e for e in entries if e.key == key), None
     )
@@ -127,7 +127,7 @@ class MockPOFormatEditor:
             self._show_warning("POファイルが読み込まれていません")
             return
 
-        entries = current_po.get_entries()
+        entries = current_po.get_filtered_entries()
         if entries:
             po_text = self._format_entries_to_po(entries)
             self.text_edit.setPlainText(po_text)
@@ -347,7 +347,7 @@ class TestPOFormatEditor:
     ) -> None:
         """現在のエントリを取得するテスト"""
         # モックの現在のエントリを設定
-        current_entry = mock_po_file.get_entries()[0]
+        current_entry = mock_po_file.get_filtered_entries()[0]
         po_format_editor._get_current_po().get_current_entry = MagicMock(
             return_value=current_entry
         )
@@ -510,7 +510,7 @@ msgstr "こんにちは"'''
     ) -> None:
         """プレビュー機能のテスト"""
         # テスト用のエントリを設定
-        entries = mock_po_file.get_entries()
+        entries = mock_po_file.get_filtered_entries()
         po_format_editor._set_entries(entries)
 
         # プレビューボタンをクリック
@@ -531,7 +531,7 @@ msgstr "こんにちは"'''
         )
 
         # フィルタ後のエントリ（モック）
-        filtered_entry = mock_po_file.get_entries()[0]
+        filtered_entry = mock_po_file.get_filtered_entries()[0]
         mock_po_file.get_filtered_entries.return_value = [filtered_entry]
 
         # 親ウィジェットの設定
@@ -596,7 +596,7 @@ msgstr "こんにちは"'''
     ) -> None:
         """エントリのPO形式への変換テスト"""
         # テスト用のエントリを取得
-        entry = mock_po_file.get_entries()[0]
+        entry = mock_po_file.get_filtered_entries()[0]
 
         # エントリをPO形式に変換
         po_text = po_format_editor._entry_to_po_format(entry)

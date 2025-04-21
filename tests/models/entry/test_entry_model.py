@@ -307,17 +307,17 @@ class TestEntryModel(unittest.TestCase):
         # validate_po_entryメソッドのテスト（辞書でもPOEntryでもない場合）
         # 文字列を渡す場合
         entry = EntryModel(msgid="test", msgstr="テスト")
-        po_entry = entry._validate_po_entry("not a po entry")
+        po_entry = entry.validate_po_entry("not a po entry")
         self.assertIsNone(po_entry)
 
         # Noneを渡す場合
-        po_entry = entry._validate_po_entry(None)
+        po_entry = entry.validate_po_entry(None)
         self.assertIsNone(po_entry)
 
     def test_validate_po_entry_with_dict(self):
         # validate_po_entryメソッドのテスト（辞書の場合）
         entry = EntryModel(msgid="test", msgstr="テスト")
-        po_entry = entry._validate_po_entry({"msgid": "test", "msgstr": "テスト"})
+        po_entry = entry.validate_po_entry({"msgid": "test", "msgstr": "テスト"})
         self.assertIsNone(po_entry)  # 現在の実装では辞書は処理できない
 
     def test_validate_po_entry_with_po_entry(self):
@@ -329,7 +329,7 @@ class TestEntryModel(unittest.TestCase):
 
         # メソッドをテスト
         entry = EntryModel(msgid="test", msgstr="テスト")
-        result = entry._validate_po_entry(po_entry)
+        result = entry.validate_po_entry(po_entry)
 
         # モックオブジェクトがそのまま返されるはず
         self.assertEqual(result, po_entry)
@@ -378,57 +378,69 @@ class TestEntryModel(unittest.TestCase):
 
     def test_review_comment(self):
         # レビューコメント機能のテスト
-        # レビューコメントを設定する
         entry = EntryModel(msgid="test", msgstr="テスト")
-        self.assertIsNone(entry.review_comment)  # 初期状態ではNone
+        # 初期状態ではコメントなし
+        self.assertEqual(len(entry.review_comments), 0)
 
-        # コメントを設定
-        entry.review_comment = "要確認"
-        self.assertEqual(entry.review_comment, "要確認")
+        # コメントを追加
+        entry.add_review_comment("tester", "要確認")
+        self.assertEqual(entry.review_comments[0]["comment"], "要確認")
 
         # コメントを変更
-        entry.review_comment = "修正済み"
-        self.assertEqual(entry.review_comment, "修正済み")
+        if entry.review_comments:
+            entry.review_comments[0]["comment"] = "修正済み"
+        else:
+            entry.add_review_comment("tester", "修正済み")
+        self.assertEqual(entry.review_comments[0]["comment"], "修正済み")
 
         # 空のコメントを設定
-        entry.review_comment = ""
-        self.assertEqual(entry.review_comment, "")
+        if entry.review_comments:
+            entry.review_comments[0]["comment"] = ""
+        else:
+            entry.add_review_comment("tester", "")
+        self.assertEqual(entry.review_comments[0]["comment"], "")
 
         # Noneを設定
-        entry.review_comment = None
-        self.assertIsNone(entry.review_comment)
+        if entry.review_comments:
+            entry.review_comments[0]["comment"] = None
+        else:
+            entry.add_review_comment("tester", None)
+        self.assertIsNone(entry.review_comments[0]["comment"])
 
         # to_dictでディクショナリに変換した場合もレビューコメントが含まれる
-        entry.review_comment = "重要"
+        if entry.review_comments:
+            entry.review_comments[0]["comment"] = "重要"
+        else:
+            entry.add_review_comment("tester", "重要")
         data = entry.to_dict()
-        self.assertEqual(data["review_comment"], "重要")
+        self.assertEqual(data["review_comments"][0]["comment"], "重要")
 
     def test_quality_score(self):
         # 品質スコア機能のテスト
         # 品質スコアを設定する
         entry = EntryModel(msgid="test", msgstr="テスト")
-        self.assertIsNone(entry.quality_score)  # 初期状態ではNone
+        self.assertIsNone(entry.overall_quality_score)  # 初期状態ではNone
 
         # スコアを設定
-        entry.quality_score = 85
-        self.assertEqual(entry.quality_score, 85)
+        entry.set_quality_score(85)
+        self.assertEqual(entry.overall_quality_score, 85)
 
         # スコアを変更
-        entry.quality_score = 95
-        self.assertEqual(entry.quality_score, 95)
+        entry.set_quality_score(95)
+        self.assertEqual(entry.overall_quality_score, 95)
 
         # 0を設定
-        entry.quality_score = 0
-        self.assertEqual(entry.quality_score, 0)
+        entry.set_quality_score(0)
+        self.assertEqual(entry.overall_quality_score, 0)
 
         # Noneを設定
-        entry.quality_score = None
-        self.assertIsNone(entry.quality_score)
+        entry.set_quality_score(None)
+        self.assertIsNone(entry.overall_quality_score)
 
         # to_dictでディクショナリに変換した場合も品質スコアが含まれる
-        entry.quality_score = 70
+        entry.set_quality_score(70)
         data = entry.to_dict()
-        self.assertEqual(data["quality_score"], 70)
+        self.assertEqual(data["overall_quality_score"], 70)
 
     def test_check_results(self):
         # 自動チェック結果のテスト
@@ -469,8 +481,11 @@ class TestEntryModel(unittest.TestCase):
         )
 
         # 拡張フィールドを設定
-        entry.review_comment = "要確認"
-        entry.quality_score = 85
+        if entry.review_comments:
+            entry.review_comments[0]["comment"] = "要確認"
+        else:
+            entry.add_review_comment("tester", "要確認")
+        entry.set_quality_score(85)
         entry.check_results = [{"type": "warning", "message": "訳語の不統一"}]
 
         # to_dictでディクショナリに変換
@@ -480,8 +495,13 @@ class TestEntryModel(unittest.TestCase):
         self.assertEqual(data["key"], "context\x04test")
         self.assertEqual(data["msgid"], "test")
         self.assertEqual(data["msgstr"], "テスト")
-        self.assertEqual(data["review_comment"], "要確認")
-        self.assertEqual(data["quality_score"], 85)
+        self.assertEqual(
+            data["review_comments"][0]["comment"]
+            if data.get("review_comments")
+            else None,
+            "要確認",
+        )
+        self.assertEqual(data["overall_quality_score"], 85)
         self.assertEqual(
             data["check_results"], [{"type": "warning", "message": "訳語の不統一"}]
         )
@@ -508,8 +528,11 @@ class TestEntryModel(unittest.TestCase):
         self.assertEqual(entry.msgstr, "テスト")
         self.assertEqual(entry.msgctxt, "context")
         self.assertEqual(entry.position, 1)
-        self.assertEqual(entry.review_comment, "要確認")
-        self.assertEqual(entry.quality_score, 85)
+        self.assertEqual(
+            entry.review_comments[0]["comment"] if entry.review_comments else None,
+            "要確認",
+        )
+        self.assertEqual(entry.overall_quality_score, 85)
         self.assertEqual(
             entry.check_results, [{"type": "warning", "message": "訳語の不統一"}]
         )
@@ -522,8 +545,8 @@ class TestEntryModel(unittest.TestCase):
             "position": 2,
         }
         entry2 = EntryModel.from_dict(data2)
-        self.assertEqual(entry2.review_comment, None)
-        self.assertEqual(entry2.quality_score, None)
+        self.assertEqual(entry2.review_comments, [])
+        self.assertIsNone(entry2.overall_quality_score)
         self.assertEqual(entry2.check_results, [])
 
     def test_generate_key(self):

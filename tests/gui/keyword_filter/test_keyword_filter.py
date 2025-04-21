@@ -32,6 +32,8 @@ class TestKeywordFilter(unittest.TestCase):
         self.mock_db_accessor.advanced_search = MagicMock(
             return_value=self.mock_entries_dict
         )
+        # get_statsダミーメソッドを追加
+        self.mock_db_accessor.get_stats = MagicMock(return_value={})
 
     def test_filter_keyword_is_passed_to_database(self):
         """キーワードフィルタがデータベースに正しく渡されることを確認するテスト"""

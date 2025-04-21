@@ -102,7 +102,7 @@ class UpdaterComponent:
         Returns:
             bool: 更新が成功した場合はTrue、失敗した場合はFalse
         """
-        return self.update_entry(entry.key, field, value)
+        return self.update_entry(entry["key"], field, value)
 
     def update_entry_model(self, entry: EntryModel) -> bool:
         """エントリモデル全体を更新する
@@ -113,7 +113,7 @@ class UpdaterComponent:
         Returns:
             bool: 更新が成功した場合はTrue、失敗した場合はFalse
         """
-        logger.debug(f"UpdaterComponent.update_entry_model: key={entry.key}")
+        logger.debug(f"UpdaterComponent.update_entry_model: key={entry['key']}")
 
         # エントリをディクショナリに変換
         entry_dict = entry.model_dump()
@@ -121,11 +121,11 @@ class UpdaterComponent:
         # データベースを更新
         success = self.db_accessor.update_entry(entry_dict)
         if not success:
-            logger.error(f"キー {entry.key} のエントリの更新に失敗しました")
+            logger.error(f"キー {entry['key']} のエントリの更新に失敗しました")
             return False
 
         # キャッシュから削除して次回アクセス時に再取得
-        self.cache_manager.invalidate_entry(entry.key)
+        self.cache_manager.invalidate_entry(entry["key"])
         self.cache_manager.invalidate_filter_cache()
 
         # 変更フラグを設定
