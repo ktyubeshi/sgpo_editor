@@ -30,6 +30,15 @@ logger = logging.getLogger(__name__)
 
 
 class EntryModel(BaseModel):
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        return setattr(self, key, value)
+
+    def __contains__(self, key):
+        return hasattr(self, key)
+
     """POエントリのPydanticモデル実装"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -80,7 +89,7 @@ class EntryModel(BaseModel):
         super().__init__(**data)
         # キーが空の場合は生成する
         if not self.key:
-            self.key = self._generate_key()
+            self.key = self._generate_key(self.msgctxt, self.msgid)
         # 評価状態を設定
         self._evaluation_state = evaluation_state
 
@@ -103,16 +112,16 @@ class EntryModel(BaseModel):
 
     @property
     def fuzzy(self) -> bool:
-        """ファジーかどうか"""
-        return "fuzzy" in self.flags
+        """ファジーかどうか（大文字小文字無視）"""
+        return any(isinstance(flag, str) and flag.lower() == "fuzzy" for flag in self.flags)
 
     @fuzzy.setter
     def fuzzy(self, value: bool) -> None:
-        """ファジーフラグを設定"""
-        if value and "fuzzy" not in self.flags:
+        """ファジーフラグを設定（大文字小文字無視）"""
+        # 既存の'fuzzy'フラグ（大文字小文字無視）をすべて除去
+        self.flags = [flag for flag in self.flags if not (isinstance(flag, str) and flag.lower() == "fuzzy")]
+        if value:
             self.flags.append("fuzzy")
-        elif not value and "fuzzy" in self.flags:
-            self.flags.remove("fuzzy")
 
     @computed_field
     @property
@@ -436,22 +445,19 @@ class EntryModel(BaseModel):
 
         return self.position == other.position
 
-    def _generate_key(self) -> str:
-        """キーを生成"""
-        if self.msgctxt:
-            return f"{self.msgctxt}\x04{self.msgid}"
+    @staticmethod
+    def _generate_key(msgctxt: Optional[str], msgid: str) -> str:
+        """キーを生成 (msgctxt, msgid から)"""
+        if msgctxt:
+            return f"{msgctxt}\x04{msgid}"
         else:
-            return f"|{self.msgid}"
+            return f"|{msgid}"
 
     @classmethod
     def from_po_entry(cls, po_entry: POEntry, position: int = 0) -> "EntryModel":
         """POEntryからインスタンスを生成"""
         msgctxt = getattr(po_entry, "msgctxt", None)
-        key = ""
-        if msgctxt:
-            key = f"{msgctxt}\x04{po_entry.msgid}"
-        else:
-            key = f"|{po_entry.msgid}"
+        key = cls._generate_key(msgctxt, po_entry.msgid)
 
         # POEntryからの変換
         def safe_getattr(obj, attr_name, default=None):
@@ -481,23 +487,7 @@ class EntryModel(BaseModel):
         )
 
         # POEntryへの参照を設定
-        model._po_entry = po_entry
-
-        # flagsの変換
-        flags = safe_getattr(po_entry, "flags", [])
-        if isinstance(flags, str):
-            model.flags = [flag.strip() for flag in flags.split(",") if flag.strip()]
-        elif isinstance(flags, list):
-            model.flags = flags
-        else:
-            model.flags = []
-
-        # referencesの変換
-        occurrences = safe_getattr(po_entry, "occurrences", [])
-        if occurrences is not None:
-            for occ in occurrences:
-                if isinstance(occ, tuple) and len(occ) == 2:
-                    model.references.append(f"{occ[0]}:{occ[1]}")
+        # （ここでmodel.references等の処理が必要なら正しい位置で実施）
 
         # コメントからメタデータを抽出
         comment = safe_getattr(po_entry, "comment", None)
@@ -515,9 +505,31 @@ class EntryModel(BaseModel):
         """辞書からインスタンスを生成"""
         # 拡張フィールドを処理
         review_comments = data.pop("review_comments", [])
+        # 単数形のreview_commentがあればreview_commentsリストに変換して追加
+        review_comment_single = data.pop("review_comment", None)
+        if review_comment_single:
+            if not isinstance(review_comments, list):
+                review_comments = []
+            review_comments.append({"comment": review_comment_single})
         overall_quality_score = data.pop("overall_quality_score", None)
+        # quality_scoreがあればoverall_quality_scoreにセット（未設定時のみ）
+        quality_score = data.pop("quality_score", None)
+        if overall_quality_score is None and quality_score is not None:
+            overall_quality_score = quality_score
         category_quality_scores = data.pop("category_quality_scores", {})
         check_results = data.pop("check_results", [])
+
+        # 型チェック・正規化
+        if not isinstance(review_comments, list):
+            review_comments = []
+        if not isinstance(category_quality_scores, dict):
+            category_quality_scores = {}
+        if not isinstance(check_results, list):
+            check_results = []
+        if not isinstance(data.get("occurrences", []), list):
+            data["occurrences"] = []
+        if not isinstance(data.get("flags", []), (list, str)):
+            data["flags"] = []
 
         fuzzy = data.pop("fuzzy", False)
 
@@ -526,8 +538,9 @@ class EntryModel(BaseModel):
         if isinstance(flags, str):
             # カンマ区切りの文字列の場合はリストに変換
             data["flags"] = [flag.strip() for flag in flags.split(",") if flag.strip()]
-        elif not isinstance(flags, list):
-            # リストでない場合は空リストにする
+        elif isinstance(flags, list):
+            data["flags"] = flags
+        else:
             data["flags"] = []
 
         flags_list = data.get("flags", [])
@@ -535,12 +548,12 @@ class EntryModel(BaseModel):
             flags_list.append("fuzzy")
             data["flags"] = flags_list
 
-        # 基本モデルを作成
-        model = cls(**data)
-
-        # 拡張フィールドを設定
-        if isinstance(review_comments, list):
-            model.review_comments = review_comments
+        # 基本モデルを作成（check_resultsも引数として渡す）
+        model = cls(
+            **data,
+            review_comments=review_comments,
+            check_results=check_results
+        )
 
         if overall_quality_score is not None:
             model.set_overall_quality_score(overall_quality_score)
@@ -549,29 +562,18 @@ class EntryModel(BaseModel):
             for category, score in category_quality_scores.items():
                 model.set_category_score(category, score)
 
-        if check_results:
-            for result in check_results:
-                if (
-                    isinstance(result, dict)
-                    and "code" in result
-                    and "message" in result
-                    and "severity" in result
-                ):
-                    model.add_check_result(
-                        result["code"], result["message"], result["severity"]
-                    )
-
         return model
-
-    def add_flag(self, flag: str) -> None:
-        """フラグを追加"""
         if flag not in self.flags:
             self.flags.append(flag)
 
+    def add_flag(self, flag: str) -> None:
+        """フラグを追加（大文字小文字無視で重複防止）"""
+        if not any(isinstance(f, str) and f.lower() == flag.lower() for f in self.flags):
+            self.flags.append(flag)
+
     def remove_flag(self, flag: str) -> None:
-        """フラグを削除"""
-        if flag in self.flags:
-            self.flags.remove(flag)
+        """フラグを削除（大文字小文字無視）"""
+        self.flags = [f for f in self.flags if not (isinstance(f, str) and f.lower() == flag.lower())]
 
     # 自動チェック結果の追加
     def add_check_result(
