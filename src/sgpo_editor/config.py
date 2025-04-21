@@ -17,10 +17,12 @@ DEFAULT_CONFIG = {
     "po_library": "sgpo",
     # キャッシュ設定
     "cache": {
-        "complete_cache_max_size": 10000,
-        "filter_cache_max_size": 100,
-        "enabled": True,
-        "ttl": 0,
+        "complete_cache_max_size": 10000,  # 完全エントリキャッシュの最大件数
+        "filter_cache_max_size": 100,  # フィルタ結果キャッシュの最大件数
+        "enabled": True,  # キャッシュ有効/無効
+        "ttl": 0,  # キャッシュの有効期限（秒, 0=無制限）
+        "prefetch_enabled": False,  # プリフェッチ機能の有効/無効
+        "prefetch_size": 100,  # プリフェッチ時の取得件数
     },
     # UIの設定
     "ui": {
@@ -202,6 +204,7 @@ class Config:
 # シングルトンインスタンス
 _config_instance = None
 
+
 def get_cache_config() -> dict:
     """
     キャッシュ設定値を辞書で取得する
@@ -215,6 +218,8 @@ def get_cache_config() -> dict:
         "FILTER_CACHE_MAX_SIZE": cache_conf.get("filter_cache_max_size", 100),
         "CACHE_ENABLED": cache_conf.get("enabled", True),
         "CACHE_TTL": cache_conf.get("ttl", 0),
+        "PREFETCH_ENABLED": cache_conf.get("prefetch_enabled", False),
+        "PREFETCH_SIZE": cache_conf.get("prefetch_size", 100),
     }
 
 

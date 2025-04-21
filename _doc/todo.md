@@ -1,86 +1,74 @@
-# ToDo - Implement New Cache Design
+# ToDo - Refine Cache System based on New Design
 
-**Objective:** Replace the existing cache system with the new design specified in `2_2_dbcash_architecture.md`. This involves implementing the new cache module and refactoring all existing code that uses the old cache to use the new one.
+**Objective:** Verify, enhance, and refactor the existing cache (`EntryCacheManager`) and database (`DatabaseAccessor`, `InMemoryEntryStore`) components to fully align with the improved design specified in `_doc/2_2_dbcash_architecture.md`.
 
-**Primary Reference:** `2_2_dbcash_architecture.md` (All implementation details, API definitions, configurations, and behaviors must strictly follow this document).
+**Primary Reference:** `_doc/2_2_dbcash_architecture.md` (All implementation details, API definitions, configurations, and behaviors must strictly follow this document).
 
 ---
 
 ## Task List
 
-**IMPORTANT:** Perform all changes within a dedicated feature branch (e.g., `feature/new-cache-design`).
+**IMPORTANT:** Perform all changes within a dedicated feature branch (e.g., `feature/refine-cache-design`).
 
-### 1. Implement New Cache Module
+### 1. Enhance Cache Module (`EntryCacheManager`)
 
-* **File:** `src/db/dbcash.py` (Or create a new file/module as specified in `2_2_dbcash_architecture.md` if the structure changes)
-    * `[ ]` **Implement Core Cache Logic:**
-        * Define and implement the main cache class(es) and functions as per the API specification in `2_2_dbcash_architecture.md`.
-        * Ensure all public methods (e.g., `get`, `set`, `delete`, `exists`, `clear`, `initialize`) are implemented according to the specified signatures, behavior, and error handling.
-        * Implement logic for cache expiration (TTL), size limits, and invalidation as defined in the design document.
-    * `[ ]` **Implement Configuration Handling:**
-        * Read necessary configuration parameters (e.g., connection details, default TTL, max size) from the application's configuration system (likely involving `src/config.py`). Refer to `2_2_dbcash_architecture.md` for required parameters.
-    * `[ ]` **Add Type Hinting:** Use appropriate type hints for all functions and methods, referencing types from `src/models/type_definitions.py` or defining new ones if necessary.
+*   **File:** `src/sgpo_editor/core/cache_manager.py`
+    *   `[ ]` **Implement Custom LRU:** Verify or implement the custom LRU mechanism for `CompleteEntryCache` and `FilterCache` considering both item count (`max_size`) and estimated memory usage (`sys.getsizeof`), as per the design document.
+    *   `[ ]` **Implement TTL Logic:** If specified in the design, implement Time-To-Live (TTL) functionality for `CompleteEntryCache`.
+    *   `[ ]` **Implement Prefetching:** Implement the `prefetch_entries` method and related logic (`is_key_being_prefetched`, `_prefetching_keys`) to work with UI requests (likely from `EntryListFacade`) and the provided `fetch_callback`. Ensure thread safety if using background threads.
+    *   `[ ]` **Implement Automatic Invalidation API:** Implement `invalidate_entry(key)` and `invalidate_filter_cache()` methods. These will be called externally (e.g., by the SQLite update hook handler or Facades). Ensure `invalidate_entry` also clears relevant filter cache entries if feasible, or rely on `invalidate_filter_cache` for broader invalidation upon DB change.
+    *   `[ ]` **Implement Configuration Handling:** Ensure the cache manager correctly reads and applies settings from `src/sgpo_editor/config.py` (e.g., `CACHE_ENABLED`, `COMPLETE_CACHE_MAX_SIZE`, `FILTER_CACHE_MAX_SIZE`, `PREFETCH_ENABLED`, `PREFETCH_SIZE`, `CACHE_TTL`) upon initialization.
+    *   `[ ]` **Refine Type Hinting:** Ensure all methods use precise type hints, including those defined in `src/sgpo_editor/types.py`.
 
-### 2. Update Configuration
+### 2. Enhance Database Components (`DatabaseAccessor`, `InMemoryEntryStore`)
 
-* **File:** `src/config.py`
-    * `[ ]` **Add New Cache Settings:** Define and add all configuration variables required by the new cache module, as specified in `2_2_dbcash_architecture.md`. Include sensible default values where appropriate.
-    * `[ ]` **(Optional) Mark Old Cache Settings as Obsolete:** Add comments indicating that configuration variables related to the *old* cache system are deprecated and will be removed. (Actual removal will happen later).
+*   **Files:** `src/sgpo_editor/core/database_accessor.py`, `src/sgpo_editor/models/database.py`
+    *   `[ ]` **Implement FTS5 Search:**
+        *   In `InMemoryEntryStore`: Ensure the `entries_fts` virtual table is correctly created and maintained (e.g., via triggers) for relevant fields (`msgid`, `msgstr`, etc.).
+        *   In `DatabaseAccessor`: Modify `advanced_search` (and potentially `get_filtered_entries` if it calls the former) to utilize the FTS5 `MATCH` operator for keyword searches instead of `LIKE`, when `search_text` is provided. Ensure correct query construction based on `search_fields`.
+    *   `[ ]` **Implement SQLite Update Hook:**
+        *   In `InMemoryEntryStore` or a dedicated handler class: Set up an SQLite `update_hook` (using `sqlite3.Connection.set_update_hook`).
+        *   The hook callback must identify the modified `key` (or `rowid`) and the type of operation (INSERT, UPDATE, DELETE).
+        *   The callback should then trigger the appropriate invalidation method(s) in the `EntryCacheManager` instance (e.g., `invalidate_entry(key)`, `invalidate_filter_cache()`). Dependency injection or a signaling mechanism might be needed to link the hook to the cache manager.
+    *   `[ ]` **Optimize SQL Queries:** Review all queries in `DatabaseAccessor` (especially `advanced_search` and `get_filtered_entries`). Ensure proper use of WHERE, ORDER BY, LIMIT, OFFSET to minimize data transfer and Python-side processing. Verify index usage (`EXPLAIN QUERY PLAN`).
+    *   `[ ]` **Ensure Dictionary Return Type:** Confirm that all data retrieval methods in `DatabaseAccessor` return results as lists of dictionaries (`EntryDict`) or dictionaries mapping keys to `EntryDict`, not `EntryModel` objects, as specified in the design.
 
-### 3. Refactor Cache Usage in Data Operations
+### 3. Verify and Refactor Cache/DB Usage
 
-* **File:** `src/db/db_operations.py` (And potentially other files in `src/db/`)
-    * `[ ]` **Identify Old Cache Usage:** Locate all instances where the old cache system is imported and used (e.g., function calls for getting, setting, deleting cached data).
-    * `[ ]` **Replace with New Cache API:**
-        * Modify the code to import and use the *new* cache module/class(es) implemented in Step 1.
-        * Replace calls to old cache functions/methods with the corresponding calls to the new API.
-        * Adjust function arguments, data serialization/deserialization (if cache format changed), and error handling as required by the new API and `2_2_dbcash_architecture.md`.
-        * Update cache key generation logic if the new design specifies changes.
+*   **Files:** `src/sgpo_editor/core/viewer_po_file.py` (and its component files: `base.py`, `retriever.py`, `filter.py`, `updater.py`, `stats.py`), `src/sgpo_editor/gui/facades/*.py`
+    *   `[ ]` **Data Flow Verification:** Trace the data flow for filtering, single entry retrieval, and updates. Ensure it matches the sequence described in the design document (UI ↔ Facade ↔ CacheManager ↔ DBAccessor ↔ SQLite).
+    *   `[ ]` **Cache Interaction:** Verify that `ViewerPOFile` components and Facades correctly interact with `EntryCacheManager`: check cache first (`get_entry`, `get_filtered_entries`), cache results after DB fetch (`set_entry`, `set_filtered_entries`), and trigger invalidation appropriately (though automatic invalidation via hook is preferred).
+    *   `[ ]` **DB Interaction:** Verify that database access *only* happens through `DatabaseAccessor` and occurs primarily on cache misses or when forced updates are needed.
+    *   `[ ]` **`EntryModel` Instantiation:** Search the codebase (especially where data is retrieved from `DatabaseAccessor`) and ensure `EntryModel` instances are created using standard validation (`EntryModel(**data)` or `model_validate`) and **not** `model_construct()`.
+    *   `[ ]` **Facade Logic:** Ensure Facades correctly handle data conversion (Dict → Model) if needed and manage interactions between UI events and cache/DB operations.
 
-### 4. Refactor Cache Usage in Business Logic
+### 4. Update Configuration
 
-* **File:** `src/logic/translation_core.py` (And potentially other files in `src/logic/`)
-    * `[ ]` **Identify Old Cache Usage:** Locate all usages of the old cache system within the business logic layer.
-    * `[ ]` **Replace with New Cache API:** Perform the same replacement steps as described for `src/db/db_operations.py`, ensuring adherence to the new cache's API and behavior as defined in `2_2_dbcash_architecture.md`. Pay close attention to how application-level data is cached and invalidated.
+*   **File:** `src/sgpo_editor/config.py`
+    *   `[ ]` **Verify/Add Cache Settings:** Ensure all settings specified in `2_2_dbcash_architecture.md` (e.g., sizes, TTL, prefetch options) are present in `DEFAULT_CONFIG` and handled correctly by `EntryCacheManager`. Add any missing settings with appropriate defaults.
 
-### 5. Refactor Cache Usage in API Endpoints
+### 5. Implement/Update Tests
 
-* **Files:** `src/api/endpoints/*.py`
-    * `[ ]` **Identify Old Cache Usage:** Locate any caching mechanisms used at the API endpoint level (e.g., response caching, caching results of expensive operations) that utilize the old cache system. This might involve decorators or direct calls.
-    * `[ ]` **Replace with New Cache API:** Update the code to use the new cache system. Refactor decorators or function calls, ensuring correct cache keys, TTLs, and conditional caching logic align with `2_2_dbcash_architecture.md`.
+*   **Files:** `tests/`
+    *   `[ ]` **Write Unit Tests for `EntryCacheManager`:** Test custom LRU logic (item count and memory), TTL expiration, prefetching mechanism (`prefetch_entries`, `is_key_being_prefetched`), invalidation methods (`invalidate_entry`, `invalidate_filter_cache`), and configuration handling. Use mocking for dependencies like `DatabaseAccessor`.
+    *   `[ ]` **Write Unit/Integration Tests for `DatabaseAccessor`:** Test FTS5 search functionality (`advanced_search` with `MATCH`), optimized query results, and dictionary return types.
+    *   `[ ]` **Write Integration Tests for Update Hook:** Simulate DB updates and verify that the corresponding `EntryCacheManager` invalidation methods are called correctly.
+    *   `[ ]` **Update `ViewerPOFile` / Facade Tests:** Modify existing tests to reflect the refined cache/DB interaction logic. Test scenarios involving cache hits, misses, and invalidations.
+    *   `[ ]` **Performance Tests:** Update or create performance tests (using `pytest-benchmark`) for key operations like filtering/searching large datasets to verify the effectiveness of FTS5 and caching, comparing against defined KPIs.
 
-### 6. Refactor Cache Usage in Utilities
+### 6. Documentation
 
-* **Files:** `src/utils/*.py`
-    * `[ ]` **Identify Old Cache Usage:** Search for any utility functions that interact with or depend on the old cache system.
-    * `[ ]` **Update or Remove Utilities:**
-        * If utilities are still needed, refactor them to use the *new* cache API.
-        * If utilities were specific to the old cache, mark them for removal or remove them if clearly unused elsewhere.
-        * Implement any *new* utility functions required by the new cache design (as specified in `2_2_dbcash_architecture.md`).
+*   **Files:** `_doc/context_summary.md`, `_doc/todo.md`, `_doc/2_architecture_design.md`, `_doc/2_2_dbcash_architecture.md`
+    *   `[x]` **Update `context_summary.md`:** Reflect the refined understanding of the codebase and the goal of enhancing the existing cache system (Done via this response).
+    *   `[x]` **Update `todo.md`:** Replace the content with this new task list (Done via this response).
+    *   `[ ]` **Review/Update Architecture Docs:** Ensure `2_architecture_design.md` and `2_2_dbcash_architecture.md` accurately reflect the final implemented architecture and cache strategy. Add details about FTS5 usage and the update hook mechanism if missing.
 
-### 7. Update Data Models (If Necessary)
+### 7. Final Cleanup (After verification)
 
-* **Files:** `src/models/data_models.py`, `src/models/type_definitions.py`
-    * `[ ]` **Review Cache Data Structures:** Check `2_2_dbcash_architecture.md` to see if the structure or format of data stored in the cache has changed significantly.
-    * `[ ]` **Update Type Definitions:** If necessary, update relevant `TypedDict`, `TypeAlias`, Pydantic models, or other type definitions to reflect the new structure of cached data.
-
-### 8. Implement/Update Tests
-
-* **Files:** `tests/` (specifically tests related to cache, db, logic, api)
-    * `[ ]` **Write Unit Tests for New Cache Module:** Create comprehensive unit tests for the new cache module (`src/db/dbcash.py` or equivalent). Test all public methods, configuration options, edge cases (e.g., cache full, item expired, key not found), and error handling as defined in `2_2_dbcash_architecture.md`. Use mocking where appropriate (e.g., for external dependencies like Redis if used).
-    * `[ ]` **Update Integration Tests:** Identify existing integration tests that implicitly or explicitly tested behavior involving the *old* cache. Modify these tests:
-        * Update test setup/teardown related to caching.
-        * Adjust mocks and assertions to work with the *new* cache API and behavior.
-        * Ensure tests correctly validate scenarios like cache hits, misses, and invalidation within the application flow.
-    * `[ ]` **Remove Obsolete Tests:** Delete test files or individual test cases that were solely dedicated to testing the *old*, now removed, cache system.
-
-### 9. Final Cleanup (After all steps above are complete and verified)
-
-* **Files:** Entire Codebase
-    * `[ ]` **Remove Old Cache Code:** Search and remove all code related to the old cache system (imports, function/class definitions, utility functions).
-    * `[ ]` **Remove Old Cache Configuration:** Remove the deprecated configuration settings from `src/config.py` identified in Step 2.
-    * `[ ]` **Remove Old Cache Dependencies:** If the old cache had specific library dependencies that are no longer needed, remove them from the project's dependency file (e.g., `requirements.txt`, `pyproject.toml`).
+*   **Files:** Entire Codebase
+    *   `[ ]` **Remove Redundant Logic:** Remove any old caching logic or state management within `ViewerPOFile` components or Facades that is now handled by `EntryCacheManager` or `DatabaseAccessor`.
+    *   `[ ]` **Code Review:** Perform a code review focusing on adherence to the cache design document and overall code quality.
 
 ---
 
-**Final Verification:** After completing all tasks, run the entire test suite (unit, integration, etc.) to ensure all tests pass and no regressions have been introduced. Manually verify key functionalities if necessary. Ensure the implementation strictly adheres to `2_2_dbcash_architecture.md`.
+**Final Verification:** After completing all tasks, run the entire test suite (`uv run pytest`). Manually test UI responsiveness with large PO files for filtering, searching, and scrolling. Confirm data consistency after edits. Ensure the implementation strictly adheres to `_doc/2_2_dbcash_architecture.md`.

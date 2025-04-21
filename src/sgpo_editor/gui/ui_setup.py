@@ -3,7 +3,6 @@
 このモジュールは、UIコンポーネントの設定と管理に関する機能を提供します。
 """
 
-import asyncio
 import logging
 import json
 from pathlib import Path
@@ -381,14 +380,22 @@ class UIManager:
         self.recent_files_menu.clear()
         self.recent_file_actions.clear()
 
-        # 設定から最近使ったファイルリストを取得（FileHandlerと同じストアを使う）
-        settings = QSettings()
-        recent_files_json = settings.value("recent_files", "[]")
-        try:
-            recent_files = json.loads(recent_files_json)
-        except json.JSONDecodeError:
-            recent_files = []
-            logger.warning("Failed to load recent files setting.")
+        # FileHandler経由で最近使ったファイルリストを取得
+        recent_files: list[str]
+        if hasattr(self.main_window, 'file_handler') and hasattr(self.main_window.file_handler, 'get_recent_files'):
+            try:
+                recent_files = list(self.main_window.file_handler.get_recent_files())
+            except Exception:
+                recent_files = []
+        else:
+            # フォールバック: QSettingsから取得
+            settings = QSettings()
+            recent_files_json = settings.value("recent_files", "[]")
+            try:
+                recent_files = json.loads(recent_files_json)
+            except json.JSONDecodeError:
+                recent_files = []
+                logger.warning("Failed to load recent files setting.")
 
         num_recent_files = len(recent_files)
 
@@ -403,7 +410,7 @@ class UIManager:
 
             action_text = f"&{i + 1}. {file_path.name}"
             action = QAction(action_text, self.main_window)
-            action.setData(file_path_str) # ファイルパスをデータとして保持
+            action.setData(file_path_str)  # ファイルパスをデータとして保持
             # functools.partial を使ってコールバックに関数を渡す
             action.triggered.connect(lambda checked=False, p=file_path_str: run_async(callback(p)))
             self.recent_files_menu.addAction(action)
@@ -419,9 +426,9 @@ class UIManager:
             try:
                 self.clear_recent_action.triggered.disconnect()
             except RuntimeError:
-                pass # まだ接続されていない
+                pass  # まだ接続されていない
             self.clear_recent_action.triggered.connect(self._clear_recent_files)
-            self.clear_recent_action.setEnabled(True) # 履歴があるので有効化
+            self.clear_recent_action.setEnabled(True)  # 履歴があるので有効化
             self.recent_files_menu.addAction(self.clear_recent_action)
         else:
             # 履歴がない場合は「履歴なし」を表示し、クリアアクションを無効化
@@ -429,7 +436,7 @@ class UIManager:
             no_history_action.setEnabled(False)
             self.recent_files_menu.addAction(no_history_action)
             # クリアアクション自体は存在し続けるが、無効化してテキストをクリア
-            self.clear_recent_action.setText("") # テキストを空に
+            self.clear_recent_action.setText("")  # テキストを空に
             self.clear_recent_action.setEnabled(False)
             # self.clear_recent_action = None # None にはしない
 

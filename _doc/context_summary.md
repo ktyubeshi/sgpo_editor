@@ -1,46 +1,45 @@
-# Context Summary: New Cache Design Implementation
+# Context Summary: Cache Strategy Refinement
 
 ## 1. Codebase Overview
 
-Based on the provided file structure and content (`repomix-output.txt`), this codebase appears to be for a **Python-based application or service, likely focused on translation or localization management.**
+This codebase implements **SGPO Editor**, a desktop GUI application for editing and managing gettext PO files, built with Python and PySide6.
 
 Key characteristics and components include:
 
-* **Architecture:** A layered architecture is suggested by the directory structure:
-    * `src/api/`: Handles API endpoints, suggesting a web service interface (possibly RESTful).
-    * `src/logic/`: Contains core business logic, with `translation_core.py` indicating a central role for translation-related processes.
-    * `src/db/`: Manages data persistence and caching (`db_operations.py`, `dbcash.py`).
-    * `src/models/`: Defines data structures and types (`data_models.py`, `type_definitions.py`), utilizing Python's type hinting (`TypedDict`, `TypeAlias`). Models relate to translation statistics, filters, review comments, and evaluations.
-    * `src/utils/`: Provides utility functions.
-* **Technology:**
-    * Written in Python.
-    * Extensive use of type hinting for improved code quality and maintainability.
-    * Includes a testing suite (`tests/`).
-    * Uses a configuration file (`src/config.py`).
-* **Functionality:** The presence of files and types related to PO files, translation statistics, fuzzy matching, and review comments strongly indicates functionality related to managing translation workflows, potentially integrating with localization tools or standards.
-* **Caching:** The codebase includes a database caching component (`src/db/dbcash.py`), which is the subject of the current modification effort.
+*   **Architecture:** A layered architecture separating GUI (`sgpo_editor.gui`), core logic (`sgpo_editor.core`), and data models (`sgpo_editor.models`). It utilizes the **Facade pattern** (`sgpo_editor.gui.facades`) to decouple UI components from core functionalities.
+*   **Technology:**
+    *   Python 3.8+
+    *   PySide6 for the graphical user interface.
+    *   Pydantic V2 for data modeling (`EntryModel`) and validation.
+    *   pytest for testing.
+    *   uv for project and dependency management.
+    *   SQLite (in-memory) for temporary data storage and querying (`InMemoryEntryStore`).
+    *   A Python object caching layer (`EntryCacheManager`).
+    *   A sidecar SQLite database (`EvaluationDatabase`) for persisting LLM evaluation results.
+*   **Functionality:** Provides features for loading, displaying, editing, filtering, sorting, and saving PO files. Includes advanced features like metadata editing, review comments, quality scoring, and potentially LLM-based translation evaluation.
+*   **Data Flow:** UI components interact with Facades, which in turn coordinate with `ViewerPOFile` (composed of several specialized components like `EntryRetrieverComponent`, `FilterComponent`, `UpdaterComponent`, `StatsComponent`). `ViewerPOFile` utilizes `EntryCacheManager` for Python object caching and `DatabaseAccessor` for interacting with the `InMemoryEntryStore`.
+*   **Caching:** An `EntryCacheManager` exists, managing `EntryModel` object caches. An `InMemoryEntryStore` (SQLite) serves as a high-speed query layer. An `EvaluationDatabase` persists evaluation data separately.
 
-## 2. Purpose of Current Changes: Implementing New Cache Design
+## 2. Purpose of Current Changes: Implementing Enhanced Cache Design
 
-The primary goal of the tasks outlined in `ToDo.md` is to **replace the existing database caching implementation (`dbcash`) with a newly designed caching system.**
+The primary goal is to **refine and enhance the existing caching system** based on the specifications outlined in the document: `_doc/2_2_dbcash_architecture.md`. This involves verifying, modifying, and potentially adding features to the current cache (`EntryCacheManager`), database access (`DatabaseAccessor`, `InMemoryEntryStore`), and related components to fully align with the new design principles.
 
-* **New Design Specification:** The details, API, behavior, and configuration of the new cache system are defined in the document: `2_2_dbcash_architecture.md`.
-* **Motivation (General):** While specific motivations are detailed in the design document, common reasons for such redesigns include:
-    * Improving application performance (reducing latency, increasing throughput).
-    * Enhancing scalability to handle larger loads.
-    * Increasing the reliability or maintainability of the caching layer.
-    * Implementing more sophisticated caching strategies (e.g., improved invalidation, tiered caching).
-    * Switching underlying caching technology (e.g., moving from simple in-memory to Redis/Memcached, or vice-versa).
-* **Scope of Work:** The changes involve:
-    1.  Implementing the new cache module according to the specification.
-    2.  Refactoring all parts of the codebase (database operations, business logic, API endpoints, utilities) that currently use the old cache system to use the new one.
-    3.  Updating configuration files.
-    4.  Writing new unit tests for the cache module and updating existing integration tests.
-    5.  Updating all relevant documentation, including rewriting `ToDo.md` to reflect the project's current state post-implementation.
+*   **New Design Specification:** The enhanced strategy, API, behavior, and configuration are detailed in `_doc/2_2_dbcash_architecture.md`. Key aspects include custom LRU logic with memory limits, SQLite update hook integration for automatic cache invalidation, explicit use of FTS5 for searching, and avoiding Pydantic's `model_construct`.
+*   **Motivation:** To significantly improve UI responsiveness (especially with large PO files), optimize memory usage, ensure robust data consistency between the cache and the database, and increase the maintainability and testability of the data layer.
+*   **Scope of Work:** The changes involve:
+    1.  **Verifying and Enhancing `EntryCacheManager`:** Implementing custom LRU, memory limits, TTL (if specified), prefetching mechanism, and automatic invalidation logic triggered by DB updates.
+    2.  **Verifying and Enhancing `DatabaseAccessor` & `InMemoryEntryStore`:** Ensuring efficient FTS5 search implementation, optimizing SQL queries, confirming results are returned as dictionaries/tuples, and setting up the SQLite `update_hook`.
+    3.  **Refactoring Cache Usage:** Reviewing and updating how Facades (`EntryListFacade`, `EntryEditorFacade`) and `ViewerPOFile` components interact with `EntryCacheManager` and `DatabaseAccessor` to match the specified data flows.
+    4.  **Ensuring Pydantic Validation:** Confirming that `EntryModel` instantiation consistently uses standard validation (`__init__` or `model_validate`) and avoids `model_construct`.
+    5.  **Updating Configuration:** Modifying `src/sgpo_editor/config.py` to include any new cache-related settings from the design document.
+    6.  **Updating Tests:** Writing new unit tests for the enhanced cache/DB components and updating existing integration tests to reflect the changes.
+    7.  **Updating Documentation:** Rewriting `_doc/todo.md` and potentially other related documents.
 
 ## 3. Impact and Considerations
 
-* **Pervasiveness:** Caching is often used across multiple application layers. Therefore, this change potentially impacts database interactions, core logic execution speed, and API response times.
-* **Testing:** Thorough testing (unit, integration, performance, regression) is crucial to ensure the new cache functions correctly and does not negatively impact existing functionality or overall application performance. Adherence to the behavior defined in `2_2_dbcash_architecture.md` must be verified.
+*   **Performance:** Changes aim to improve performance, particularly in list rendering, filtering, and searching large files via FTS5 and optimized caching.
+*   **Data Consistency:** The new invalidation mechanism (SQLite update hook) is critical for maintaining data integrity between the cache and the UI.
+*   **Memory Usage:** The custom LRU with memory limits needs careful implementation and tuning.
+*   **Testing:** Thorough testing is vital to confirm the correct behavior of the cache (hits, misses, invalidation, LRU eviction, prefetching) and ensure no regressions in application functionality or data integrity. Verification against `_doc/2_2_dbcash_architecture.md` is paramount.
 
-This summary provides the necessary background for understanding the context and importance of the tasks listed in `ToDo.md`. All specific implementation details should be derived from `2_2_dbcash_architecture.md`.
+This summary provides the context for refining the cache system within the SGPO Editor application. All specific implementation details should follow `_doc/2_2_dbcash_architecture.md`.

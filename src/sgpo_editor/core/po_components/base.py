@@ -189,7 +189,7 @@ class POFileBaseComponent:
         for key, entry_dict in entries.items():
             # 辞書からEntryModelオブジェクトを作成
             entry_model = EntryModel.from_dict(entry_dict)
-            self.cache_manager.cache_basic_info_entry(key, entry_model)
+            self.cache_manager.set_entry(key, entry_model)
 
     def _convert_entry_to_dict(self, entry: POEntry, position: int) -> EntryDict:
         """POエントリをディクショナリに変換する
