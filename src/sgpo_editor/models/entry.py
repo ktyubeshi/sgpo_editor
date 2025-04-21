@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast, Literal
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast, Literal, Tuple
 
 if TYPE_CHECKING:
     from sgpo_editor.types import EntryDict
@@ -36,8 +36,19 @@ class EntryModel(BaseModel):
     def __setitem__(self, key, value):
         return setattr(self, key, value)
 
-    def __contains__(self, key):
-        return hasattr(self, key)
+    def __contains__(self, key: str) -> bool:
+        if hasattr(self, key):
+            return True
+        if key in [
+            "fuzzy",
+            "is_translated",
+            "is_untranslated",
+            "score",
+            "overall_quality_score",
+            "evaluation_state",
+        ]:
+            return True
+        return key in self.to_dict()
 
     """POエントリのPydanticモデル実装"""
 
@@ -60,7 +71,7 @@ class EntryModel(BaseModel):
     previous_msgctxt: Optional[str] = None
     comment: Optional[str] = None
     tcomment: Optional[str] = None
-    occurrences: List[tuple[str, int]] = Field(default_factory=list)
+    occurrences: List[Tuple[str, int]] = Field(default_factory=list)
     references: List[str] = Field(default_factory=list)
 
     # 翻訳品質評価機能の拡張フィールド
@@ -99,7 +110,7 @@ class EntryModel(BaseModel):
         return self._evaluation_state
 
     @evaluation_state.setter
-    def evaluation_state(self, value) -> None:
+    def evaluation_state(self, value: EvaluationState) -> None:
         """評価状態を設定
         Args:
             value: 設定する評価状態（EvaluationState型）
@@ -123,7 +134,6 @@ class EntryModel(BaseModel):
         if value:
             self.flags.append("fuzzy")
 
-    @computed_field
     @property
     def is_translated(self) -> bool:
         """翻訳済みかどうか"""
@@ -133,7 +143,6 @@ class EntryModel(BaseModel):
         """翻訳済みかどうか（互換性のため）"""
         return self.is_translated
 
-    @computed_field
     @property
     def is_untranslated(self) -> bool:
         """未翻訳かどうか"""
@@ -143,13 +152,13 @@ class EntryModel(BaseModel):
         """ステータスを取得"""
         # ステータスの優先順位: 廃止済み > ファジー > 未翻訳 > 翻訳済み
         if self.obsolete:
-            return TranslationStatus.OBSOLETE
+            return str(TranslationStatus.OBSOLETE)
         elif self.fuzzy:
-            return TranslationStatus.FUZZY
+            return str(TranslationStatus.FUZZY)
         elif self.is_untranslated:
-            return TranslationStatus.UNTRANSLATED
+            return str(TranslationStatus.UNTRANSLATED)
         else:
-            return TranslationStatus.TRANSLATED
+            return str(TranslationStatus.TRANSLATED)
 
     @property
     def score(self) -> Optional[float]:
@@ -480,6 +489,16 @@ class EntryModel(BaseModel):
         fuzzy = any(isinstance(f, str) and f.lower() == "fuzzy" for f in flags)
 
         # POEntryからの変換
+        # occurrencesを(str, int)型に正規化
+        raw_occurrences = safe_getattr(po_entry, "occurrences", [])
+        norm_occurrences = []
+        for occ in raw_occurrences:
+            if isinstance(occ, tuple) and len(occ) == 2:
+                f, l = occ
+                try:
+                    norm_occurrences.append((str(f), int(l)))
+                except Exception:
+                    continue  # 型が合わないものはスキップ
         model = cls(
             key=key,
             msgid=po_entry.msgid,
@@ -492,7 +511,7 @@ class EntryModel(BaseModel):
             previous_msgctxt=safe_getattr(po_entry, "previous_msgctxt", None),
             comment=safe_getattr(po_entry, "comment", None),
             tcomment=safe_getattr(po_entry, "tcomment", None),
-            occurrences=safe_getattr(po_entry, "occurrences", []),
+            occurrences=norm_occurrences,
             flags=flags,
             fuzzy=fuzzy,
         )
@@ -574,8 +593,6 @@ class EntryModel(BaseModel):
                 model.set_category_score(category, score)
 
         return model
-        if flag not in self.flags:
-            self.flags.append(flag)
 
     def add_flag(self, flag: str) -> None:
         """フラグを追加（大文字小文字無視で重複防止）"""
@@ -734,77 +751,8 @@ class EntryModel(BaseModel):
         # 新しいPOEntryを返す
         return POEntry(**kwargs)
 
-    @evaluation_state.setter
-    def evaluation_state(self, value) -> None:
-        """評価状態を設定
-        Args:
-            value: 設定する評価状態（EvaluationState型）
-        Raises:
-            TypeError: 評価状態がEvaluationState型でない場合
-        """
-        if not isinstance(value, EvaluationState):
-            raise TypeError("evaluation_stateはEvaluationState型である必要があります")
-        self._evaluation_state = value
 
-    def __getitem__(self, key: str) -> Any:
-        """辞書アクセスをサポートするためのメソッド
 
-        テスト互換性のために、EntryModelオブジェクトを辞書のように扱えるようにする
-
-        Args:
-            key: アクセスするキー
-
-        Returns:
-            キーに対応する値
-
-        Raises:
-            KeyError: キーが存在しない場合
-        """
-        if hasattr(self, key):
-            return getattr(self, key)
-
-        if key == "fuzzy":
-            return self.fuzzy
-        elif key == "is_translated":
-            return self.is_translated
-        elif key == "is_untranslated":
-            return self.is_untranslated
-        elif key == "score":
-            return self.score
-        elif key == "overall_quality_score":
-            return self.overall_quality_score
-        elif key == "evaluation_state":
-            return self.evaluation_state
-
-        dict_result = self.to_dict()
-        if key in dict_result:
-            return dict_result[key]
-
-        raise KeyError(f"キー '{key}' は存在しません")
-
-    def __contains__(self, key: str) -> bool:
-        """キーが存在するかどうかを確認するためのメソッド
-
-        Args:
-            key: 確認するキー
-
-        Returns:
-            キーが存在する場合はTrue、そうでない場合はFalse
-        """
-        if hasattr(self, key):
-            return True
-
-        if key in [
-            "fuzzy",
-            "is_translated",
-            "is_untranslated",
-            "score",
-            "overall_quality_score",
-            "evaluation_state",
-        ]:
-            return True
-
-        return key in self.to_dict()
 
 
 EntryModel.model_rebuild()
