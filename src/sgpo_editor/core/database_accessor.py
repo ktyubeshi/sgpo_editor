@@ -121,6 +121,7 @@ class DatabaseAccessor:
                 """,
                 keys,
             )
+            self.last_cursor_description = cur.description
 
             for row in cur.fetchall():
                 entry_dict = self._row_to_entry_dict(row)
@@ -827,6 +828,7 @@ class DatabaseAccessor:
             logger.debug(f"DatabaseAccessor.advanced_search: SQLクエリ実行: {query}")
             logger.debug(f"DatabaseAccessor.advanced_search: SQLパラメータ: {params}")
             cur.execute(query, params)
+            self.last_cursor_description = cur.description
 
             # 結果をリストに変換
             result = []
@@ -1016,30 +1018,16 @@ class DatabaseAccessor:
         #     cur.execute(
         #         "UPDATE entries SET invalidated = 1 WHERE key = ?",
         #         (key,)
-        #     )
-
-        # キャッシュ無効化はViewerPOFileRefactoredクラスでEntryCacheManagerを通じて行われるため、
-        # ここでは実装しない（責務の分離）
-
     def _row_to_entry_dict(self, row: sqlite3.Row) -> EntryDict:
-        """SQLite RowオブジェクトをEntryDict形式に変換する
-
-        データベースから取得したRowオブジェクトを、アプリケーション全体で使用される
-        EntryDict形式に変換します。このメソッドは内部で使用され、
-        get_filtered_entriesなどのメソッドから呼び出されます。
-
-        最適化ポイント:
-        - 必要なフィールドのみを効率的に抽出
-        - 関連テーブル（フラグ、リファレンスなど）の情報も取得
-        - 他の関連情報は遅延読み込みが可能なように設計
-
-        Args:
-            row: SQLite Rowオブジェクト
-
-        Returns:
-            EntryDict: 変換された辞書
-        """
         from typing import cast
+        if not hasattr(row, 'keys') and isinstance(row, tuple):
+            if hasattr(self, 'last_cursor_description') and self.last_cursor_description:
+                keys = [desc[0] for desc in self.last_cursor_description]
+                row = dict(zip(keys, row))
+            else:
+                raise TypeError('rowがtuple型ですがカラム名情報がありません')
+        elif hasattr(row, 'keys'):
+            row = dict(row)
 
         entry_dict: EntryDict = {
             "key": row["key"],
@@ -1050,7 +1038,6 @@ class DatabaseAccessor:
             "position": 0 if row["position"] is None else row["position"],
         }
 
-        # オプションフィールドの追加
         for field in [
             "msgctxt",
             "comment",
@@ -1059,44 +1046,29 @@ class DatabaseAccessor:
             "previous_msgid_plural",
             "previous_msgctxt",
         ]:
-            if row[field]:
+            if row.get(field):
                 entry_dict[field] = row[field]
 
-        # 関連データ（フラグとリファレンス）を取得
         entry_id = row["id"]
         with self.db.transaction() as cur:
-            # フラグの取得
             cur.execute("SELECT flag FROM entry_flags WHERE entry_id = ?", (entry_id,))
-            flags = [row["flag"] for row in cur.fetchall()]
+            flags = [r["flag"] for r in cur.fetchall()]
             if flags:
                 entry_dict["flags"] = flags
 
-            # リファレンスの取得
-            cur.execute(
-                "SELECT reference FROM entry_references WHERE entry_id = ?", (entry_id,)
-            )
-            references = [row["reference"] for row in cur.fetchall()]
+            cur.execute("SELECT reference FROM entry_references WHERE entry_id = ?", (entry_id,))
+            references = [r["reference"] for r in cur.fetchall()]
             if references:
                 entry_dict["references"] = references
 
-            # 品質スコアの取得（あれば）
-            cur.execute(
-                "SELECT id, overall_score FROM quality_scores WHERE entry_id = ?",
-                (entry_id,),
-            )
+            cur.execute("SELECT id, overall_score FROM quality_scores WHERE entry_id = ?", (entry_id,))
             quality_score_row = cur.fetchone()
             if quality_score_row:
                 entry_dict["overall_quality_score"] = quality_score_row["overall_score"]
 
-                # カテゴリースコアの取得
                 quality_score_id = quality_score_row["id"]
-                cur.execute(
-                    "SELECT category, score FROM category_scores WHERE quality_score_id = ?",
-                    (quality_score_id,),
-                )
-                category_scores = {
-                    row["category"]: row["score"] for row in cur.fetchall()
-                }
+                cur.execute("SELECT category, score FROM category_scores WHERE quality_score_id = ?", (quality_score_id,))
+                category_scores = {r["category"]: r["score"] for r in cur.fetchall()}
                 if category_scores:
                     entry_dict["category_quality_scores"] = category_scores
 
