@@ -470,6 +470,15 @@ class EntryModel(BaseModel):
             except (AttributeError, TypeError):
                 return default
 
+        # flagsの変換
+        flags = getattr(po_entry, "flags", [])
+        if isinstance(flags, str):
+            flags = [flag.strip() for flag in flags.split(",") if flag.strip()]
+        elif not isinstance(flags, list):
+            flags = []
+        # fuzzy判定
+        fuzzy = any(isinstance(f, str) and f.lower() == "fuzzy" for f in flags)
+
         # POEntryからの変換
         model = cls(
             key=key,
@@ -484,6 +493,8 @@ class EntryModel(BaseModel):
             comment=safe_getattr(po_entry, "comment", None),
             tcomment=safe_getattr(po_entry, "tcomment", None),
             occurrences=safe_getattr(po_entry, "occurrences", []),
+            flags=flags,
+            fuzzy=fuzzy,
         )
 
         # POEntryへの参照を設定
