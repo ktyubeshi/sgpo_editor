@@ -122,4 +122,6 @@ class TestMainWindowFilter:
         # update_tableが呼ばれたことを確認
         main_window.entry_list_facade.update_table.assert_called_once()
         # update_table内でget_filtered_entriesが呼ばれたことを確認
-        main_window.entry_list_facade._get_current_po.return_value.get_filtered_entries.assert_called_with(criteria)
+        main_window.entry_list_facade._get_current_po.return_value.get_filtered_entries.assert_called_with(
+            criteria
+        )

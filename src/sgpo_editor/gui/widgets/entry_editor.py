@@ -92,7 +92,6 @@ class EntryEditor(QWidget):
         """現在のエントリを返す"""
         return self._current_entry
 
-
     text_changed = Signal()
     apply_clicked = Signal()
     entry_changed = Signal(int)  # エントリが変更されたときのシグナル

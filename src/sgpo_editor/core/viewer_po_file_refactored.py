@@ -15,4 +15,6 @@ logger = logging.getLogger(__name__)
 # 後方互換性のためにViewerPOFileRefactoredをViewerPOFileのエイリアスとして定義
 ViewerPOFileRefactored = ViewerPOFile
 
-logger.debug("viewer_po_file_refactored: ViewerPOFileRefactored は ViewerPOFile のエイリアスとして定義されています")
+logger.debug(
+    "viewer_po_file_refactored: ViewerPOFileRefactored は ViewerPOFile のエイリアスとして定義されています"
+)

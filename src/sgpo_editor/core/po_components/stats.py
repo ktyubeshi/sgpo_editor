@@ -127,11 +127,11 @@ class StatsComponent:
 
         result = {}
         all_flags = self.db_accessor.get_all_flags()
-        
+
         for flag in all_flags:
             count = self.db_accessor.count_entries_with_flag(flag)
             result[flag] = count
-            
+
         return result
 
     async def save(self, path: Optional[Union[str, Path]] = None) -> bool:
@@ -154,33 +154,37 @@ class StatsComponent:
         try:
             # エントリの取得（データベースから全エントリを取得）
             entries_dict = self.db_accessor.get_all_entries()
-            
+
             # POファイルファクトリを取得
             factory = get_po_factory(self.library_type)
-            
+
             # POファイルを作成
             pofile = factory.create_new_file()
-            
+
             # メタデータを設定
             if self.metadata:
                 for key, value in self.metadata.items():
                     pofile.metadata[key] = value
-            
+
             # エントリをPOファイルに追加
             for entry_dict in entries_dict:
                 po_entry = factory.create_entry_from_dict(entry_dict)
                 pofile.append(po_entry)
-            
+
             # 非同期でファイルを保存
             await factory.save_file_async(pofile, save_path)
-            
+
             elapsed_time = time.time() - start_time
-            logger.debug(f"StatsComponent.save: POファイル保存完了 ({elapsed_time:.2f}秒)")
+            logger.debug(
+                f"StatsComponent.save: POファイル保存完了 ({elapsed_time:.2f}秒)"
+            )
             return True
-            
+
         except Exception as e:
             elapsed_time = time.time() - start_time
-            logger.error(f"StatsComponent.save: POファイル保存エラー ({elapsed_time:.2f}秒): {str(e)}")
+            logger.error(
+                f"StatsComponent.save: POファイル保存エラー ({elapsed_time:.2f}秒): {str(e)}"
+            )
             logger.exception(e)
             return False
 
@@ -201,12 +205,12 @@ class StatsComponent:
         singular = self.db_accessor.count_entries_with_condition(
             {"field": "msgid_plural", "value": None, "operator": "="}
         )
-        
+
         # 複数形エントリ（msgid_pluralがあるもの）
         plural = self.db_accessor.count_entries_with_condition(
             {"field": "msgid_plural", "value": None, "operator": "!="}
         )
-        
+
         # コンテキスト付きエントリ（msgctxtがあるもの）
         with_context = self.db_accessor.count_entries_with_condition(
             {"field": "msgctxt", "value": None, "operator": "!="}
@@ -216,4 +220,4 @@ class StatsComponent:
             "singular": singular,
             "plural": plural,
             "with_context": with_context,
-        } 
+        }

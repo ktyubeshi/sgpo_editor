@@ -11,7 +11,12 @@ from typing import List, Optional, cast
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.models.evaluation_state import EvaluationState
-from sgpo_editor.types import ReviewCommentType, ReviewDataDict, MetricScores, CategoryScores
+from sgpo_editor.types import (
+    ReviewCommentType,
+    ReviewDataDict,
+    MetricScores,
+    CategoryScores,
+)
 
 logger = logging.getLogger(__name__)
 

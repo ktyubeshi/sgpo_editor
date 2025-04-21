@@ -38,9 +38,27 @@ def test_fts5_search_basic(db_accessor, db_store):
 def test_fts5_search_various_patterns(db_accessor, db_store):
     # 複数のテスト用エントリを追加
     entries = [
-        {"key": "k1", "msgid": "hello world", "msgstr": "foo bar", "obsolete": False, "position": 0},
-        {"key": "k2", "msgid": "goodbye", "msgstr": "see you", "obsolete": False, "position": 1},
-        {"key": "k3", "msgid": "hello friend", "msgstr": "greetings", "obsolete": False, "position": 2},
+        {
+            "key": "k1",
+            "msgid": "hello world",
+            "msgstr": "foo bar",
+            "obsolete": False,
+            "position": 0,
+        },
+        {
+            "key": "k2",
+            "msgid": "goodbye",
+            "msgstr": "see you",
+            "obsolete": False,
+            "position": 1,
+        },
+        {
+            "key": "k3",
+            "msgid": "hello friend",
+            "msgstr": "greetings",
+            "obsolete": False,
+            "position": 2,
+        },
     ]
     for e in entries:
         db_store.add_entry(e)
@@ -53,50 +71,92 @@ def test_fts5_search_various_patterns(db_accessor, db_store):
     keys = {r["key"] for r in results}
     assert "k1" in keys and "k3" in keys
     # msgstrフィールドで検索
-    results = db_accessor.advanced_search(search_text="greetings", search_fields=["msgstr"])
+    results = db_accessor.advanced_search(
+        search_text="greetings", search_fields=["msgstr"]
+    )
     assert any(r["key"] == "k3" for r in results)
     # msgidフィールドで検索（goodbye）
-    results = db_accessor.advanced_search(search_text="goodbye", search_fields=["msgid"])
+    results = db_accessor.advanced_search(
+        search_text="goodbye", search_fields=["msgid"]
+    )
     assert any(r["key"] == "k2" for r in results)
 
 
 def test_fts5_search_exact_and_case(db_accessor, db_store):
     # テスト用エントリを追加
     entries = [
-        {"key": "k1", "msgid": "Hello World", "msgstr": "Foo Bar", "obsolete": False, "position": 0},
-        {"key": "k2", "msgid": "hello world", "msgstr": "foo bar", "obsolete": False, "position": 1},
-        {"key": "k3", "msgid": "HELLO WORLD", "msgstr": "FOO BAR", "obsolete": False, "position": 2},
+        {
+            "key": "k1",
+            "msgid": "Hello World",
+            "msgstr": "Foo Bar",
+            "obsolete": False,
+            "position": 0,
+        },
+        {
+            "key": "k2",
+            "msgid": "hello world",
+            "msgstr": "foo bar",
+            "obsolete": False,
+            "position": 1,
+        },
+        {
+            "key": "k3",
+            "msgid": "HELLO WORLD",
+            "msgstr": "FOO BAR",
+            "obsolete": False,
+            "position": 2,
+        },
     ]
     for e in entries:
         db_store.add_entry(e)
 
     # exact_match=True, case_sensitive=False
-    results = db_accessor.advanced_search(search_text="hello world", exact_match=True, case_sensitive=False)
+    results = db_accessor.advanced_search(
+        search_text="hello world", exact_match=True, case_sensitive=False
+    )
     keys = {r["key"] for r in results}
     # FTS5はデフォルトで大文字小文字区別しないため、すべてヒットする可能性が高い
     assert "k1" in keys and "k2" in keys and "k3" in keys
 
     # exact_match=True, case_sensitive=True
-    results = db_accessor.advanced_search(search_text="Hello World", exact_match=True, case_sensitive=True)
+    results = db_accessor.advanced_search(
+        search_text="Hello World", exact_match=True, case_sensitive=True
+    )
     keys = {r["key"] for r in results}
     # 実装によるが、case_sensitive=Trueなら"Hello World"のみヒットすることを期待
     assert "k1" in keys
 
     # exact_match=False, case_sensitive=False
-    results = db_accessor.advanced_search(search_text="hello", exact_match=False, case_sensitive=False)
+    results = db_accessor.advanced_search(
+        search_text="hello", exact_match=False, case_sensitive=False
+    )
     keys = {r["key"] for r in results}
     assert "k1" in keys and "k2" in keys and "k3" in keys
 
     # exact_match=False, case_sensitive=True
-    results = db_accessor.advanced_search(search_text="Foo", exact_match=False, case_sensitive=True)
+    results = db_accessor.advanced_search(
+        search_text="Foo", exact_match=False, case_sensitive=True
+    )
     keys = {r["key"] for r in results}
     assert "k1" in keys
 
 
 def test_dict_return_types(db_accessor, db_store):
     # テスト用エントリを追加
-    entry1 = {"key": "d1", "msgid": "foo", "msgstr": "bar", "obsolete": False, "position": 0}
-    entry2 = {"key": "d2", "msgid": "baz", "msgstr": "qux", "obsolete": False, "position": 1}
+    entry1 = {
+        "key": "d1",
+        "msgid": "foo",
+        "msgstr": "bar",
+        "obsolete": False,
+        "position": 0,
+    }
+    entry2 = {
+        "key": "d2",
+        "msgid": "baz",
+        "msgstr": "qux",
+        "obsolete": False,
+        "position": 1,
+    }
     db_store.add_entry(entry1)
     db_store.add_entry(entry2)
 
@@ -147,4 +207,4 @@ def test_update_hook_called_on_insert_update_delete(db_store):
     # op_types = [c[0] for c in calls]
     # assert any(op in op_types for op in (1, 18))  # 1:INSERT, 18:REPLACE
     # assert any(op in op_types for op in (2, 9))   # 2:DELETE, 9:TRUNCATE
-    # assert any(op in op_types for op in (23, 18))  # 23:UPDATE, 18:REPLACE 
+    # assert any(op in op_types for op in (23, 18))  # 23:UPDATE, 18:REPLACE

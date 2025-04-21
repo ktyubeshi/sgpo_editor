@@ -37,26 +37,38 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         # ステータスに応じてフラグ条件を設定
         if status == TranslationStatus.TRANSLATED:
             # 翻訳済み: msgstrが空でなく、fuzzyでない
-            self.flag_conditions = cast(FlagConditions, {
-                "msgstr_not_empty": True,
-                "fuzzy": False,
-            })
+            self.flag_conditions = cast(
+                FlagConditions,
+                {
+                    "msgstr_not_empty": True,
+                    "fuzzy": False,
+                },
+            )
         elif status == TranslationStatus.UNTRANSLATED:
             # 未翻訳: msgstrが空で、fuzzyでない
-            self.flag_conditions = cast(FlagConditions, {
-                "msgstr_empty": True,
-                "fuzzy": False,
-            })
+            self.flag_conditions = cast(
+                FlagConditions,
+                {
+                    "msgstr_empty": True,
+                    "fuzzy": False,
+                },
+            )
         elif status == TranslationStatus.FUZZY:
             # fuzzy: fuzzyフラグがある
-            self.flag_conditions = cast(FlagConditions, {
-                "fuzzy": True,
-            })
+            self.flag_conditions = cast(
+                FlagConditions,
+                {
+                    "fuzzy": True,
+                },
+            )
         elif status == TranslationStatus.FUZZY_OR_UNTRANSLATED:
             # fuzzyまたは未翻訳: fuzzyフラグがあるか、msgstrが空
-            self.flag_conditions = cast(FlagConditions, {
-                "fuzzy_or_msgstr_empty": True,
-            })
+            self.flag_conditions = cast(
+                FlagConditions,
+                {
+                    "fuzzy_or_msgstr_empty": True,
+                },
+            )
         # ALL（すべて）の場合は条件なし
 
         # 翻訳ステータスを保存

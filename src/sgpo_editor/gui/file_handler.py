@@ -52,6 +52,7 @@ class FileHandler:
         self.recent_files = self._load_recent_files()
         # テスト用: get_recent_files, clear_recent_filesをMagicMockでラップ
         from unittest.mock import MagicMock
+
         self.get_recent_files = MagicMock(return_value=list(self.recent_files))
         self.clear_recent_files = MagicMock(wraps=self._clear_recent_files)
 
@@ -69,7 +70,9 @@ class FileHandler:
                 files = json.loads(recent_files_json)
                 if isinstance(files, list):
                     logger.debug(f"Loaded recent files (JSON): {files}")
-                    return [str(f) for f in files]  # Pathオブジェクトかもしれないのでstrに変換
+                    return [
+                        str(f) for f in files
+                    ]  # Pathオブジェクトかもしれないのでstrに変換
                 else:
                     logger.warning(
                         f"'recent_files' setting is not a valid JSON list: {recent_files_json}"

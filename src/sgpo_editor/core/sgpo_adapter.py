@@ -12,6 +12,7 @@ from sgpo_editor.core.po_interface import POEntry, POFile, POFileFactory
 
 class SGPOEntryProtocol(Protocol):
     """sgpoのPOEntryオブジェクトのプロトコル"""
+
     msgid: str
     msgstr: str
     msgctxt: Optional[str]

@@ -15,11 +15,14 @@ from pydantic import BaseModel, Field
 LLMResponseMetricScores: TypeAlias = Dict[str, float]
 LLMResponseComments: TypeAlias = Dict[str, str]
 
+
 class LLMEvaluationResponse(TypedDict, total=False):
     """LLM評価レスポンスの型定義"""
+
     overall_score: int
     metric_scores: Dict[str, float]
     comments: Dict[str, str]
+
 
 logger = logging.getLogger(__name__)
 

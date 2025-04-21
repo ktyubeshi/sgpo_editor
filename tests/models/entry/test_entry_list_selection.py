@@ -54,7 +54,11 @@ def table_manager(mock_entries):
 
     mock_search_widget = MagicMock()
     entry_list = EntryListFacade(
-        mock_table, table_manager, mock_search_widget, mock_cache_manager, lambda: mock_po
+        mock_table,
+        table_manager,
+        mock_search_widget,
+        mock_cache_manager,
+        lambda: mock_po,
     )
 
     return entry_list
@@ -77,14 +81,19 @@ class TestEntryListSelection:
     def test_row_selection(self, mock_entries):
         """行選択のテスト (現APIに未対応のためスキップ)"""
         import pytest
-        pytest.skip('EntryListFacadeのselect_entry_by_keyはテスト用Mock状態では正常に動作しないためスキップ')
+
+        pytest.skip(
+            "EntryListFacadeのselect_entry_by_keyはテスト用Mock状態では正常に動作しないためスキップ"
+        )
 
     def test_get_key_at_row(self, mock_entries):
         """行からキーを取得するテスト (現APIに未対応のためスキップ)"""
         import pytest
-        pytest.skip('EntryListFacadeにget_key_at_rowが未実装のためスキップ')
+
+        pytest.skip("EntryListFacadeにget_key_at_rowが未実装のためスキップ")
 
     def test_find_row_by_key(self, mock_entries):
         """キーから行を検索するテスト (現APIに未対応のためスキップ)"""
         import pytest
-        pytest.skip('EntryListFacadeにfind_row_by_keyが未実装のためスキップ')
+
+        pytest.skip("EntryListFacadeにfind_row_by_keyが未実装のためスキップ")

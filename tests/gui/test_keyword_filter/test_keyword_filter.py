@@ -177,8 +177,9 @@ class TestKeywordFilter:
             main_window, "_get_current_po", return_value=mock_po_file
         ):
             # EntryListFacadeのupdate_tableをモック化 (MainWindowのupdate_tableを置き換えたため)
-            with mock.patch.object(main_window.entry_list_facade, 'update_table') as mock_update_table:
-
+            with mock.patch.object(
+                main_window.entry_list_facade, "update_table"
+            ) as mock_update_table:
                 # キーワードフィルタを設定
                 main_window.search_widget.search_edit.setText("keyword")
 
@@ -204,7 +205,9 @@ class TestKeywordFilter:
             main_window, "_get_current_po", return_value=mock_po_file
         ):
             # EntryListFacadeのupdate_tableをモック化
-            with mock.patch.object(main_window.entry_list_facade, 'update_table') as mock_update_table:
+            with mock.patch.object(
+                main_window.entry_list_facade, "update_table"
+            ) as mock_update_table:
                 # キーワードフィルタを空に設定
                 main_window.search_widget.search_edit.setText("")
 

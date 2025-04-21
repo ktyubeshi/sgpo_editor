@@ -208,12 +208,12 @@ class TestCheckResultWidget(unittest.TestCase):
         # チェック結果追加
         self.entry.add_check_result(1001, "用語の不一致", "warning")
         self.entry.add_check_result(2002, "末尾の句読点がない", "error")
-        
+
         # モックデータベースを設定
         self.mock_db = Mock()
         self.mock_db.add_check_result = Mock(return_value=True)
         self.mock_db.remove_check_result = Mock(return_value=True)
-        
+
         # ウィジェットにデータベースを設定
         self.widget.set_database(self.mock_db)
 
@@ -247,7 +247,7 @@ class TestCheckResultWidget(unittest.TestCase):
         self.assertEqual(newest_result["code"], 3003)
         self.assertEqual(newest_result["message"], "新しいエラー")
         self.assertEqual(newest_result["severity"], "info")
-        
+
         self.mock_db.add_check_result.assert_called_once()
 
     def test_remove_check_result(self):
@@ -257,15 +257,17 @@ class TestCheckResultWidget(unittest.TestCase):
 
         # 最初の行を選択
         self.widget.result_table.selectRow(0)
-        
-        with patch('PySide6.QtWidgets.QMessageBox.question', return_value=0x00004000):  # Yes
+
+        with patch(
+            "PySide6.QtWidgets.QMessageBox.question", return_value=0x00004000
+        ):  # Yes
             self.widget.remove_button.click()
 
         # 行が削除されているか確認
         self.assertEqual(self.widget.result_table.rowCount(), initial_row_count - 1)
         # エントリからチェック結果が削除されているか確認
         self.assertEqual(len(self.entry.check_results), initial_row_count - 1)
-        
+
         self.mock_db.remove_check_result.assert_called_once()
 
 

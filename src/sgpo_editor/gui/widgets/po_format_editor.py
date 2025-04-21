@@ -506,15 +506,15 @@ class POFormatEditor(QDialog):
                     f"{updated_count}個のエントリを更新しました。\n"
                     f"{not_found_count}個のエントリが見つかりませんでした。",
                     QMessageBox.StandardButton.Ok,
-                    QMessageBox.StandardButton.Ok
+                    QMessageBox.StandardButton.Ok,
                 )
             else:
                 QMessageBox.information(
-                    self, 
-                    "成功", 
+                    self,
+                    "成功",
                     f"{updated_count}個のエントリを更新しました。",
                     QMessageBox.StandardButton.Ok,
-                    QMessageBox.StandardButton.Ok
+                    QMessageBox.StandardButton.Ok,
                 )
 
         except Exception as e:
@@ -522,11 +522,11 @@ class POFormatEditor(QDialog):
                 "POFormatEditor._on_apply_clicked: エントリ適用中にエラーが発生しました"
             )
             QMessageBox.critical(
-                self, 
-                "エラー", 
+                self,
+                "エラー",
                 f"エントリの適用に失敗しました: {str(e)}",
                 QMessageBox.StandardButton.Ok,
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
 
     def _parse_po_format(self, text: str) -> List[Tuple[str, str, str, Optional[str]]]:

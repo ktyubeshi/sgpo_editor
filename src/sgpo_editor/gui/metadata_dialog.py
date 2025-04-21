@@ -33,7 +33,10 @@ class MetadataValueEditor(QDialog):
     """複雑なメタデータ値を編集するためのダイアログ"""
 
     def __init__(
-        self, value: MetadataValueType, value_type: str, parent: Optional[QDialog] = None
+        self,
+        value: MetadataValueType,
+        value_type: str,
+        parent: Optional[QDialog] = None,
     ) -> None:
         """初期化
 
@@ -105,10 +108,10 @@ class MetadataEditDialog(QDialog):
     """メタデータ編集ダイアログ"""
 
     def __init__(
-        self, 
-        entry_or_parent: Union[EntryModel, QWidget], 
-        parent: Optional[QWidget] = None, 
-        metadata: Optional[Dict[str, str]] = None
+        self,
+        entry_or_parent: Union[EntryModel, QWidget],
+        parent: Optional[QWidget] = None,
+        metadata: Optional[Dict[str, str]] = None,
     ):
         """初期化
 
@@ -120,15 +123,19 @@ class MetadataEditDialog(QDialog):
         # 引数の型に応じて適切に処理
         if isinstance(entry_or_parent, EntryModel):
             actual_parent = parent
-            self._metadata = entry_or_parent.metadata.copy() if hasattr(entry_or_parent, 'metadata') else {}
+            self._metadata = (
+                entry_or_parent.metadata.copy()
+                if hasattr(entry_or_parent, "metadata")
+                else {}
+            )
         else:
             actual_parent = entry_or_parent
             self._metadata = metadata.copy() if metadata else {}
-        
+
         super().__init__(actual_parent)
         self.setWindowTitle(self.tr("メタデータ編集"))
         self.resize(600, 400)
-        
+
         # UI要素を初期化（インスペクションエラー回避のため）
         self.metadata_table = None
         self.key_edit = None

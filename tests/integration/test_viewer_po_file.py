@@ -44,7 +44,7 @@ msgstr ""
 """
         )
     await po_file.load(file_path)
-    
+
     return po_file
 
 
@@ -63,13 +63,12 @@ async def test_load_po_file(tmp_path):
 async def test_get_entries(test_po_file):
     """エントリを取得できることを確認する"""
     # get_filtered_entriesを使用してエントリを取得
-    entries = test_po_file.get_filtered_entries(
-        update_filter=True, filter_status=None
-    )
+    entries = test_po_file.get_filtered_entries(update_filter=True, filter_status=None)
     assert len(entries) == 3
-    
+
     # Entryオブジェクトを返すことを確認
     from sgpo_editor.models.entry import EntryModel
+
     assert all(isinstance(entry, EntryModel) for entry in entries)
 
     # フィルタリングのテスト
@@ -86,11 +85,9 @@ async def test_get_entries(test_po_file):
 async def test_update_entry(test_po_file):
     """エントリを更新できることを確認する"""
     # get_filtered_entriesを使用してエントリを取得
-    entries = test_po_file.get_filtered_entries(
-        update_filter=True, filter_status=None
-    )
+    entries = test_po_file.get_filtered_entries(update_filter=True, filter_status=None)
     assert len(entries) > 0, "エントリが取得できませんでした"
-    
+
     entry = entries[0]
     entry_key = entry.key
 
@@ -109,9 +106,7 @@ async def test_update_entry(test_po_file):
 async def test_search_entries(test_po_file):
     """エントリを検索できることを確認する"""
     # get_filtered_entriesを使用してエントリを取得
-    entries = test_po_file.get_filtered_entries(
-        update_filter=True, filter_status=None
-    )
+    entries = test_po_file.get_filtered_entries(update_filter=True, filter_status=None)
     assert len(entries) == 3
 
     # search_textを使用した検索フィルタリング
@@ -135,11 +130,9 @@ async def test_search_entries(test_po_file):
 async def test_get_stats(test_po_file):
     """統計情報を取得できることを確認する"""
     # get_filtered_entriesを使用してエントリを取得
-    entries = test_po_file.get_filtered_entries(
-        update_filter=True, filter_status=None
-    )
+    entries = test_po_file.get_filtered_entries(update_filter=True, filter_status=None)
     assert len(entries) == 3, f"エントリ数が期待値と異なります: {len(entries)} != 3"
-    
+
     stats = test_po_file.get_stats()
     assert stats["total"] == 3
     assert stats["translated"] == 1  # test1のみ翻訳済み
@@ -151,11 +144,9 @@ async def test_get_stats(test_po_file):
 async def test_save_po_file(test_po_file, tmp_path):
     """POファイルを保存できることを確認する"""
     # get_filtered_entriesを使用してエントリを取得
-    entries = test_po_file.get_filtered_entries(
-        update_filter=True, filter_status=None
-    )
+    entries = test_po_file.get_filtered_entries(update_filter=True, filter_status=None)
     assert len(entries) == 3, f"エントリ数が期待値と異なります: {len(entries)} != 3"
-    
+
     save_path = tmp_path / "save.po"
     test_po_file.save(save_path)  # saveメソッドは同期的に動作する
     assert os.path.exists(save_path)
@@ -165,7 +156,5 @@ async def test_save_po_file(test_po_file, tmp_path):
     loaded = ViewerPOFileRefactored()
     await loaded.load(save_path)
     # get_filtered_entriesを使用してエントリを取得
-    entries = loaded.get_filtered_entries(
-        update_filter=True, filter_status=None
-    )
+    entries = loaded.get_filtered_entries(update_filter=True, filter_status=None)
     assert len(entries) == 3

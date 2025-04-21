@@ -152,7 +152,7 @@ def test_entry_editor_state_entry_changes(entry_editor, mock_entry):
     new_entry.metadata = {}
     new_entry.overall_quality_score = None
     new_entry.score = None
-    
+
     new_entry.__getitem__ = lambda self, key: getattr(self, key)
     new_entry.__contains__ = lambda self, key: hasattr(self, key)
 

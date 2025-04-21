@@ -34,7 +34,10 @@ def test_lru_eviction(cache_manager):
     _ = cache_manager.get_entry("k1")
     _ = cache_manager.get_entry("k2")
     cache_manager.set_entry("k3", make_entry("k3"))
-    print("cache keys after set_entry('k3'):", list(cache_manager._complete_cache._cache.keys()))
+    print(
+        "cache keys after set_entry('k3'):",
+        list(cache_manager._complete_cache._cache.keys()),
+    )
     # k0が消える（最古）
     assert cache_manager.get_entry("k0") is None
     assert cache_manager.get_entry("k1") is not None
@@ -84,7 +87,9 @@ def test_is_key_being_prefetched(cache_manager):
         time.sleep(0.2)
         return {k: make_entry(k) for k in keys}
 
-    t = threading.Thread(target=cache_manager.prefetch_entries, args=(["x"], fetch_callback))
+    t = threading.Thread(
+        target=cache_manager.prefetch_entries, args=(["x"], fetch_callback)
+    )
     t.start()
     time.sleep(0.05)
     assert cache_manager.is_key_being_prefetched("x")
@@ -131,4 +136,4 @@ def test_config_applied(monkeypatch):
     cm.set_entry("k2", make_entry("k2"))
     # max_size=1なのでk1は消える
     assert cm.get_entry("k1") is None
-    assert cm.get_entry("k2") is not None 
+    assert cm.get_entry("k2") is not None

@@ -16,8 +16,8 @@ from sgpo_editor.gui.widgets.entry_editor import EntryEditor
 from sgpo_editor.gui.widgets.stats import StatsWidget
 from sgpo_editor.gui.widgets.search import SearchWidget
 from PySide6.QtWidgets import QTableWidget
-import sgpo_editor.gui.main_window # Patch 対象のモジュールをインポート
-import sgpo_editor.gui.ui_setup # UIManager が定義されているモジュール
+import sgpo_editor.gui.main_window  # Patch 対象のモジュールをインポート
+import sgpo_editor.gui.ui_setup  # UIManager が定義されているモジュール
 
 
 @pytest.fixture(autouse=True)
@@ -35,7 +35,7 @@ def mock_settings(monkeypatch):
         return settings_store.get(key, defaultValue)
 
     def mock_sync(self):
-        pass #何もしない
+        pass  # 何もしない
 
     def mock_clear(self):
         nonlocal settings_store
@@ -61,36 +61,44 @@ def file_handler(mock_settings):
     # mock_settings フィクスチャは QSettings の動作をモックするので、
     # ここでは QSettings() をインスタンス化して渡せばモックが使われる
     return FileHandler(
-        QSettings(), 
-        mock_update_stats, 
-        mock_update_table, 
-        mock_status_callback
+        QSettings(), mock_update_stats, mock_update_table, mock_status_callback
     )
 
 
 @pytest.fixture
 def main_window(qtbot, file_handler, monkeypatch):
     """MainWindow フィクスチャ (FileHandlerとUI状態復元をモック)"""
-    monkeypatch.setattr(sgpo_editor.gui.main_window, "FileHandler", lambda *args, **kwargs: file_handler)
+    monkeypatch.setattr(
+        sgpo_editor.gui.main_window, "FileHandler", lambda *args, **kwargs: file_handler
+    )
 
     # UIManager の状態復元メソッドをモックして QSettings アクセスを回避
-    monkeypatch.setattr(sgpo_editor.gui.ui_setup.UIManager, "restore_dock_states", lambda self: None)
-    monkeypatch.setattr(sgpo_editor.gui.ui_setup.UIManager, "restore_window_state", lambda self: None)
+    monkeypatch.setattr(
+        sgpo_editor.gui.ui_setup.UIManager, "restore_dock_states", lambda self: None
+    )
+    monkeypatch.setattr(
+        sgpo_editor.gui.ui_setup.UIManager, "restore_window_state", lambda self: None
+    )
 
     window = MainWindow()
     qtbot.addWidget(window)
-    qtbot.waitUntil(lambda: hasattr(window, 'ui_manager') and hasattr(window.ui_manager, 'recent_files_menu') and window.ui_manager.recent_files_menu is not None, timeout=2000)
+    qtbot.waitUntil(
+        lambda: hasattr(window, "ui_manager")
+        and hasattr(window.ui_manager, "recent_files_menu")
+        and window.ui_manager.recent_files_menu is not None,
+        timeout=2000,
+    )
     return window
 
 
 def test_menu_uses_correct_settings(main_window, file_handler, monkeypatch):
     """メニューが正しい設定キー（新しい形式 'recent_files'）を使用しているか確認"""
     test_files = ["file1.po", "file2.po"]
-    
+
     # QSettings を直接操作して値を設定
     settings = QSettings()
-    settings.setValue("recent_files", json.dumps(test_files)) # 新しいキー
-    settings.setValue("recent_files_str", "old_value.po")     # 古いキー（無視されるはず）
+    settings.setValue("recent_files", json.dumps(test_files))  # 新しいキー
+    settings.setValue("recent_files_str", "old_value.po")  # 古いキー（無視されるはず）
     settings.sync()
 
     # ファイル存在チェック (Path.exists) をモックして常に True を返すようにする
@@ -101,21 +109,26 @@ def test_menu_uses_correct_settings(main_window, file_handler, monkeypatch):
 
     # 検証：メニューのアクションを確認
     # recent_files_menu は UIManager の属性
-    recent_menu = main_window.ui_manager.recent_files_menu 
+    recent_menu = main_window.ui_manager.recent_files_menu
     assert recent_menu is not None, "recent_files_menu was not created"
     menu_actions = recent_menu.actions()
-    
-    # メニューアイテムからファイルパスを抽出（セパレータやクリアを除く）
-    action_files = [action.data() for action in menu_actions if action.data()] 
 
-    print(f"Menu actions data: {action_files}") # デバッグ用
-    print(f"Expected files: {test_files}") # デバッグ用
+    # メニューアイテムからファイルパスを抽出（セパレータやクリアを除く）
+    action_files = [action.data() for action in menu_actions if action.data()]
+
+    print(f"Menu actions data: {action_files}")  # デバッグ用
+    print(f"Expected files: {test_files}")  # デバッグ用
 
     # 'recent_files' から読み込まれたファイルリストと一致するか確認
-    assert action_files == test_files, f"Menu actions {action_files} do not match expected {test_files}"
-    
+    assert action_files == test_files, (
+        f"Menu actions {action_files} do not match expected {test_files}"
+    )
+
     # 古いキー 'recent_files_str' の値が含まれていないことを確認
-    assert "old_value.po" not in action_files, "Old setting key 'recent_files_str' was incorrectly used"
+    assert "old_value.po" not in action_files, (
+        "Old setting key 'recent_files_str' was incorrectly used"
+    )
+
 
 def test_recent_files_menu_update(main_window, file_handler, monkeypatch):
     """最近使ったファイルのメニューが更新されるか確認"""
@@ -151,7 +164,8 @@ def test_recent_files_menu_update(main_window, file_handler, monkeypatch):
 
     # クリアアクションの確認
     assert actions[3].text() == "履歴をクリア (&C)"
-    assert actions[3].isEnabled() is True # 履歴があるので有効なはず
+    assert actions[3].isEnabled() is True  # 履歴があるので有効なはず
+
 
 @pytest.mark.asyncio
 async def test_open_file_updates_menu(main_window, file_handler, tmp_path, monkeypatch):
@@ -179,12 +193,12 @@ async def test_open_file_updates_menu(main_window, file_handler, tmp_path, monke
     # 2. ファイルを開く操作をシミュレート
     # FileHandler.open_file をモックして add_recent_file を呼び出すようにする
     async def mock_open_file(path: Optional[str] = None):
-        actual_path = path or str(file_path) # 引数がない場合はテストパスを使用
+        actual_path = path or str(file_path)  # 引数がない場合はテストパスを使用
         print(f"[Mock open_file] Opening: {actual_path}")
-        file_handler.add_recent_file(str(actual_path)) # 実際の add_recent_file を呼ぶ
+        file_handler.add_recent_file(str(actual_path))  # 実際の add_recent_file を呼ぶ
         # await asyncio.sleep(0) # 必要なら非同期処理を待機
-        return True # 成功したと仮定
-        
+        return True  # 成功したと仮定
+
     # FileHandler の open_file メソッドを非同期モックで置き換え
     # 注意: MainWindow._open_file は FileHandler.open_file を呼び出すため、
     #       MainWindow._open_file 自体のモックは不要かもしれない。
@@ -197,7 +211,7 @@ async def test_open_file_updates_menu(main_window, file_handler, tmp_path, monke
     # モック化した file_handler.open_file を直接呼び出す
     file_path_str = str(file_path)
     # await main_window._open_file(file_path_str) # この呼び出しを削除
-    await file_handler.open_file(file_path_str) # モックされた open_file を呼び出す
+    await file_handler.open_file(file_path_str)  # モックされた open_file を呼び出す
 
     # 3. ファイルを開いた後、メニューを更新して確認
     main_window._update_recent_files_menu()
@@ -205,7 +219,9 @@ async def test_open_file_updates_menu(main_window, file_handler, tmp_path, monke
     actions_after = recent_menu_after.actions()
 
     # 期待されるアクション数: ファイル1つ + セパレータ1つ + クリア1つ = 3
-    assert len(actions_after) == 3, f"Expected 3 actions after opening, but found {len(actions_after)}"
+    assert len(actions_after) == 3, (
+        f"Expected 3 actions after opening, but found {len(actions_after)}"
+    )
 
     # ファイルアクションの確認
     assert actions_after[0].text() == f"&1. {file_path.name}"
@@ -219,6 +235,7 @@ async def test_open_file_updates_menu(main_window, file_handler, tmp_path, monke
     assert actions_after[2].text() == "履歴をクリア (&C)"
     assert actions_after[2].isEnabled() is True
 
+
 @pytest.mark.asyncio
 async def test_clear_recent_files(main_window):
     """最近使ったファイル履歴のクリア機能を確認"""
@@ -227,12 +244,14 @@ async def test_clear_recent_files(main_window):
     main_window._update_recent_files_menu()
 
     # クリア前のアクション数を確認
-    assert main_window.recent_files_menu.addAction.call_count == 4 # ファイル2 + 区切り線 + クリア
+    assert (
+        main_window.recent_files_menu.addAction.call_count == 4
+    )  # ファイル2 + 区切り線 + クリア
 
     # クリアアクションを取得してトリガー
     # モックからトリガーするのではなく、対応するハンドラを直接呼び出す
     if asyncio.iscoroutinefunction(main_window._on_clear_recent_files_triggered):
-        await main_window._on_clear_recent_files_triggered() # await を追加
+        await main_window._on_clear_recent_files_triggered()  # await を追加
     else:
         main_window._on_clear_recent_files_triggered()
 
@@ -240,4 +259,4 @@ async def test_clear_recent_files(main_window):
     main_window.file_handler.clear_recent_files.assert_called_once()
     # メニューが更新されたか確認（クリアアクションのみになるはず）
     main_window._update_recent_files_menu()
-    assert main_window.recent_files_menu.addAction.call_count == 1 
+    assert main_window.recent_files_menu.addAction.call_count == 1

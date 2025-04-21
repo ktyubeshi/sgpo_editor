@@ -162,7 +162,7 @@ class TestTableGuiSync(unittest.TestCase):
                     self.assertEqual(
                         column_states[i]["internal"],
                         column_states[i]["gui"],
-                        f"Column {i} state mismatch"
+                        f"Column {i} state mismatch",
                     )
 
             # いくつかの列を表示に戻す
@@ -184,7 +184,7 @@ class TestTableGuiSync(unittest.TestCase):
                     self.assertEqual(
                         column_states[i]["internal"],
                         column_states[i]["gui"],
-                        f"Column {i} state mismatch after showing"
+                        f"Column {i} state mismatch after showing",
                     )
 
             # テーブル更新後も同期が保たれるか確認
@@ -215,7 +215,7 @@ class TestTableGuiSync(unittest.TestCase):
                 self.assertEqual(
                     column_states[i]["internal"],
                     column_states[i]["gui"],
-                    f"Column {i} state mismatch"
+                    f"Column {i} state mismatch",
                 )
 
 

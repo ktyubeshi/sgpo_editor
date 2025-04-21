@@ -70,6 +70,8 @@ def table_manager(qtbot):
     # モックオブジェクトを引数に追加
     mock_cache_manager = MagicMock(spec=EntryCacheManager)
     mock_sort_callback = MagicMock()
-    manager = TableManager(table, mock_cache_manager, sort_request_callback=mock_sort_callback)
+    manager = TableManager(
+        table, mock_cache_manager, sort_request_callback=mock_sort_callback
+    )
     qtbot.addWidget(table)
     return manager, table

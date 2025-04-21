@@ -46,7 +46,7 @@ def mock_entry() -> Mock:
     entry.check_result = "Check result"
     entry.debug_info = "Debug info"
     entry.review_comments = []
-    
+
     entry.key = "test_key"
     entry.flags = []
     entry.references = []
@@ -56,10 +56,10 @@ def mock_entry() -> Mock:
     entry.metadata = {}
     entry.overall_quality_score = None
     entry.score = None
-    
+
     entry.__getitem__ = lambda self, key: getattr(self, key)
     entry.__contains__ = lambda self, key: hasattr(self, key)
-    
+
     return entry
 
 
@@ -143,7 +143,7 @@ def test_entry_editor_entry_change_events(
         new_entry.metadata = {}
         new_entry.overall_quality_score = None
         new_entry.score = None
-        
+
         new_entry.__getitem__ = lambda self, key: getattr(self, key)
         new_entry.__contains__ = lambda self, key: hasattr(self, key)
 

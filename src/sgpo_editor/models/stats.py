@@ -17,7 +17,7 @@ class StatsModel(BaseModel):
     progress: float = Field(0.0, description="翻訳の進捗率（%）")
     file_name: str = Field("", description="POファイル名")
 
-    @field_validator('total', 'translated', 'untranslated', 'fuzzy', mode='before')
+    @field_validator("total", "translated", "untranslated", "fuzzy", mode="before")
     @classmethod
     def validate_int_fields(cls, v: Union[int, str, Any]) -> int:
         """整数フィールドのバリデーション"""
@@ -30,7 +30,7 @@ class StatsModel(BaseModel):
                 return 0
         return 0
 
-    @field_validator('progress', mode='before')
+    @field_validator("progress", mode="before")
     @classmethod
     def validate_float_fields(cls, v: Union[float, int, str, Any]) -> float:
         """浮動小数点フィールドのバリデーション"""
@@ -43,7 +43,7 @@ class StatsModel(BaseModel):
                 return 0.0
         return 0.0
 
-    @field_validator('file_name', mode='before')
+    @field_validator("file_name", mode="before")
     @classmethod
     def validate_str_fields(cls, v: Any) -> str:
         """文字列フィールドのバリデーション"""
@@ -54,7 +54,7 @@ class StatsModel(BaseModel):
     def __init__(self, **data: Any):
         super().__init__(**data)
         self.update_progress()
-        
+
     def __getitem__(self, key: str) -> object:
         """辞書形式でのアクセスをサポート"""
         return getattr(self, key)

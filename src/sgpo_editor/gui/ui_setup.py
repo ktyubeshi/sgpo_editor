@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 def run_async(coro):
     """非同期関数（コルーチンオブジェクト）をQtイベントループで実行するためのヘルパー関数"""
     import asyncio
+
     try:
         loop = asyncio.get_running_loop()
         if loop.is_running():
@@ -367,7 +368,9 @@ class UIManager:
         print(f"Menu clicked for column {index}")
         toggle_callback(index)
 
-    def update_recent_files_menu(self, callback: Optional[Callable[[str], Any]]) -> None:
+    def update_recent_files_menu(
+        self, callback: Optional[Callable[[str], Any]]
+    ) -> None:
         """最近使用したファイルメニューの更新
 
         Args:
@@ -382,7 +385,9 @@ class UIManager:
 
         # FileHandler経由で最近使ったファイルリストを取得
         recent_files: list[str]
-        if hasattr(self.main_window, 'file_handler') and hasattr(self.main_window.file_handler, 'get_recent_files'):
+        if hasattr(self.main_window, "file_handler") and hasattr(
+            self.main_window.file_handler, "get_recent_files"
+        ):
             try:
                 recent_files = list(self.main_window.file_handler.get_recent_files())
             except Exception:
@@ -412,7 +417,9 @@ class UIManager:
             action = QAction(action_text, self.main_window)
             action.setData(file_path_str)  # ファイルパスをデータとして保持
             # functools.partial を使ってコールバックに関数を渡す
-            action.triggered.connect(lambda checked=False, p=file_path_str: run_async(callback(p)))
+            action.triggered.connect(
+                lambda checked=False, p=file_path_str: run_async(callback(p))
+            )
             self.recent_files_menu.addAction(action)
             self.recent_file_actions.append(action)
 

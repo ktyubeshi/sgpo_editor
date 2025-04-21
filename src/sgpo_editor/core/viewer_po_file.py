@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class ViewerPOFile:
-    def get_entries_by_keys(self, keys: list[str]) -> dict[str, 'EntryModel']:
+    def get_entries_by_keys(self, keys: list[str]) -> dict[str, "EntryModel"]:
         """複数のキーに対応するエントリを一括取得"""
         return self.retriever.get_entries_by_keys(keys)
 
@@ -74,40 +74,40 @@ class ViewerPOFile:
         # DBとキャッシュの共有インスタンスを作成
         self.db_accessor = db_accessor
         self.cache_manager = cache_manager or EntryCacheManager()
-        
+
         # 各コンポーネントの初期化
         self.base = POFileBaseComponent(
             library_type=library_type,
             db_accessor=self.db_accessor,
             cache_manager=self.cache_manager,
         )
-        
+
         # データベースアクセサが指定されていない場合は、BaseComponentから取得
         if not self.db_accessor:
             self.db_accessor = self.base.db_accessor
-        
+
         # 各コンポーネントの初期化
         self.retriever = EntryRetrieverComponent(
             db_accessor=self.db_accessor,
             cache_manager=self.cache_manager,
         )
-        
+
         self.filter = FilterComponent(
             db_accessor=self.db_accessor,
             cache_manager=self.cache_manager,
         )
-        
+
         self.updater = UpdaterComponent(
             db_accessor=self.db_accessor,
             cache_manager=self.cache_manager,
         )
-        
+
         self.stats = StatsComponent(
             db_accessor=self.db_accessor,
             cache_manager=self.cache_manager,
             library_type=library_type,
         )
-        
+
         logger.debug("ViewerPOFile: コンポジション構造の初期化完了")
 
     async def load(self, path: Union[str, Path]) -> None:
@@ -118,11 +118,11 @@ class ViewerPOFile:
         """
         # POFileBaseComponentの読み込み機能を利用
         await self.base.load(path)
-        
+
         # 他のコンポーネントにも情報を共有
         self.stats.set_path(self.base.path)
         self.stats.set_metadata(self.base.metadata)
-        
+
         logger.debug(f"ViewerPOFile.load: {path} の読み込みが完了しました")
 
     def get_all_entries(self) -> List[EntryModel]:
@@ -315,8 +315,14 @@ class ViewerPOFile:
             List[EntryModel]: フィルタ条件に一致するエントリのリスト
         """
         entries = self.filter.get_filtered_entries(
-            filter_text, filter_keyword, match_mode, case_sensitive,
-            filter_status, filter_obsolete, update_filter, search_text
+            filter_text,
+            filter_keyword,
+            match_mode,
+            case_sensitive,
+            filter_status,
+            filter_obsolete,
+            update_filter,
+            search_text,
         )
         # FilterComponent 側の filter_status を同期
         self.filter_status = self.filter.filter_status
@@ -431,4 +437,4 @@ class ViewerPOFile:
         Args:
             enabled: キャッシュを有効にするかどうか
         """
-        self.base.enable_cache(enabled) 
+        self.base.enable_cache(enabled)

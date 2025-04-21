@@ -69,7 +69,7 @@ async def test_entry_list_status_display(app, sample_po_path):
     """エントリリストのステータス表示統合テスト"""
     # テーブルとテーブルマネージャの用意
     mock_po = MagicMock()
-    entries = create_mock_entry_dicts(4) # 例として4件作成
+    entries = create_mock_entry_dicts(4)  # 例として4件作成
 
     mock_po.get_entries_by_keys.return_value = {e.key: e for e in entries}
     mock_table = MagicMock(spec=QTableWidget)
@@ -78,10 +78,10 @@ async def test_entry_list_status_display(app, sample_po_path):
 
     # EntryListFacade の初期化引数を修正
     entry_list = EntryListFacade(
-        mock_table, 
-        table_manager, 
-        MagicMock(spec=SearchWidget), # SearchWidget のモックを追加
-        lambda: mock_po # get_current_po を渡す
+        mock_table,
+        table_manager,
+        MagicMock(spec=SearchWidget),  # SearchWidget のモックを追加
+        lambda: mock_po,  # get_current_po を渡す
     )
 
     # POファイルの読み込み
@@ -95,9 +95,7 @@ async def test_entry_list_status_display(app, sample_po_path):
     table_manager.update_table(entries)
 
     # 行数チェック
-    assert mock_table.rowCount() == 4, (
-        f"Expected 4 rows, got {mock_table.rowCount()}"
-    )
+    assert mock_table.rowCount() == 4, f"Expected 4 rows, got {mock_table.rowCount()}"
 
     # 状態列の内容チェック
     states = [mock_table.item(i, 4).text() for i in range(mock_table.rowCount())]

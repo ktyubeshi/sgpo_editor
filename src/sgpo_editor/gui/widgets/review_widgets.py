@@ -233,10 +233,7 @@ class ReviewCommentWidget(QWidget):
                 "comment": comment,
                 "timestamp": comment_obj.get("timestamp", ""),
             }
-            self._db.add_review_comment(
-                self._current_entry.key,
-                comment_dict
-            )
+            self._db.add_review_comment(self._current_entry.key, comment_dict)
 
         # UIを更新
         self.set_entry(self._current_entry)
@@ -269,10 +266,7 @@ class ReviewCommentWidget(QWidget):
             self._current_entry.remove_review_comment(comment_id)
 
             # データベースからも即時削除
-            self._db.remove_review_comment(
-                self._current_entry.key,
-                comment_id
-            )
+            self._db.remove_review_comment(self._current_entry.key, comment_id)
 
             # UIを更新
             self.set_entry(self._current_entry)
@@ -306,12 +300,9 @@ class ReviewCommentWidget(QWidget):
             "id": comment_obj["id"],
             "author": author,
             "comment": comment,
-            "timestamp": comment_obj["timestamp"]
+            "timestamp": comment_obj["timestamp"],
         }
-        self._db.add_review_comment(
-            self._current_entry.key,
-            comment_dict
-        )
+        self._db.add_review_comment(self._current_entry.key, comment_dict)
 
         # UIを更新
         self.set_entry(self._current_entry)
@@ -772,7 +763,7 @@ class CheckResultWidget(QWidget):
                     code = result.get("code", "")
                     if code:
                         self._db.remove_check_result(self._current_entry.key, str(code))
-            
+
             logger.debug(f"チェック結果をクリアしました: {self._current_entry.key}")
 
             # エントリオブジェクトからも削除

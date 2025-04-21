@@ -67,7 +67,9 @@ class EventHandler(QObject):
         self._drag_timer = QTimer()
         self._drag_timer.setSingleShot(True)
 
-        logger.warning("EventHandlerは廃止予定です。新しいコードではEntryListFacadeとEntryEditorFacadeを使用してください。")
+        logger.warning(
+            "EventHandlerは廃止予定です。新しいコードではEntryListFacadeとEntryEditorFacadeを使用してください。"
+        )
 
     def setup_connections(self) -> None:
         """イベント接続をセットアップする
@@ -89,4 +91,6 @@ class EventHandler(QObject):
         row = item.row()
         key = self.entry_cache_manager.get_key_for_row(row)
         if key:
-            logger.debug(f"EventHandler: Item double clicked: row={row}, key={key} (廃止予定のメソッド)")
+            logger.debug(
+                f"EventHandler: Item double clicked: row={row}, key={key} (廃止予定のメソッド)"
+            )

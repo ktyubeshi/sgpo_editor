@@ -123,7 +123,9 @@ class TestFilterResetBasic:
         #     po_file.search_text is None or po_file.search_text.strip() == ""
         # ), f"search_textがNoneになっていません: {po_file.search_text}"
         current_filters = po_file.get_filters()
-        assert current_filters.get("search_text") == "", f"search_textが空になっていません: {current_filters.get('search_text')}"
+        assert current_filters.get("search_text") == "", (
+            f"search_textが空になっていません: {current_filters.get('search_text')}"
+        )
 
         print(
             "[TEST] 空白文字フィルタテスト成功: 初期状態とリセット後のエントリ数が一致しました"
@@ -178,7 +180,9 @@ class TestFilterResetBasic:
         #     po_file.search_text is None or po_file.search_text.strip() == ""
         # ), f"search_textがNoneになっていません: {po_file.search_text}"
         current_filters = po_file.get_filters()
-        assert current_filters.get("search_text") == "", f"search_textが空になっていません: {current_filters.get('search_text')}"
+        assert current_filters.get("search_text") == "", (
+            f"search_textが空になっていません: {current_filters.get('search_text')}"
+        )
 
         print(
             "[TEST] Noneフィルタテスト成功: 初期状態とリセット後のエントリ数が一致しました"
@@ -255,6 +259,4 @@ class TestFilterResetBasic:
         print(f"[TEST] データベースから直接取得したエントリ数: {db_count}件")
 
         # データベース取得結果と初期状態が一致するか検証
-        assert db_count == initial_count, (
-            "データベース取得結果が初期状態と異なります"
-        )
+        assert db_count == initial_count, "データベース取得結果が初期状態と異なります"

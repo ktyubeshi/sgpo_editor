@@ -96,7 +96,10 @@ class MetadataPanel(QWidget):
         self.tree.expandAll()
 
     def add_metadata_item(
-        self, key: str, value: MetadataValueType, parent: Optional[QTreeWidgetItem] = None
+        self,
+        key: str,
+        value: MetadataValueType,
+        parent: Optional[QTreeWidgetItem] = None,
     ) -> QTreeWidgetItem:
         """メタデータアイテムをツリーに追加
 

@@ -152,9 +152,7 @@ class TestFilterReset:
         print(f"[TEST] データベースから直接取得したエントリ数: {db_count}件")
 
         # データベース取得結果と初期状態が一致するか検証
-        assert db_count == initial_count, (
-            "データベース取得結果が初期状態と異なります"
-        )
+        assert db_count == initial_count, "データベース取得結果が初期状態と異なります"
 
         print(
             "[TEST] フィルタ状態詳細テスト成功: 初期状態とリセット後のエントリ数が一致しました"

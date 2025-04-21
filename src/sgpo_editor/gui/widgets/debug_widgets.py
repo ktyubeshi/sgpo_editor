@@ -136,7 +136,9 @@ class EntryDebugWidget(QWidget):
             self._update_debug_display()
             self.expand_button.setText("すべて展開")
 
-    def _format_dict_as_text(self, data: Union[EntryDict, List[Any], Any], indent: int = 0) -> str:
+    def _format_dict_as_text(
+        self, data: Union[EntryDict, List[Any], Any], indent: int = 0
+    ) -> str:
         """辞書を階層的なテキスト形式にフォーマット
 
         Args:

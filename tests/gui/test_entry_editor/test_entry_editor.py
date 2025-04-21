@@ -36,10 +36,10 @@ def mock_entry():
     entry.metadata = {}
     entry.overall_quality_score = None
     entry.score = None
-    
+
     entry.__getitem__ = lambda self, key: getattr(self, key)
     entry.__contains__ = lambda self, key: hasattr(self, key)
-    
+
     return entry
 
 

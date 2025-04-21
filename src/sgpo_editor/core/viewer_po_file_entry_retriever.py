@@ -166,9 +166,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
             return
 
         # キャッシュにないキーを特定
-        missing_keys = [
-            key for key in keys if not self.cache_manager.exists_entry(key)
-        ]
+        missing_keys = [key for key in keys if not self.cache_manager.exists_entry(key)]
         if not missing_keys:
             return
 

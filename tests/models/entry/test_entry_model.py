@@ -471,9 +471,7 @@ class TestEntryModel(unittest.TestCase):
         # 拡張フィールドを設定
         entry.review_comment = "要確認"
         entry.quality_score = 85
-        entry.check_results = [
-            {"type": "warning", "message": "訳語の不統一"}
-        ]
+        entry.check_results = [{"type": "warning", "message": "訳語の不統一"}]
 
         # to_dictでディクショナリに変換
         data = entry.to_dict()
@@ -484,7 +482,9 @@ class TestEntryModel(unittest.TestCase):
         self.assertEqual(data["msgstr"], "テスト")
         self.assertEqual(data["review_comment"], "要確認")
         self.assertEqual(data["quality_score"], 85)
-        self.assertEqual(data["check_results"], [{"type": "warning", "message": "訳語の不統一"}])
+        self.assertEqual(
+            data["check_results"], [{"type": "warning", "message": "訳語の不統一"}]
+        )
 
     def test_from_dict_with_review_data(self):
         # 拡張フィールドを含むfrom_dictのテスト
@@ -496,9 +496,7 @@ class TestEntryModel(unittest.TestCase):
             "position": 1,
             "review_comment": "要確認",
             "quality_score": 85,
-            "check_results": [
-                {"type": "warning", "message": "訳語の不統一"}
-            ],
+            "check_results": [{"type": "warning", "message": "訳語の不統一"}],
         }
 
         # from_dictでEntryModelに変換
@@ -512,7 +510,9 @@ class TestEntryModel(unittest.TestCase):
         self.assertEqual(entry.position, 1)
         self.assertEqual(entry.review_comment, "要確認")
         self.assertEqual(entry.quality_score, 85)
-        self.assertEqual(entry.check_results, [{"type": "warning", "message": "訳語の不統一"}])
+        self.assertEqual(
+            entry.check_results, [{"type": "warning", "message": "訳語の不統一"}]
+        )
 
         # 拡張フィールドがない場合もデフォルト値で正しく設定される
         data2 = {
@@ -598,7 +598,7 @@ class TestEntryModel(unittest.TestCase):
         # メタデータを削除
         del entry2.metadata["language"]
         self.assertNotIn("language", entry2.metadata)
-        
+
         # 丸ごと置き換え
         new_metadata = {"version": "1.0"}
         entry2.metadata = new_metadata

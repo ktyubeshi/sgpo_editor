@@ -13,8 +13,10 @@ logger = logging.getLogger(__name__)
 # メタデータ識別用のプレフィックス
 METADATA_PREFIX = "#. metadata: "
 
+
 class MetadataDict(TypedDict, total=False):
     """メタデータの型定義"""
+
     author: str
     date: str
     version: str

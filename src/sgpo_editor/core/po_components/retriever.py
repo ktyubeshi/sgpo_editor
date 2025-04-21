@@ -95,9 +95,7 @@ class EntryRetrieverComponent:
         Returns:
             Dict[str, EntryModel]: キーとエントリモデルの辞書
         """
-        logger.debug(
-            f"EntryRetrieverComponent.get_entries_by_keys: キー数={len(keys)}"
-        )
+        logger.debug(f"EntryRetrieverComponent.get_entries_by_keys: キー数={len(keys)}")
         result = {}
 
         # キャッシュにあるエントリを取得
@@ -182,9 +180,7 @@ class EntryRetrieverComponent:
             return
 
         # キャッシュにないキーを特定
-        missing_keys = [
-            key for key in keys if not self.cache_manager.exists_entry(key)
-        ]
+        missing_keys = [key for key in keys if not self.cache_manager.exists_entry(key)]
         if not missing_keys:
             return
 
@@ -208,7 +204,7 @@ class EntryRetrieverComponent:
         logger.debug(
             f"EntryRetrieverComponent.get_entry_at: 位置={position}のエントリを取得"
         )
-        
+
         # 位置をキーに変換（文字列として）
         key = str(position)
         return self.get_entry_by_key(key)
@@ -229,7 +225,7 @@ class EntryRetrieverComponent:
             case_sensitive=False,
             filter_status=None,
             filter_obsolete=True,
-            search_text=None
+            search_text=None,
         )
 
         # 既にEntryModelのリストが返されるので変換は不要
@@ -251,4 +247,4 @@ class EntryRetrieverComponent:
         Returns:
             int: ユニークなmsgidの数
         """
-        return self.db_accessor.get_unique_msgid_count() if self.db_accessor else 0 
+        return self.db_accessor.get_unique_msgid_count() if self.db_accessor else 0

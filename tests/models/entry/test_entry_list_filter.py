@@ -104,7 +104,11 @@ def table_manager(mock_entries):
 
     mock_search_widget = MagicMock()
     entry_list = EntryListFacade(
-        mock_table, table_manager, mock_search_widget, mock_cache_manager, lambda: mock_po
+        mock_table,
+        table_manager,
+        mock_search_widget,
+        mock_cache_manager,
+        lambda: mock_po,
     )
 
     return entry_list

@@ -228,7 +228,9 @@ class EntryEditorFacade(QObject):
         Args:
             entry: 表示するエントリ
         """
-        logger.debug(f"EntryEditorFacade.display_entry: エントリ {entry.key if entry else 'None'} を表示します")
+        logger.debug(
+            f"EntryEditorFacade.display_entry: エントリ {entry.key if entry else 'None'} を表示します"
+        )
         self._entry_editor.set_entry(entry)
 
     def set_entry(self, entry: Optional[EntryModel]) -> None:
@@ -248,13 +250,17 @@ class EntryEditorFacade(QObject):
         logger.debug(f"EntryEditorFacade.display_entry_by_key: key={key}")
         current_po = self._get_current_po()
         if not current_po:
-            logger.warning("EntryEditorFacade.display_entry_by_key: POファイルが読み込まれていません")
+            logger.warning(
+                "EntryEditorFacade.display_entry_by_key: POファイルが読み込まれていません"
+            )
             self._entry_editor.set_entry(None)
             return
 
         entry = current_po.get_entry_by_key(key)
         if entry is None:
-            logger.warning(f"EntryEditorFacade.display_entry_by_key: key='{key}' のエントリが見つかりません")
+            logger.warning(
+                f"EntryEditorFacade.display_entry_by_key: key='{key}' のエントリが見つかりません"
+            )
             self._entry_editor.set_entry(None)
             return
 
@@ -264,7 +270,9 @@ class EntryEditorFacade(QObject):
         elif not isinstance(entry.msgid, str):
             entry.msgid = str(entry.msgid)
 
-        logger.debug(f"EntryEditorFacade.display_entry_by_key: エディタにエントリを表示 key={key}")
+        logger.debug(
+            f"EntryEditorFacade.display_entry_by_key: エディタにエントリを表示 key={key}"
+        )
         self._entry_editor.set_entry(entry)
 
     def change_layout(self, layout_type: LayoutType) -> None:
@@ -273,7 +281,9 @@ class EntryEditorFacade(QObject):
         Args:
             layout_type: 新しいレイアウトタイプ
         """
-        logger.debug(f"EntryEditorFacade.change_layout: レイアウトを {layout_type} に変更します")
+        logger.debug(
+            f"EntryEditorFacade.change_layout: レイアウトを {layout_type} に変更します"
+        )
         self._entry_editor.change_layout(layout_type)
 
     def apply_changes(self) -> bool:

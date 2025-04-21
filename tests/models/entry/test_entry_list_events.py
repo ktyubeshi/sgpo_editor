@@ -27,11 +27,61 @@ def app():
 def mock_entries():
     """モックエントリのリスト"""
     return [
-        EntryModel(key="key_0", position=0, msgid="Hello", msgstr="こんにちは", msgctxt="greeting", obsolete=False, fuzzy=False, flags=[], metadata={}),
-        EntryModel(key="key_1", position=1, msgid="World", msgstr="世界", msgctxt="noun", obsolete=False, fuzzy=False, flags=[], metadata={}),
-        EntryModel(key="key_2", position=2, msgid="Test", msgstr="", msgctxt="verb", obsolete=False, fuzzy=True, flags=['fuzzy'], metadata={}),
-        EntryModel(key="key_3", position=3, msgid="Obsolete", msgstr="廃止", msgctxt="", obsolete=True, fuzzy=False, flags=[], metadata={}),
-        EntryModel(key="key_4", position=4, msgid="NoScore", msgstr="未翻訳", msgctxt="quality", obsolete=False, fuzzy=False, flags=[], metadata={}),
+        EntryModel(
+            key="key_0",
+            position=0,
+            msgid="Hello",
+            msgstr="こんにちは",
+            msgctxt="greeting",
+            obsolete=False,
+            fuzzy=False,
+            flags=[],
+            metadata={},
+        ),
+        EntryModel(
+            key="key_1",
+            position=1,
+            msgid="World",
+            msgstr="世界",
+            msgctxt="noun",
+            obsolete=False,
+            fuzzy=False,
+            flags=[],
+            metadata={},
+        ),
+        EntryModel(
+            key="key_2",
+            position=2,
+            msgid="Test",
+            msgstr="",
+            msgctxt="verb",
+            obsolete=False,
+            fuzzy=True,
+            flags=["fuzzy"],
+            metadata={},
+        ),
+        EntryModel(
+            key="key_3",
+            position=3,
+            msgid="Obsolete",
+            msgstr="廃止",
+            msgctxt="",
+            obsolete=True,
+            fuzzy=False,
+            flags=[],
+            metadata={},
+        ),
+        EntryModel(
+            key="key_4",
+            position=4,
+            msgid="NoScore",
+            msgstr="未翻訳",
+            msgctxt="quality",
+            obsolete=False,
+            fuzzy=False,
+            flags=[],
+            metadata={},
+        ),
     ]
 
 
@@ -43,7 +93,12 @@ def table_manager(qtbot):
     mock_sort_callback = MagicMock()
     # TableManager インスタンスの作成
     # get_current_poはNoneを返すように設定
-    manager = TableManager(table, mock_cache_manager, get_current_po=lambda: None, sort_request_callback=mock_sort_callback)
+    manager = TableManager(
+        table,
+        mock_cache_manager,
+        get_current_po=lambda: None,
+        sort_request_callback=mock_sort_callback,
+    )
     # 初期化中にエラーが発生しないことを確認
     assert manager is not None
     qtbot.addWidget(table)
@@ -101,11 +156,14 @@ class TestEntryListEvents:
             # 行選択イベントをシミュレート
             # 選択モデルをシミュレートするための準備
             selection_model_mock = MagicMock()
-            selection_model_mock.selectedRows.return_value = [current] # 選択された行を返すように設定
+            selection_model_mock.selectedRows.return_value = [
+                current
+            ]  # 選択された行を返すように設定
 
             # テーブルウィジェットの選択モデルをモックに置き換え
-            with patch.object(self.manager.table, "selectionModel", return_value=selection_model_mock):
-
+            with patch.object(
+                self.manager.table, "selectionModel", return_value=selection_model_mock
+            ):
                 # 選択行のキーを取得する処理をモック
                 with patch.object(self.manager, "get_key_at_row", return_value="key_2"):
                     # _on_selection_changedメソッドが実際に存在するか確認し、存在しない場合は代替テスト
@@ -205,7 +263,7 @@ class TestEntryListEvents:
                     callback_mock.assert_called_once()
                     args, _ = callback_mock.call_args
                     assert len(args) == 2
-                    assert args[0] is mock_entries[1] # 2番目のエントリ
+                    assert args[0] is mock_entries[1]  # 2番目のエントリ
                     assert args[1] == column
                 else:
                     # 代替テスト: 直接コールバックを呼び出す

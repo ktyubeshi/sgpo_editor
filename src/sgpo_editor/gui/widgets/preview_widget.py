@@ -94,7 +94,9 @@ class PreviewWidget(QWidget):
             # まず二重バックスラッシュを一時的なプレースホルダに置換
             temp_text = text.replace("\\\\", "__BACKSLASH__")
             # \r, \n などを置換
-            processed_text = temp_text.replace("\\r", "\r").replace("\\n", "\n").replace("\\t", "\t") # 他のエスケープも必要なら追加
+            processed_text = (
+                temp_text.replace("\\r", "\r").replace("\\n", "\n").replace("\\t", "\t")
+            )  # 他のエスケープも必要なら追加
             # プレースホルダを元に戻す
             return processed_text.replace("__BACKSLASH__", "\\")
         except Exception as e:
@@ -221,13 +223,13 @@ class PreviewDialog(QDialog):
 
     def set_update_signal(self, signal: Signal) -> None:
         """エントリ更新シグナルを接続する
-        
+
         Args:
             signal: エントリ更新シグナル (int)
         """
         # シグナルを保存
         self._update_signal = signal
-        
+
         # シグナルを接続
         signal.connect(self._on_entry_updated)
 

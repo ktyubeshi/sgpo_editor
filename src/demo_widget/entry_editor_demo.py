@@ -49,8 +49,6 @@ except ImportError as e:
     USE_MOCK_IMPLEMENTATION = True
 
 
-
-
 class EntryEditor(QWidget):
     """エントリエディタのモック実装"""
 
@@ -62,7 +60,7 @@ class EntryEditor(QWidget):
         self.entry_changed = MockSignal(int)
         self.database = None
         self.current_entry = None
-        
+
         # UI要素の作成
         self._setup_ui()
         logging.debug("EntryEditor.__init__: 初期化完了")
@@ -71,43 +69,43 @@ class EntryEditor(QWidget):
         """UIセットアップ"""
         logging.debug("EntryEditor._setup_ui: UIセットアップ開始")
         layout = QVBoxLayout(self)
-        
+
         # 原文ラベル
         self.msgid_label = QLabel("原文:")
         layout.addWidget(self.msgid_label)
-        
+
         # 原文表示エリア
         self.msgid_display = QLabel()
         self.msgid_display.setStyleSheet("background-color: #f0f0f0; padding: 5px;")
         self.msgid_display.setWordWrap(True)
         layout.addWidget(self.msgid_display)
-        
+
         # 訳文ラベル
         self.msgstr_label = QLabel("訳文:")
         layout.addWidget(self.msgstr_label)
-        
+
         # 訳文編集エリア
         self.msgstr_edit = QTextEdit()
         self.msgstr_edit.textChanged.connect(self._on_text_changed)
         layout.addWidget(self.msgstr_edit)
-        
+
         # ファジーチェックボックス
         self.fuzzy_checkbox = QCheckBox("ファジー")
         layout.addWidget(self.fuzzy_checkbox)
-        
+
         # 適用ボタン
         self.apply_button = QPushButton("適用")
         self.apply_button.clicked.connect(self._on_apply_clicked)
         layout.addWidget(self.apply_button)
         logging.debug("EntryEditor._setup_ui: UIセットアップ完了")
-    
+
     def _on_apply_clicked(self):
         """適用ボタンがクリックされたときの処理"""
         if self.current_entry:
             self.current_entry.msgstr = self.msgstr_edit.toPlainText()
             self.current_entry.fuzzy = self.fuzzy_checkbox.isChecked()
             self.apply_clicked.emit()
-    
+
     def _on_text_changed(self):
         """テキストが変更されたときの処理"""
         self.text_changed.emit()
@@ -117,7 +115,9 @@ class EntryEditor(QWidget):
         logging.debug(f"EntryEditor.set_entry: エントリ設定開始 entry={entry}")
         self.current_entry = entry
         if entry:
-            logging.debug(f"EntryEditor.set_entry: エントリデータ設定 msgid={entry.msgid[:20]}...")
+            logging.debug(
+                f"EntryEditor.set_entry: エントリデータ設定 msgid={entry.msgid[:20]}..."
+            )
             self.msgid_display.setText(entry.msgid)
             self.msgstr_edit.setPlainText(entry.msgstr)
             self.fuzzy_checkbox.setChecked(entry.fuzzy)
@@ -136,6 +136,7 @@ class EntryEditor(QWidget):
         # モックなので実際には何もしない
         pass
 
+
 class MockSignal:
     """シグナルをモックするクラス"""
 
@@ -146,11 +147,12 @@ class MockSignal:
     def connect(self, callback):
         """コールバックを接続"""
         self.connected_callbacks.append(callback)
-        
+
     def emit(self, *args):
         """シグナル発火"""
         for callback in self.connected_callbacks:
             callback(*args)
+
 
 class LayoutType:
     """レイアウトタイプの定数"""
@@ -165,6 +167,7 @@ class LayoutType:
             return "LAYOUT1"
         else:
             return "LAYOUT2"
+
 
 class EntryModel:
     """エントリモデルのモック実装"""
@@ -195,6 +198,7 @@ class EntryModel:
         else:
             return TranslationStatus.TRANSLATED
 
+
 class TranslationStatus:
     """翻訳ステータスの定数"""
 
@@ -206,8 +210,6 @@ class TranslationStatus:
 
 # モックデータベースクラス
 class MockDatabase:
-
-
     def __init__(self):
         self.entries: Dict[str, Dict] = {}
         self.entry_fields: Dict[str, Dict[str, Any]] = {}
@@ -277,12 +279,12 @@ class EntryEditorDemo(QMainWindow):
         # エントリリストの初期化
         self._populate_entry_list()
         logging.debug("EntryEditorDemo.__init__: エントリリスト初期化完了")
-        
+
         # 初期エントリの選択（あれば）
         if self.entry_list.count() > 0:
             self.entry_list.setCurrentRow(0)
             logging.debug("EntryEditorDemo.__init__: 初期エントリ選択完了")
-        
+
         logging.debug("EntryEditorDemo.__init__: 初期化完了")
 
     def _setup_ui(self):
@@ -371,24 +373,32 @@ class EntryEditorDemo(QMainWindow):
 
         # 選択されたエントリのキーを取得
         key = current.data(Qt.ItemDataRole.UserRole)
-        logging.debug(f"EntryEditorDemo._on_entry_selected: キー '{key}' が選択されました")
+        logging.debug(
+            f"EntryEditorDemo._on_entry_selected: キー '{key}' が選択されました"
+        )
 
         # キーからエントリを取得
         selected_entry = next((e for e in self.sample_entries if e.key == key), None)
 
         if selected_entry:
-            logging.debug(f"EntryEditorDemo._on_entry_selected: エントリを見つけました: {selected_entry.key}")
+            logging.debug(
+                f"EntryEditorDemo._on_entry_selected: エントリを見つけました: {selected_entry.key}"
+            )
             self.entry_editor.set_entry(selected_entry)
             self.statusBar().showMessage(f"エントリ '{key}' を選択しました")
         else:
-            logging.error(f"EntryEditorDemo._on_entry_selected: キー '{key}' に対応するエントリが見つかりません")
+            logging.error(
+                f"EntryEditorDemo._on_entry_selected: キー '{key}' に対応するエントリが見つかりません"
+            )
             self.entry_editor.set_entry(None)
 
     def _on_layout_changed(self, index):
         """レイアウト変更時の処理"""
         layout_type = self.layout_combo.currentData()
         self.entry_editor.set_layout_type(layout_type)
-        self.statusBar().showMessage(f"レイアウトを変更しました: {LayoutType.get_name(layout_type)}")
+        self.statusBar().showMessage(
+            f"レイアウトを変更しました: {LayoutType.get_name(layout_type)}"
+        )
 
     def _on_apply_clicked(self):
         """Apply ボタンクリック時の処理"""
@@ -468,11 +478,9 @@ def main():
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=[logging.StreamHandler(sys.stdout)],
     )
-    
+
     logging.debug("デモアプリケーション開始")
 
     try:

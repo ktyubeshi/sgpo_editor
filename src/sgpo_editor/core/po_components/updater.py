@@ -54,10 +54,19 @@ class UpdaterComponent:
 
         # フィールド名がEntryModelの有効なフィールドか確認
         valid_fields = [
-            "msgid", "msgstr", "msgctxt", "flags", "obsolete",
-            "msgid_plural", "msgstr_plural", "previous_msgid",
-            "previous_msgid_plural", "previous_msgctxt", "comment",
-            "tcomment", "occurrences"
+            "msgid",
+            "msgstr",
+            "msgctxt",
+            "flags",
+            "obsolete",
+            "msgid_plural",
+            "msgstr_plural",
+            "previous_msgid",
+            "previous_msgid_plural",
+            "previous_msgctxt",
+            "comment",
+            "tcomment",
+            "occurrences",
         ]
         if field not in valid_fields:
             logger.error(f"無効なフィールド名: {field}")
@@ -76,7 +85,7 @@ class UpdaterComponent:
         # キャッシュから削除して次回アクセス時に再取得
         self.cache_manager.invalidate_entry(key)
         self.cache_manager.invalidate_filter_cache()
-        
+
         # 変更フラグを設定
         self.modified = True
 
@@ -135,7 +144,9 @@ class UpdaterComponent:
         Returns:
             bool: 操作が成功した場合はTrue、失敗した場合はFalse
         """
-        logger.debug(f"UpdaterComponent.set_flag: key={key}, flag={flag}, value={value}")
+        logger.debug(
+            f"UpdaterComponent.set_flag: key={key}, flag={flag}, value={value}"
+        )
 
         # データベースからエントリを取得
         entry_dict = self.db_accessor.get_entry_by_key(key)
@@ -228,4 +239,4 @@ class UpdaterComponent:
         """
         if self.cache_manager:
             self.cache_manager.clear_filter_cache()
-            self.cache_manager.clear_cache() 
+            self.cache_manager.clear_cache()

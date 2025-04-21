@@ -93,9 +93,9 @@ class TestFilterDebug:
 
         # 4. 検証: リセット後のエントリ数が初期状態と同じになるはず
         logger.debug(
-            f"\n[DEBUG] 検証: リセット後({reset_count}) == 初期状態({initial_count}) -> {
-                reset_count == initial_count
-            }"
+            f"\n[DEBUG] 検証: リセット後({reset_count}) == 初期状態({
+                initial_count
+            }) -> {reset_count == initial_count}"
         )
         assert reset_count == initial_count, (
             f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"
@@ -105,9 +105,7 @@ class TestFilterDebug:
         db_entries = po_file.db_accessor.get_filtered_entries(search_text=None)
         db_count = len(db_entries)
         logger.debug(f"[DEBUG] データベース直接取得のエントリ数: {db_count}件")
-        assert db_count == initial_count, (
-            "データベース取得結果が初期状態と異なります"
-        )
+        assert db_count == initial_count, "データベース取得結果が初期状態と異なります"
 
         logger.info("--- デバッグテスト終了 ---")
 

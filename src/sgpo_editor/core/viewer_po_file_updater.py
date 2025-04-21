@@ -19,9 +19,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
     このクラスは、ViewerPOFileFilterを継承し、エントリ更新に関連する機能を実装します。
     """
 
-    def _entry_needs_update(
-        self, entry_obj: EntryModel, entry_dict: EntryDict
-    ) -> bool:
+    def _entry_needs_update(self, entry_obj: EntryModel, entry_dict: EntryDict) -> bool:
         """エントリオブジェクトが更新を必要とするかどうかを判断する
 
         Args:
@@ -97,9 +95,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             logger.error(f"エントリ更新エラー: {e}")
             return False
 
-    def update_entries(
-        self, entries: EntryInputMap
-    ) -> bool:
+    def update_entries(self, entries: EntryInputMap) -> bool:
         """複数のエントリを一括更新する
 
         Args:
@@ -157,9 +153,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             logger.error(f"複数エントリ更新エラー: {e}")
             return False
 
-    def import_entries(
-        self, entries: EntryInputMap
-    ) -> bool:
+    def import_entries(self, entries: EntryInputMap) -> bool:
         """エントリをインポートする（既存エントリの上書き）
 
         Args:

@@ -15,7 +15,9 @@ class TestEntryStructure(unittest.TestCase):
         # モックをコンストラクタに渡す
         self.mock_db_accessor = MagicMock()
         self.mock_cache_manager = MagicMock()
-        self.viewer = ViewerPOFileRefactored(db_accessor=self.mock_db_accessor, cache_manager=self.mock_cache_manager)
+        self.viewer = ViewerPOFileRefactored(
+            db_accessor=self.mock_db_accessor, cache_manager=self.mock_cache_manager
+        )
         # _force_filter_update は不要
 
     def test_entry_structure(self):
@@ -37,7 +39,9 @@ class TestEntryStructure(unittest.TestCase):
         required_keys = ["key", "msgid", "msgstr", "flags"]
         for entry in entries:
             for key in required_keys:
-                self.assertTrue(hasattr(entry, key), f"エントリに必要な属性 '{key}' がありません")
+                self.assertTrue(
+                    hasattr(entry, key), f"エントリに必要な属性 '{key}' がありません"
+                )
 
     def test_entry_access_pattern(self):
         """エントリへのアクセスパターンが正しく機能することを確認"""
@@ -50,13 +54,15 @@ class TestEntryStructure(unittest.TestCase):
         self.mock_db_accessor.get_filtered_entries.return_value = mock_entries
 
         original_from_dict = EntryModel.from_dict
-        
+
         def mock_from_dict(entry_dict):
             entry_model = original_from_dict(entry_dict)
             entry_model.__getitem__ = lambda key: getattr(entry_model, key)
             return entry_model
-            
-        with patch('sgpo_editor.models.entry.EntryModel.from_dict', side_effect=mock_from_dict):
+
+        with patch(
+            "sgpo_editor.models.entry.EntryModel.from_dict", side_effect=mock_from_dict
+        ):
             # フィルタされたエントリを取得
             entries = self.viewer.get_filtered_entries()
 
@@ -73,7 +79,9 @@ class TestEntryStructure(unittest.TestCase):
                 self.assertEqual(entries[0].msgid, "test1")
 
             except Exception as e:
-                self.fail(f"エントリへのアクセス中に予期しないエラーが発生しました: {e}")
+                self.fail(
+                    f"エントリへのアクセス中に予期しないエラーが発生しました: {e}"
+                )
 
 
 if __name__ == "__main__":

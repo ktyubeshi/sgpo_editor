@@ -25,12 +25,12 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
 
         # 実際に DatabaseAccessor に渡される引数でアサートする
         self.mock_db_accessor.get_filtered_entries.assert_called_with(
-            filter_text="すべて", # ViewerPOFileRefactored が渡すデフォルト
+            filter_text="すべて",  # ViewerPOFileRefactored が渡すデフォルト
             filter_keyword=filter_keyword,
-            match_mode="部分一致", # ViewerPOFileRefactored が渡すデフォルト
-            case_sensitive=False, # ViewerPOFileRefactored が渡すデフォルト
-            filter_status=None, # ViewerPOFileRefactored が渡すデフォルト
-            filter_obsolete=True, # ViewerPOFileRefactored が渡すデフォルト
+            match_mode="部分一致",  # ViewerPOFileRefactored が渡すデフォルト
+            case_sensitive=False,  # ViewerPOFileRefactored が渡すデフォルト
+            filter_status=None,  # ViewerPOFileRefactored が渡すデフォルト
+            filter_obsolete=True,  # ViewerPOFileRefactored が渡すデフォルト
             # search_text は get_filtered_entries 内で filter_keyword から設定される
         )
 
@@ -44,12 +44,12 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
 
         # 実際に DatabaseAccessor に渡される引数でアサートする
         self.mock_db_accessor.get_filtered_entries.assert_called_with(
-            filter_text="すべて", # ViewerPOFileRefactored が渡すデフォルト
-            filter_keyword=self.viewer.search_text, # インスタンス変数が使われる
-            match_mode="部分一致", # ViewerPOFileRefactored が渡すデフォルト
-            case_sensitive=False, # ViewerPOFileRefactored が渡すデフォルト
-            filter_status=None, # ViewerPOFileRefactored が渡すデフォルト
-            filter_obsolete=True, # ViewerPOFileRefactored が渡すデフォルト
+            filter_text="すべて",  # ViewerPOFileRefactored が渡すデフォルト
+            filter_keyword=self.viewer.search_text,  # インスタンス変数が使われる
+            match_mode="部分一致",  # ViewerPOFileRefactored が渡すデフォルト
+            case_sensitive=False,  # ViewerPOFileRefactored が渡すデフォルト
+            filter_status=None,  # ViewerPOFileRefactored が渡すデフォルト
+            filter_obsolete=True,  # ViewerPOFileRefactored が渡すデフォルト
             # search_text は get_filtered_entries 内で filter_keyword から設定される
         )
 
@@ -72,7 +72,9 @@ class TestViewerPOFileFilteredEntries(unittest.TestCase):
             self.assertEqual(result, mock_entries)
 
             # update_filter=Falseで呼び出されたことを確認
-            mock_get_filtered.assert_called_with(update_filter=False, filter_keyword=None)
+            mock_get_filtered.assert_called_with(
+                update_filter=False, filter_keyword=None
+            )
 
         self.mock_db_accessor.get_filtered_entries.assert_not_called()
 

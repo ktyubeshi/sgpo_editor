@@ -254,8 +254,5 @@ class TestRecentFiles:
         assert not recent_files
 
         # メニューが初期状態に戻っていること
-        assert (
-            window.ui_manager.recent_files_menu.actions()[0].text()
-            == "(履歴なし)"
-        )
+        assert window.ui_manager.recent_files_menu.actions()[0].text() == "(履歴なし)"
         assert not window.ui_manager.recent_files_menu.actions()[0].isEnabled()

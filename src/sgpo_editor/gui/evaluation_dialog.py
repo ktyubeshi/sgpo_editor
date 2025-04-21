@@ -591,11 +591,11 @@ class EvaluationDialog(QDialog):
 
             # 確認メッセージを表示
             QMessageBox.information(
-                self, 
-                "設定保存完了", 
-                "APIキー設定を保存しました。", 
+                self,
+                "設定保存完了",
+                "APIキー設定を保存しました。",
                 QMessageBox.StandardButton.Ok,
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
 
         except PermissionError as e:
@@ -609,7 +609,7 @@ class EvaluationDialog(QDialog):
                 f"ファイルの書き込み権限がない可能性があります。\n"
                 f"詳細: {str(e)}",
                 QMessageBox.StandardButton.Ok,
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
         except Exception as e:
             logger.error(f"APIキー設定の保存に失敗しました: {e}", exc_info=True)
@@ -618,7 +618,7 @@ class EvaluationDialog(QDialog):
                 "保存エラー",
                 f"APIキー設定の保存中にエラーが発生しました。\n詳細: {str(e)}",
                 QMessageBox.StandardButton.Ok,
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
 
     def _set_api_keys(self, api_keys: dict) -> None:
@@ -661,7 +661,7 @@ class EvaluationDialog(QDialog):
                     "APIキー未設定",
                     "評価を実行するには、少なくとも1つのAPIキーを設定してください。",
                     QMessageBox.StandardButton.Ok,
-                    QMessageBox.StandardButton.Ok
+                    QMessageBox.StandardButton.Ok,
                 )
         else:
             logger.info(f"{api_key_count}個のAPIキーが設定されています")
@@ -673,11 +673,11 @@ class EvaluationDialog(QDialog):
 
         if not name or not desc:
             QMessageBox.warning(
-                self, 
-                "入力エラー", 
-                "指標名と説明を入力してください。", 
+                self,
+                "入力エラー",
+                "指標名と説明を入力してください。",
                 QMessageBox.StandardButton.Ok,
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
             return
 
@@ -707,11 +707,11 @@ class EvaluationDialog(QDialog):
         self.metric_desc_edit.clear()
 
         QMessageBox.information(
-            self, 
-            "指標追加", 
-            f"評価指標「{name}」を追加しました。", 
+            self,
+            "指標追加",
+            f"評価指標「{name}」を追加しました。",
             QMessageBox.StandardButton.Ok,
-            QMessageBox.StandardButton.Ok
+            QMessageBox.StandardButton.Ok,
         )
 
     def _evaluate(self):
@@ -720,22 +720,22 @@ class EvaluationDialog(QDialog):
         if not self.entry:
             logger.warning("評価対象エントリがありません")
             QMessageBox.warning(
-                self, 
-                "評価エラー", 
-                "評価対象のエントリがありません。", 
+                self,
+                "評価エラー",
+                "評価対象のエントリがありません。",
                 QMessageBox.StandardButton.Ok,
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
             return
 
         # 原文と訳文があるか確認
         if not self.entry.msgid or not self.entry.msgstr:
             QMessageBox.warning(
-                self, 
-                "エラー", 
-                "原文または訳文が空です。", 
+                self,
+                "エラー",
+                "原文または訳文が空です。",
                 QMessageBox.StandardButton.Ok,
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
             return
 
@@ -755,7 +755,7 @@ class EvaluationDialog(QDialog):
                     "OpenAI APIキーが設定されていません。\n"
                     "「設定」タブの「APIキー設定」ボタンで設定してください。",
                     QMessageBox.StandardButton.Ok,
-                    QMessageBox.StandardButton.Ok
+                    QMessageBox.StandardButton.Ok,
                 )
                 # 設定タブに切り替え
                 self.tab_widget.setCurrentIndex(1)
@@ -770,7 +770,7 @@ class EvaluationDialog(QDialog):
                     "Claude APIキーが設定されていません。\n"
                     "「設定」タブの「APIキー設定」ボタンで設定してください。",
                     QMessageBox.StandardButton.Ok,
-                    QMessageBox.StandardButton.Ok
+                    QMessageBox.StandardButton.Ok,
                 )
                 # 設定タブに切り替え
                 self.tab_widget.setCurrentIndex(1)
@@ -815,7 +815,10 @@ class EvaluationDialog(QDialog):
         # 評価指標が選択されているか確認
         if not selected_metrics:
             QMessageBox.warning(
-                self, "設定エラー", "少なくとも1つの評価指標を選択してください。", QMessageBox.StandardButton.Ok
+                self,
+                "設定エラー",
+                "少なくとも1つの評価指標を選択してください。",
+                QMessageBox.StandardButton.Ok,
             )
             self.tab_widget.setCurrentIndex(1)
             return
@@ -897,11 +900,11 @@ class EvaluationDialog(QDialog):
 
         # 完了メッセージ
         QMessageBox.information(
-            self, 
-            "評価完了", 
-            "翻訳の評価が完了しました。", 
+            self,
+            "評価完了",
+            "翻訳の評価が完了しました。",
             QMessageBox.StandardButton.Ok,
-            QMessageBox.StandardButton.Ok
+            QMessageBox.StandardButton.Ok,
         )
 
         # 評価タブに切り替え
@@ -922,7 +925,7 @@ class EvaluationDialog(QDialog):
             f"評価中にエラーが発生しました:\n{error_message}\n\n"
             "APIキーの設定と接続状態を確認してください。",
             QMessageBox.StandardButton.Ok,
-            QMessageBox.StandardButton.Ok
+            QMessageBox.StandardButton.Ok,
         )
 
         # UI状態を復元

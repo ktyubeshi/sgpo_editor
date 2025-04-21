@@ -69,7 +69,7 @@ def get_po_factory(library_type: Optional[POLibraryType] = None) -> POFileFactor
     factory = _factory_instances[library_type]
     if factory is None:
         raise RuntimeError(f"POファイルファクトリの作成に失敗しました: {library_type}")
-        
+
     return factory
 
 

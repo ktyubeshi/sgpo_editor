@@ -65,11 +65,13 @@ class EntryModel(BaseModel):
     category_quality_scores: Dict[str, float] = Field(
         default_factory=dict
     )  # カテゴリ別品質スコア
-    _overall_quality_score: Optional[float] = PrivateAttr(default=None)  # 総合品質スコア
+    _overall_quality_score: Optional[float] = PrivateAttr(
+        default=None
+    )  # 総合品質スコア
 
     # ユーザー定義メタデータ
-    metadata: Dict[str, Union[str, int, float, bool, List[str], Dict[str, str]]] = Field(
-        default_factory=dict
+    metadata: Dict[str, Union[str, int, float, bool, List[str], Dict[str, str]]] = (
+        Field(default_factory=dict)
     )  # 任意のメタデータを格納する辞書
 
     def __init__(self, **data):
@@ -423,7 +425,9 @@ class EntryModel(BaseModel):
             else:
                 setattr(self._po_entry, "flags", self.flags)
         except (AttributeError, TypeError):
-            logger.warning("POEntryのflagsを更新できませんでした。読み取り専用の可能性があります。")
+            logger.warning(
+                "POEntryのflagsを更新できませんでした。読み取り専用の可能性があります。"
+            )
 
     def __eq__(self, other: object) -> bool:
         """等価性を判定"""
@@ -525,7 +529,7 @@ class EntryModel(BaseModel):
         elif not isinstance(flags, list):
             # リストでない場合は空リストにする
             data["flags"] = []
-            
+
         flags_list = data.get("flags", [])
         if fuzzy and "fuzzy" not in flags_list:
             flags_list.append("fuzzy")
@@ -570,7 +574,9 @@ class EntryModel(BaseModel):
             self.flags.remove(flag)
 
     # 自動チェック結果の追加
-    def add_check_result(self, code: Union[str, int], message: str, severity: str) -> None:
+    def add_check_result(
+        self, code: Union[str, int], message: str, severity: str
+    ) -> None:
         """自動チェック結果を追加
 
         Args:
@@ -581,7 +587,7 @@ class EntryModel(BaseModel):
         valid_severity = "info"
         if severity in ("error", "warning", "info"):
             valid_severity = cast(Literal["error", "warning", "info"], severity)
-        
+
         check_result: Dict[str, Union[str, int]] = {
             "code": code,
             "message": message,
@@ -599,7 +605,9 @@ class EntryModel(BaseModel):
             bool: 削除に成功した場合True
         """
         original_length = len(self.check_results)
-        self.check_results = [r for r in self.check_results if "code" not in r or r["code"] != code]
+        self.check_results = [
+            r for r in self.check_results if "code" not in r or r["code"] != code
+        ]
         return len(self.check_results) < original_length
 
     def clear_check_results(self) -> None:
@@ -668,6 +676,7 @@ class EntryModel(BaseModel):
             if self.metadata:
                 # 既存のコメントとメタデータを結合
                 from sgpo_editor.utils.metadata_utils import MetadataDict
+
                 combined_comment = create_comment_with_metadata(
                     po_entry.comment, cast(MetadataDict, self.metadata)
                 )
@@ -696,7 +705,10 @@ class EntryModel(BaseModel):
         # メタデータがある場合はコメントに保存
         if self.metadata:
             from sgpo_editor.utils.metadata_utils import MetadataDict
-            combined_comment = create_comment_with_metadata(self.comment, cast(MetadataDict, self.metadata))
+
+            combined_comment = create_comment_with_metadata(
+                self.comment, cast(MetadataDict, self.metadata)
+            )
             kwargs["comment"] = combined_comment
         elif self.comment:
             kwargs["comment"] = self.comment
@@ -737,7 +749,7 @@ class EntryModel(BaseModel):
         """
         if hasattr(self, key):
             return getattr(self, key)
-            
+
         if key == "fuzzy":
             return self.fuzzy
         elif key == "is_translated":
@@ -750,11 +762,11 @@ class EntryModel(BaseModel):
             return self.overall_quality_score
         elif key == "evaluation_state":
             return self.evaluation_state
-            
+
         dict_result = self.to_dict()
         if key in dict_result:
             return dict_result[key]
-            
+
         raise KeyError(f"キー '{key}' は存在しません")
 
     def __contains__(self, key: str) -> bool:
@@ -768,17 +780,17 @@ class EntryModel(BaseModel):
         """
         if hasattr(self, key):
             return True
-            
+
         if key in [
-            "fuzzy", 
-            "is_translated", 
-            "is_untranslated", 
-            "score", 
-            "overall_quality_score", 
-            "evaluation_state"
+            "fuzzy",
+            "is_translated",
+            "is_untranslated",
+            "score",
+            "overall_quality_score",
+            "evaluation_state",
         ]:
             return True
-            
+
         return key in self.to_dict()
 
 

@@ -102,14 +102,14 @@ class DatabaseAccessor:
         logger.debug(
             f"DatabaseAccessor.get_entries_by_keys: {len(keys)}件のエントリを一括取得"
         )
-        
+
         if not keys:
             return {}
-            
+
         entries_dict = {}
         with self.db.transaction() as cur:
             placeholders = ", ".join(["?"] * len(keys))
-            
+
             cur.execute(
                 f"""
                 SELECT
@@ -119,15 +119,15 @@ class DatabaseAccessor:
                 LEFT JOIN display_order d ON e.id = d.entry_id
                 WHERE e.key IN ({placeholders})
                 """,
-                keys
+                keys,
             )
-            
+
             for row in cur.fetchall():
                 entry_dict = self._row_to_entry_dict(row)
                 key = entry_dict.get("key", "")
                 if key:
                     entries_dict[key] = entry_dict
-                
+
         return entries_dict
 
     def get_all_entries_basic_info(self) -> Dict[str, EntryDict]:
@@ -174,7 +174,7 @@ class DatabaseAccessor:
         logger.debug(
             f"DatabaseAccessor.get_entry_basic_info: キー={key}の基本情報を取得"
         )
-        
+
         with self.db.transaction() as cur:
             cur.execute(
                 """
@@ -183,13 +183,13 @@ class DatabaseAccessor:
                 FROM entries e
                 WHERE e.key = ?
                 """,
-                (key,)
+                (key,),
             )
             row = cur.fetchone()
-            
+
             if not row:
                 return None
-                
+
             return {
                 "key": row["key"],
                 "msgid": row["msgid"],
@@ -252,7 +252,9 @@ class DatabaseAccessor:
 
             filtered_entries.append(entry_dict)
 
-        logger.debug(f"DatabaseAccessor.get_filtered_entries (Python filter): Found {len(filtered_entries)} entries")
+        logger.debug(
+            f"DatabaseAccessor.get_filtered_entries (Python filter): Found {len(filtered_entries)} entries"
+        )
         return filtered_entries
 
     def update_entry(self, entry: EntryInput) -> bool:
@@ -300,6 +302,7 @@ class DatabaseAccessor:
             f"DatabaseAccessor.update_entry: データベース更新開始 key={entry_dict.get('key')}"
         )
         from typing import cast
+
         result = self.db.update_entry(cast(EntryDict, entry_dict))
         logger.debug(
             f"DatabaseAccessor.update_entry: データベース更新結果 result={result}"
@@ -453,20 +456,22 @@ class DatabaseAccessor:
             with self.db.transaction() as cur:
                 entry_data = []
                 for key, entry in entries_dict.items():
-                    entry_data.append((
-                        key,
-                        entry.get("msgctxt"),
-                        entry.get("msgid"),
-                        entry.get("msgstr"),
-                        entry.get("fuzzy", False),
-                        entry.get("obsolete", False),
-                        entry.get("previous_msgid"),
-                        entry.get("previous_msgid_plural"),
-                        entry.get("previous_msgctxt"),
-                        entry.get("comment"),
-                        entry.get("tcomment"),
-                    ))
-                
+                    entry_data.append(
+                        (
+                            key,
+                            entry.get("msgctxt"),
+                            entry.get("msgid"),
+                            entry.get("msgstr"),
+                            entry.get("fuzzy", False),
+                            entry.get("obsolete", False),
+                            entry.get("previous_msgid"),
+                            entry.get("previous_msgid_plural"),
+                            entry.get("previous_msgctxt"),
+                            entry.get("comment"),
+                            entry.get("tcomment"),
+                        )
+                    )
+
                 cur.executemany(
                     """
                     INSERT INTO entries (
@@ -477,7 +482,7 @@ class DatabaseAccessor:
                     """,
                     entry_data,
                 )
-                
+
                 keys = list(entries_dict.keys())
                 placeholders = ", ".join(["?"] * len(keys))
                 cur.execute(
@@ -487,46 +492,46 @@ class DatabaseAccessor:
                     """,
                     keys,
                 )
-                
+
                 id_map = {key: entry_id for entry_id, key in cur.fetchall()}
-                
+
                 references = []
                 flags = []
                 display_orders = []
-                
+
                 for key, entry in entries_dict.items():
                     entry_id = id_map.get(key)
                     if entry_id:
                         for ref in entry.get("references", []) or []:
                             references.append((entry_id, ref))
-                        
+
                         for flag in entry.get("flags", []) or []:
                             flags.append((entry_id, flag))
-                        
+
                         display_orders.append((entry_id, entry.get("position", 0)))
-                
+
                 if references:
                     cur.executemany(
                         "INSERT INTO entry_references (entry_id, reference) VALUES (?, ?)",
                         references,
                     )
-                
+
                 if flags:
                     cur.executemany(
                         "INSERT INTO entry_flags (entry_id, flag) VALUES (?, ?)",
                         flags,
                     )
-                
+
                 if display_orders:
                     cur.executemany(
                         "INSERT INTO display_order (entry_id, position) VALUES (?, ?)",
                         display_orders,
                     )
-                
+
         except Exception as e:
             logger.error(f"DatabaseAccessor.import_entries: インポートエラー: {e}")
             success = False
-            
+
         logger.debug(
             f"DatabaseAccessor.import_entries: データベースインポート結果 result={success}"
         )
@@ -596,7 +601,7 @@ class DatabaseAccessor:
         if search_text:
             # 検索フィールドごとの条件を構築
             search_field_conditions = []
-            
+
             for field in search_fields:
                 if field == "msgid":
                     if exact_match:
@@ -608,13 +613,15 @@ class DatabaseAccessor:
                         if case_sensitive:
                             search_field_conditions.append("e.msgid LIKE ?")
                         else:
-                            search_field_conditions.append("LOWER(e.msgid) LIKE LOWER(?)")
-                    
+                            search_field_conditions.append(
+                                "LOWER(e.msgid) LIKE LOWER(?)"
+                            )
+
                     if exact_match:
                         params.append(search_text)
                     else:
                         params.append(f"%{search_text}%")
-                
+
                 elif field == "msgstr":
                     if exact_match:
                         if case_sensitive:
@@ -625,13 +632,15 @@ class DatabaseAccessor:
                         if case_sensitive:
                             search_field_conditions.append("e.msgstr LIKE ?")
                         else:
-                            search_field_conditions.append("LOWER(e.msgstr) LIKE LOWER(?)")
-                    
+                            search_field_conditions.append(
+                                "LOWER(e.msgstr) LIKE LOWER(?)"
+                            )
+
                     if exact_match:
                         params.append(search_text)
                     else:
                         params.append(f"%{search_text}%")
-                
+
                 elif field == "reference":
                     if exact_match:
                         if case_sensitive:
@@ -663,49 +672,59 @@ class DatabaseAccessor:
                                     WHERE r.entry_id = e.id AND LOWER(r.reference) LIKE LOWER(?)
                                 )
                             """)
-                    
+
                     if exact_match:
                         params.append(search_text)
                     else:
                         params.append(f"%{search_text}%")
-                
+
                 elif field == "translator_comment" or field == "tcomment":
                     if exact_match:
                         if case_sensitive:
                             search_field_conditions.append("e.tcomment = ?")
                         else:
-                            search_field_conditions.append("LOWER(e.tcomment) = LOWER(?)")
+                            search_field_conditions.append(
+                                "LOWER(e.tcomment) = LOWER(?)"
+                            )
                     else:
                         if case_sensitive:
                             search_field_conditions.append("e.tcomment LIKE ?")
                         else:
-                            search_field_conditions.append("LOWER(e.tcomment) LIKE LOWER(?)")
-                    
+                            search_field_conditions.append(
+                                "LOWER(e.tcomment) LIKE LOWER(?)"
+                            )
+
                     if exact_match:
                         params.append(search_text)
                     else:
                         params.append(f"%{search_text}%")
-                
+
                 elif field == "extracted_comment" or field == "comment":
                     if exact_match:
                         if case_sensitive:
                             search_field_conditions.append("e.comment = ?")
                         else:
-                            search_field_conditions.append("LOWER(e.comment) = LOWER(?)")
+                            search_field_conditions.append(
+                                "LOWER(e.comment) = LOWER(?)"
+                            )
                     else:
                         if case_sensitive:
                             search_field_conditions.append("e.comment LIKE ?")
                         else:
-                            search_field_conditions.append("LOWER(e.comment) LIKE LOWER(?)")
-                    
+                            search_field_conditions.append(
+                                "LOWER(e.comment) LIKE LOWER(?)"
+                            )
+
                     if exact_match:
                         params.append(search_text)
                     else:
                         params.append(f"%{search_text}%")
-            
+
             # 検索フィールド条件をORで結合
             if search_field_conditions:
-                where_conditions.append("(" + " OR ".join(search_field_conditions) + ")")
+                where_conditions.append(
+                    "(" + " OR ".join(search_field_conditions) + ")"
+                )
 
         # 翻訳ステータスに基づくフィルタ
         from sgpo_editor.core.constants import TranslationStatus
@@ -783,10 +802,16 @@ class DatabaseAccessor:
         }
 
         # 有効なソート列かチェック
-        sort_column_sql = valid_sort_columns[sort_column] if sort_column in valid_sort_columns else "d.position"
+        sort_column_sql = (
+            valid_sort_columns[sort_column]
+            if sort_column in valid_sort_columns
+            else "d.position"
+        )
 
         # ソート順のSQLインジェクション防止
-        sort_order_sql = "ASC" if sort_order is None or sort_order.upper() != "DESC" else "DESC"
+        sort_order_sql = (
+            "ASC" if sort_order is None or sort_order.upper() != "DESC" else "DESC"
+        )
 
         # ソート条件を追加
         query += f" ORDER BY {sort_column_sql} {sort_order_sql}"
@@ -799,12 +824,8 @@ class DatabaseAccessor:
 
         # クエリ実行と結果の取得
         with self.db.transaction() as cur:
-            logger.debug(
-                f"DatabaseAccessor.advanced_search: SQLクエリ実行: {query}"
-            )
-            logger.debug(
-                f"DatabaseAccessor.advanced_search: SQLパラメータ: {params}"
-            )
+            logger.debug(f"DatabaseAccessor.advanced_search: SQLクエリ実行: {query}")
+            logger.debug(f"DatabaseAccessor.advanced_search: SQLパラメータ: {params}")
             cur.execute(query, params)
 
             # 結果をリストに変換
@@ -858,8 +879,10 @@ class DatabaseAccessor:
         field = condition.get("field")
         value = condition.get("value")
         operator = condition.get("operator", "=")
-        
-        logger.debug(f"DatabaseAccessor.count_entries_with_condition: field={field}, value={value}, operator={operator}")
+
+        logger.debug(
+            f"DatabaseAccessor.count_entries_with_condition: field={field}, value={value}, operator={operator}"
+        )
 
         valid_operators = ["=", "!=", ">", "<", ">=", "<="]
         if operator not in valid_operators:
@@ -881,7 +904,7 @@ class DatabaseAccessor:
             else:
                 sql = f"SELECT COUNT(*) FROM entries WHERE {field} {operator} ?"
                 cur.execute(sql, (value,))
-                
+
             return cur.fetchone()[0]
 
     def count_entries_with_flag(self, flag: str) -> int:
@@ -894,7 +917,7 @@ class DatabaseAccessor:
             int: 指定されたフラグを持つエントリの数
         """
         logger.debug(f"DatabaseAccessor.count_entries_with_flag: flag={flag}")
-        
+
         if flag == "fuzzy":
             # fuzzyはエントリテーブルの列として存在
             with self.db.transaction() as cur:
@@ -908,7 +931,7 @@ class DatabaseAccessor:
                     SELECT COUNT(*) FROM entry_flags
                     WHERE flag = ?
                     """,
-                    (flag,)
+                    (flag,),
                 )
                 return cur.fetchone()[0]
 
@@ -994,7 +1017,7 @@ class DatabaseAccessor:
         #         "UPDATE entries SET invalidated = 1 WHERE key = ?",
         #         (key,)
         #     )
-        
+
         # キャッシュ無効化はViewerPOFileRefactoredクラスでEntryCacheManagerを通じて行われるため、
         # ここでは実装しない（責務の分離）
 
@@ -1017,7 +1040,7 @@ class DatabaseAccessor:
             EntryDict: 変換された辞書
         """
         from typing import cast
-        
+
         entry_dict: EntryDict = {
             "key": row["key"],
             "msgid": row["msgid"],

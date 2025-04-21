@@ -225,11 +225,11 @@ class TranslationEvaluateDialog(QDialog):
 
         if not target_entries:
             QMessageBox.information(
-                self, 
-                "情報", 
-                "評価対象のエントリがありません", 
+                self,
+                "情報",
+                "評価対象のエントリがありません",
                 QMessageBox.StandardButton.Ok,
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
             return
 
@@ -248,11 +248,11 @@ class TranslationEvaluateDialog(QDialog):
 
         if not metrics:
             QMessageBox.warning(
-                self, 
-                "警告", 
-                "少なくとも1つの評価指標を選択してください", 
+                self,
+                "警告",
+                "少なくとも1つの評価指標を選択してください",
                 QMessageBox.StandardButton.Ok,
-                QMessageBox.StandardButton.Ok
+                QMessageBox.StandardButton.Ok,
             )
             return
 
@@ -279,7 +279,7 @@ class TranslationEvaluateDialog(QDialog):
             f"- 指標: {', '.join(metrics)}\n"
             f"- 言語: {language}",
             QMessageBox.StandardButton.Ok,
-            QMessageBox.StandardButton.Ok
+            QMessageBox.StandardButton.Ok,
         )
 
         # モック評価の実行
@@ -744,7 +744,9 @@ class TranslationEvaluationResultWindow(QMainWindow):
 
         # メタデータからコメントを取得
         metadata = self._entry.get_all_metadata()
-        comments: List[Dict[str, str]] = cast(List[Dict[str, str]], metadata.get(METADATA_EVALUATION_COMMENTS, []))
+        comments: List[Dict[str, str]] = cast(
+            List[Dict[str, str]], metadata.get(METADATA_EVALUATION_COMMENTS, [])
+        )
 
         # メタデータになければエントリから直接取得
         if not comments:
