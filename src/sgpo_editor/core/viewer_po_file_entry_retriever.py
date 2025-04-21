@@ -38,7 +38,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
 
         # キャッシュからエントリを取得
         # 完全なエントリキャッシュを確認
-        entry = self.cache_manager.get_complete_entry(key)
+        entry = self.cache_manager.get_entry(key)
         if entry:
             logger.debug(
                 f"ViewerPOFileEntryRetriever.get_entry_by_key: キャッシュヒット key={key}"
@@ -46,7 +46,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
             return entry
 
         # 基本情報キャッシュを確認
-        entry = self.cache_manager.get_basic_info_entry(key)
+        entry = self.cache_manager.get_entry(key)
         if entry:
             logger.debug(
                 f"ViewerPOFileEntryRetriever.get_entry_by_key: 基本情報キャッシュヒット key={key}"
@@ -59,7 +59,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
             # EntryModelオブジェクトに変換
             entry = EntryModel.from_dict(entry_dict)
             # キャッシュに追加
-            self.cache_manager.cache_complete_entry(key, entry)
+            self.cache_manager.set_entry(key, entry)
             return entry
 
         logger.debug(
@@ -89,13 +89,13 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         missing_keys = []
         for key in keys:
             # 完全なエントリキャッシュを確認
-            entry = self.cache_manager.get_complete_entry(key)
+            entry = self.cache_manager.get_entry(key)
             if entry:
                 cached_entries[key] = entry
                 continue
 
             # 基本情報キャッシュを確認
-            entry = self.cache_manager.get_basic_info_entry(key)
+            entry = self.cache_manager.get_entry(key)
             if entry:
                 cached_entries[key] = entry
                 continue
@@ -110,7 +110,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
                 # EntryModelオブジェクトに変換
                 entry = EntryModel.from_dict(entry_dict)
                 # キャッシュに追加
-                self.cache_manager.cache_complete_entry(key, entry)
+                self.cache_manager.set_entry(key, entry)
                 result[key] = entry
 
         # キャッシュから取得したエントリを結果に追加
@@ -135,8 +135,8 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         )
 
         # 基本情報キャッシュからエントリを取得
-        if self.cache_manager.has_basic_info_in_cache(key):
-            basic_info = self.cache_manager.get_basic_info_from_cache(key)
+        if self.cache_manager.exists_entry(key):
+            basic_info = self.cache_manager.get_entry(key)
             logger.debug(
                 f"ViewerPOFileEntryRetriever.get_entry_basic_info: キャッシュヒット key={key}"
             )
@@ -148,7 +148,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
             # EntryModelオブジェクトに変換
             basic_info = EntryModel.from_dict(basic_info_dict)
             # キャッシュに追加
-            self.cache_manager.add_basic_info_to_cache(key, basic_info)
+            self.cache_manager.add_entry(key, basic_info)
             return basic_info
 
         logger.debug(
@@ -167,7 +167,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
 
         # キャッシュにないキーを特定
         missing_keys = [
-            key for key in keys if not self.cache_manager.has_entry_in_cache(key)
+            key for key in keys if not self.cache_manager.exists_entry(key)
         ]
         if not missing_keys:
             return
@@ -178,7 +178,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         # キャッシュに保存
         for key, entry in entries.items():
             entry_model = EntryModel.from_dict(entry)
-            self.cache_manager.add_entry_to_cache(key, entry_model)
+            self.cache_manager.add_entry(key, entry_model)
 
     def get_entry_at(self, position: int) -> Optional[EntryModel]:
         """位置（インデックス）からエントリを取得する

@@ -70,7 +70,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                 key = entry_obj.key
 
                 # キャッシュマネージャを使用してキャッシュを更新
-                self.cache_manager.cache_complete_entry(key, entry_obj)
+                self.cache_manager.set_entry(key, entry_obj)
 
                 # 基本情報キャッシュも更新
                 basic_info = EntryModel(
@@ -81,7 +81,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                     flags=entry_obj.flags,  # flagsも含める
                     obsolete=entry_obj.obsolete,
                 )
-                self.cache_manager.cache_basic_info_entry(key, basic_info)
+                self.cache_manager.set_entry(key, basic_info)
 
                 # 変更フラグを設定
                 self.modified = True
@@ -131,7 +131,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                     )
 
                     # キャッシュマネージャを使用してキャッシュを更新
-                    self.cache_manager.cache_complete_entry(key, entry_obj)
+                    self.cache_manager.set_entry(key, entry_obj)
 
                     # 基本情報キャッシュも更新
                     basic_info = EntryModel(
@@ -142,7 +142,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                         fuzzy=entry_obj.fuzzy,
                         obsolete=entry_obj.obsolete,
                     )
-                    self.cache_manager.cache_basic_info_entry(key, basic_info)
+                    self.cache_manager.set_entry(key, basic_info)
 
                 # 変更フラグを設定
                 self.modified = True
@@ -193,7 +193,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                     )
 
                     # キャッシュマネージャを使用してキャッシュを更新
-                    self.cache_manager.cache_complete_entry(key, entry_obj)
+                    self.cache_manager.set_entry(key, entry_obj)
 
                     # 基本情報キャッシュも更新
                     basic_info = EntryModel(
@@ -204,7 +204,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                         fuzzy=entry_obj.fuzzy,
                         obsolete=entry_obj.obsolete,
                     )
-                    self.cache_manager.cache_basic_info_entry(key, basic_info)
+                    self.cache_manager.set_entry(key, basic_info)
 
                 # 変更フラグを設定
                 self.modified = True

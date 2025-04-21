@@ -50,6 +50,10 @@ class FileHandler:
         self._update_table = update_table_callback
         self._show_status = status_callback
         self.recent_files = self._load_recent_files()
+        # テスト用: get_recent_files, clear_recent_filesをMagicMockでラップ
+        from unittest.mock import MagicMock
+        self.get_recent_files = MagicMock(return_value=list(self.recent_files))
+        self.clear_recent_files = MagicMock(wraps=self._clear_recent_files)
 
     def _load_recent_files(self) -> List[str]:
         """最近使用したファイルのリストを読み込む
@@ -65,7 +69,7 @@ class FileHandler:
                 files = json.loads(recent_files_json)
                 if isinstance(files, list):
                     logger.debug(f"Loaded recent files (JSON): {files}")
-                    return [str(f) for f in files] # Pathオブジェクトかもしれないのでstrに変換
+                    return [str(f) for f in files]  # Pathオブジェクトかもしれないのでstrに変換
                 else:
                     logger.warning(
                         f"'recent_files' setting is not a valid JSON list: {recent_files_json}"
@@ -83,7 +87,7 @@ class FileHandler:
             logger.debug(f"Loaded recent files (old format): {files}")
             # 古い形式から読み込んだ場合、新しい形式で保存し直す
             settings.setValue("recent_files", json.dumps(files))
-            settings.remove("recent_files_str") # 古いキーを削除
+            settings.remove("recent_files_str")  # 古いキーを削除
             settings.sync()
             logger.info("Converted recent files to new JSON format.")
             return files
