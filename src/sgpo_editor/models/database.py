@@ -437,7 +437,8 @@ class InMemoryEntryStore:
                         key,
                     ),
                 )
-                rows_updated = cur.rowcount
+                # APSW Cursorにはrowcountが無いため、直近の変更件数をコネクションから取得
+                rows_updated = self._conn.changes()
 
                 # キーからIDを取得
                 id_cur = cur.execute("SELECT id FROM entries WHERE key = ?", (key,))
@@ -455,6 +456,16 @@ class InMemoryEntryStore:
         except Exception as e:
             logger.error(f"エントリ更新エラー: {e}")
             return False
+
+    def _get_review_data(self, entry_id: int) -> dict:
+        """レビュー関連データのダミー取得"""
+        # 必要に応じて本実装を追加
+        return {}
+
+    def _save_review_data_in_transaction(self, cur, entry_id: int, review_data: dict) -> None:
+        """レビュー関連データのダミー保存"""
+        # 必要に応じて本実装を追加
+        pass
 
     def get_entries_by_keys(self, keys: List[str]) -> List[EntryDict]:
         """複数のキーに対応するエントリを一度に取得する

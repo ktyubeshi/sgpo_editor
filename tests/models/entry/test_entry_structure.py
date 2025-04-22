@@ -69,7 +69,8 @@ class TestEntryStructure(unittest.TestCase):
             # 実際のコードで使用されるアクセスパターンをテスト
             try:
                 # 辞書アクセス
-                entry_key = entries[0]["key"]
+                from sgpo_editor.utils.entry_utils import get_entry_key
+                entry_key = get_entry_key(entries[0])
                 entry_msgid = entries[0]["msgid"]
                 self.assertEqual(entry_key, "1")
                 self.assertEqual(entry_msgid, "test1")

@@ -38,6 +38,24 @@ COLUMN_INDEX_MAP: Dict[str, int] = {v: k for k, v in COLUMN_MAP.items()}
 
 
 class TableManager:
+    def update_row_key_mappings(self, entries: list) -> None:
+        """
+        行インデックスとエントリキーのマッピングを更新する
+        Args:
+            entries (list): エントリのリスト（各要素はdictまたはEntryModel想定）
+        """
+        from sgpo_editor.utils.entry_utils import get_entry_key
+        self._row_key_map.clear()
+        self._key_row_map.clear()
+        for idx, entry in enumerate(entries):
+            try:
+                key = get_entry_key(entry)
+            except Exception:
+                key = None
+            if key is not None:
+                self._row_key_map[idx] = key
+                self._key_row_map[key] = idx
+
     """テーブル表示管理クラス
 
     このクラスはPOエントリのテーブル表示のみに責任を持ちます。
