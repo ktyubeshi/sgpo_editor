@@ -2,10 +2,8 @@
 
 import cProfile
 import logging
-import os
 import pstats
 import random
-import sys
 import time
 from pathlib import Path
 

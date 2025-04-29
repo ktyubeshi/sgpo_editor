@@ -28,7 +28,6 @@ import cProfile
 import pstats
 import io
 import logging
-import uuid
 from pathlib import Path
 from typing import List, Dict, Optional, Any, cast, Set
 import gc
@@ -135,7 +134,7 @@ def create_mock_entry_dicts(num_entries: int) -> EntryDictList:
         }
         entries.append(entry_dict)
 
-    logger.info(f"モックエントリ生成完了:")
+    logger.info("モックエントリ生成完了:")
     logger.info(f"  - '{KEYWORD_TO_SEARCH}' を含む: {keyword_count} 件")
     logger.info(f"  - Fuzzy: {fuzzy_count} 件")
     logger.info(f"  - 未翻訳: {untranslated_count} 件")

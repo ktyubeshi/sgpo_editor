@@ -1,7 +1,5 @@
 """テスト実行用デバッグスクリプト"""
 
-import os
-import sys
 import traceback
 
 try:

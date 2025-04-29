@@ -4,7 +4,6 @@ from typing import List, Set, Optional, Dict
 
 from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 from sgpo_editor.core.database_accessor import DatabaseAccessor
-from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.core.constants import TranslationStatus
 from sgpo_editor.types import EntryDict
 
@@ -15,11 +14,6 @@ def create_mock_entry_dicts(num_entries: int = 1000) -> List[EntryDict]:
     entries = []
     for i in range(num_entries):
         is_translated = i % 10 != 0
-        status = (
-            TranslationStatus.TRANSLATED
-            if is_translated
-            else TranslationStatus.UNTRANSLATED
-        )
         msgid = f"Source text {i}"
         if i % 5 == 0:  # Add keyword 'test' occasionally
             msgid += " test key"

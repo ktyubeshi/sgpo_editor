@@ -645,7 +645,7 @@ class TableManager:
             # 列幅の自動調整 (必要に応じて)
             # self.table.resizeColumnsToContents()
 
-            logger.debug(f"TableManager._update_table_contents: テーブル内容更新完了")
+            logger.debug("TableManager._update_table_contents: テーブル内容更新完了")
         finally:
             self.table.setUpdatesEnabled(True)
 

@@ -1,7 +1,6 @@
 """POビューワーの起動スクリプト"""
 
 import logging
-import os
 import sys
 from pathlib import Path
 from PySide6.QtCore import QCoreApplication

@@ -9,7 +9,7 @@ import sys
 import logging
 from typing import Dict, List, Optional, Any
 import random
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -21,8 +21,6 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QSplitter,
-    QTableWidget,
-    QTableWidgetItem,
     QTextEdit,
     QCheckBox,
     QPushButton,
