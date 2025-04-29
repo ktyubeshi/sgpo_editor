@@ -1,0 +1,2 @@
+# ruff configuration
+ignore = ["F401", "E701"]
