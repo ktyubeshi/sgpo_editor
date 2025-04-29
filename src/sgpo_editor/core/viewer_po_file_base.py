@@ -292,6 +292,33 @@ class ViewerPOFileBase:
         if hasattr(entry, "tcomment") and entry.tcomment:
             entry_dict["tcomment"] = entry.tcomment
 
+        # EntryDictType全フィールドを追加
+        entry_dict.update({
+            "flags": list(entry.flags) if hasattr(entry, "flags") else [],
+            "msgid_plural": entry.msgid_plural if hasattr(entry, "msgid_plural") else None,
+            "msgstr_plural": dict(entry.msgstr_plural) if hasattr(entry, "msgstr_plural") else {},
+            "previous_msgid": entry.previous_msgid if hasattr(entry, "previous_msgid") else None,
+            "previous_msgid_plural": entry.previous_msgid_plural if hasattr(entry, "previous_msgid_plural") else None,
+            "previous_msgctxt": entry.previous_msgctxt if hasattr(entry, "previous_msgctxt") else None,
+            "linenum": entry.linenum if hasattr(entry, "linenum") else None,
+            "occurrences": list(entry.occurrences) if hasattr(entry, "occurrences") else [],
+            "references": [f"{fname}:{lineno}" for fname, lineno in entry.occurrences] if hasattr(entry, "occurrences") else [],
+            "score": None,
+            "fuzzy": "fuzzy" in entry.flags if hasattr(entry, "flags") else False,
+            "obsolete": entry.obsolete if hasattr(entry, "obsolete") else False,
+            "is_translated": bool(entry.msgstr) if hasattr(entry, "msgstr") else False,
+            "is_untranslated": not bool(entry.msgstr) if hasattr(entry, "msgstr") else True,
+            "review_comments": [],
+            "metric_scores": {},
+            "check_results": [],
+            "metadata": {},
+            "overall_quality_score": None,
+            "category_quality_scores": {},
+            "id": None,
+            "review_data": {},
+            "evaluation_state": None,
+        })
+
         return entry_dict
 
     def enable_cache(self, enabled: bool = True) -> None:

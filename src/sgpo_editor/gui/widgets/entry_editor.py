@@ -268,7 +268,18 @@ class EntryEditor(QWidget):
         )
         updated_count = 0
         for dialog_type, dialog in self._review_dialogs.items():
-            widget = dialog.findChild(QWidget)
+            # Obtain the specific review widget based on dialog_type
+            widget = None
+            if dialog_type == "translator_comment":
+                widget = dialog.findChild(TranslatorCommentWidget)
+            elif dialog_type == "review_comment":
+                widget = dialog.findChild(ReviewCommentWidget)
+            elif dialog_type == "quality_score":
+                widget = dialog.findChild(QualityScoreWidget)
+            elif dialog_type == "check_result":
+                widget = dialog.findChild(CheckResultWidget)
+            elif dialog_type == "debug":
+                widget = dialog.findChild(EntryDebugWidget)
             if dialog.isVisible() and widget and hasattr(widget, "set_entry"):
                 # ダイアログが表示中の場合のみ更新
                 logger.debug(
@@ -454,7 +465,18 @@ class EntryEditor(QWidget):
 
         # 開いているダイアログがある場合は、それらにもデータベース参照を設定
         for dialog_type, dialog in self._review_dialogs.items():
-            widget = dialog.findChild(QWidget)
+            # Obtain the specific review widget based on dialog_type
+            widget = None
+            if dialog_type == "translator_comment":
+                widget = dialog.findChild(TranslatorCommentWidget)
+            elif dialog_type == "review_comment":
+                widget = dialog.findChild(ReviewCommentWidget)
+            elif dialog_type == "quality_score":
+                widget = dialog.findChild(QualityScoreWidget)
+            elif dialog_type == "check_result":
+                widget = dialog.findChild(CheckResultWidget)
+            elif dialog_type == "debug":
+                widget = dialog.findChild(EntryDebugWidget)
             if widget and hasattr(widget, "set_database"):
                 widget.set_database(db)
         logger.debug("EntryEditor.database.setter: データベース参照の設定完了")
