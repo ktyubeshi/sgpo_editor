@@ -69,7 +69,7 @@ class POFileBaseComponent:
         pofile = None
         entries_to_add = []
         start_time = time.time()
-
+        
         try:
             logger.debug(f"POファイル読み込み開始: {path}")
 
@@ -96,9 +96,7 @@ class POFileBaseComponent:
                 self.metadata = dict(pofile.metadata)
             else:
                 logger.error("POファイルがNoneです。これは想定外のエラーです。")
-                raise RuntimeError(
-                    "POファイルの読み込みに失敗しました: ファイルがNoneです"
-                )
+                raise RuntimeError("POファイルの読み込みに失敗しました: ファイルがNoneです")
 
             # データベースをクリア
             try:
@@ -116,11 +114,7 @@ class POFileBaseComponent:
                 for i, entry in enumerate(pofile):
                     entry_dict = self._convert_entry_to_dict(entry, i)
                     entries_to_add.append(entry_dict)
-                logger.debug(
-                    f"エントリ変換処理完了: {len(entries_to_add)}件のエントリを変換"
-                )
-                # デバッグ: 追加予定エントリ件数
-                logger.debug(f"entries_to_add件数: {len(entries_to_add)}")
+                logger.debug(f"エントリ変換処理完了: {len(entries_to_add)}件のエントリを変換")
             except Exception as e:
                 logger.error(f"エントリ変換処理失敗: {e}")
                 raise RuntimeError(f"POエントリの変換に失敗しました: {e}") from e
@@ -129,24 +123,20 @@ class POFileBaseComponent:
             try:
                 logger.debug(f"データベース一括追加処理開始: {len(entries_to_add)}件")
                 if entries_to_add:
-                    self.db_accessor.add_entries_bulk(entries_to_add)
+                    await asyncio.to_thread(self.db_accessor.add_entries_bulk, entries_to_add)
                 logger.debug("データベース一括追加処理完了")
             except Exception as e:
                 logger.error(f"データベース一括追加処理失敗: {e}")
-                raise RuntimeError(
-                    f"データベースへのエントリ追加に失敗しました: {e}"
-                ) from e
+                raise RuntimeError(f"データベースへのエントリ追加に失敗しました: {e}") from e
 
             # 基本情報をキャッシュにロード（CPU負荷の高い処理を非同期実行）
             try:
                 logger.debug("基本情報キャッシュロード処理開始")
-                self._load_all_basic_info()
+                await asyncio.to_thread(self._load_all_basic_info)
                 logger.debug("基本情報キャッシュロード処理完了")
             except Exception as e:
                 logger.error(f"基本情報キャッシュロード処理失敗: {e}")
-                logger.debug(
-                    "基本情報キャッシュロードに失敗しましたが、処理を継続します"
-                )
+                logger.debug("基本情報キャッシュロードに失敗しましたが、処理を継続します")
                 # キャッシュの失敗はクリティカルではないので、例外を再スローせず続行
 
             # 読み込み完了フラグを設定
@@ -162,27 +152,27 @@ class POFileBaseComponent:
             elapsed_time = time.time() - start_time
             logger.error(f"POファイル読み込み失敗: {path} ({elapsed_time:.2f}秒)")
             logger.exception(e)
-
+            
             # 一貫性を保つため、読み込み途中のデータをクリア
             self._is_loaded = False
             self.modified = False
             self.metadata = {}
-
+            
             # メモリ解放
             entries_to_add.clear()
             pofile = None
-
+            
             # データベースとキャッシュのリセットを試みる
             try:
                 self.db_accessor.clear_database()
             except Exception as clear_error:
                 logger.error(f"エラー回復時のデータベースクリアに失敗: {clear_error}")
-
+            
             try:
                 self.cache_manager.clear_all_cache()
             except Exception as cache_error:
                 logger.error(f"エラー回復時のキャッシュクリアに失敗: {cache_error}")
-
+            
             # 元の例外を再スロー
             raise
 
@@ -199,7 +189,7 @@ class POFileBaseComponent:
         for key, entry_dict in entries.items():
             # 辞書からEntryModelオブジェクトを作成
             entry_model = EntryModel.from_dict(entry_dict)
-            self.cache_manager.set_entry(key, entry_model)
+            self.cache_manager.cache_basic_info_entry(key, entry_model)
 
     def _convert_entry_to_dict(self, entry: POEntry, position: int) -> EntryDict:
         """POエントリをディクショナリに変換する
@@ -211,11 +201,8 @@ class POFileBaseComponent:
         Returns:
             EntryDict: 変換されたディクショナリ
         """
-        # キーは論理キー（msgctxtがあればmsgctxt+区切り+msgid、なければmsgid）
-        if getattr(entry, "msgctxt", None):
-            key = f"{entry.msgctxt}|{entry.msgid}"
-        else:
-            key = entry.msgid
+        # キーは位置（文字列型）
+        key = str(position)
 
         # エントリの属性をディクショナリに変換
         entry_dict: EntryDict = {
@@ -223,18 +210,36 @@ class POFileBaseComponent:
             "position": position,
             "msgid": entry.msgid,
             "msgstr": entry.msgstr,
-            "msgctxt": getattr(entry, "msgctxt", None),
-            "flags": list(getattr(entry, "flags", [])),
-            "obsolete": getattr(entry, "obsolete", False),
-            "msgid_plural": getattr(entry, "msgid_plural", None),
-            "msgstr_plural": dict(getattr(entry, "msgstr_plural", {})),
-            "previous_msgid": getattr(entry, "previous_msgid", None),
-            "previous_msgid_plural": getattr(entry, "previous_msgid_plural", None),
-            "previous_msgctxt": getattr(entry, "previous_msgctxt", None),
-            "linenum": getattr(entry, "linenum", None),
-            "comment": getattr(entry, "comment", None),
-            "tcomment": getattr(entry, "tcomment", None),
-            "occurrences": list(getattr(entry, "occurrences", [])),
+            "msgctxt": entry.msgctxt if hasattr(entry, "msgctxt") else None,
+            "flags": list(entry.flags) if hasattr(entry, "flags") else [],
+            "obsolete": entry.obsolete if hasattr(entry, "obsolete") else False,
+            "msgid_plural": entry.msgid_plural if hasattr(entry, "msgid_plural") else None,
+            "msgstr_plural": dict(entry.msgstr_plural) if hasattr(entry, "msgstr_plural") else {},
+            "previous_msgid": entry.previous_msgid if hasattr(entry, "previous_msgid") else None,
+            "previous_msgid_plural": entry.previous_msgid_plural
+            if hasattr(entry, "previous_msgid_plural")
+            else None,
+            "previous_msgctxt": entry.previous_msgctxt
+            if hasattr(entry, "previous_msgctxt")
+            else None,
+            "linenum": entry.linenum if hasattr(entry, "linenum") else None,
+            "comment": entry.comment if hasattr(entry, "comment") else None,
+            "tcomment": entry.tcomment if hasattr(entry, "tcomment") else None,
+            "occurrences": list(entry.occurrences) if hasattr(entry, "occurrences") else [],
+            "references": [f"{fname}:{lineno}" for fname, lineno in entry.occurrences] if hasattr(entry, "occurrences") else [],
+            "score": None,
+            "fuzzy": "fuzzy" in entry.flags if hasattr(entry, "flags") else False,
+            "is_translated": bool(entry.msgstr) if hasattr(entry, "msgstr") else False,
+            "is_untranslated": not bool(entry.msgstr) if hasattr(entry, "msgstr") else True,
+            "review_comments": [],
+            "metric_scores": {},
+            "check_results": [],
+            "metadata": {},
+            "overall_quality_score": None,
+            "category_quality_scores": {},
+            "id": None,
+            "review_data": {},
+            "evaluation_state": None,
         }
 
         return entry_dict
@@ -283,4 +288,4 @@ class POFileBaseComponent:
         """
         if not self.path:
             return ""
-        return self.path.name
+        return self.path.name 

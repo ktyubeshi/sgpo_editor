@@ -38,6 +38,9 @@ class EntryDictType(TypedDict, total=False):
     comment: Optional[str]
     tcomment: Optional[str]
     references: List[str]
+    msgid_plural: Optional[str]
+    msgstr_plural: Dict[int, str]
+    linenum: Optional[int]
     score: Optional[float]
     fuzzy: bool
     is_translated: bool
