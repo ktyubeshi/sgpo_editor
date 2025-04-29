@@ -7,7 +7,7 @@ import json
 import sys
 from unittest.mock import MagicMock, patch
 
-from PySide6.QtWidgets import QApplication, QHeaderView, QTableWidget
+from PySide6.QtWidgets import QApplication, QTableWidget
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager

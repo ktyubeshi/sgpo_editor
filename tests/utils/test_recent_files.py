@@ -4,7 +4,6 @@ import os
 import tempfile
 from pathlib import Path
 from unittest import mock
-import json
 
 import pytest
 from PySide6.QtCore import QCoreApplication, QSettings

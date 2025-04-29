@@ -4,14 +4,9 @@ from __future__ import annotations
 
 import gc
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import sys
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QTableWidget
 
-from sgpo_editor.core.cache_manager import EntryCacheManager
-from sgpo_editor.gui.main_window import MainWindow
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.widgets.search import SearchCriteria
 

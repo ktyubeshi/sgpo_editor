@@ -4,14 +4,11 @@ from __future__ import annotations
 
 import unittest
 from unittest.mock import MagicMock, patch, call
-import sys
 
 from PySide6.QtWidgets import QTableWidget
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
-from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.core.constants import TranslationStatus
 
 
 class TestTableGuiSync(unittest.TestCase):

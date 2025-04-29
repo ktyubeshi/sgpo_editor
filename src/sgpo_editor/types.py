@@ -20,7 +20,6 @@ from typing import (
 
 if TYPE_CHECKING:
     from sgpo_editor.models.entry import EntryModel
-    from sgpo_editor.core.constants import TranslationStatus
 
 
 class EntryDictType(TypedDict, total=False):

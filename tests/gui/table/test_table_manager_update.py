@@ -9,7 +9,6 @@ from PySide6.QtWidgets import QTableWidget
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
-from sgpo_editor.models.entry import EntryModel
 
 
 class TestTableManagerUpdate(unittest.TestCase):

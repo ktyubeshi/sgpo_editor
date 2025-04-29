@@ -7,7 +7,6 @@ import pytest
 import pytest_asyncio
 
 from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
-from sgpo_editor.core.constants import TranslationStatus
 
 logger = logging.getLogger(__name__)
 
