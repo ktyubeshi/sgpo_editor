@@ -49,6 +49,9 @@ class EntryDictType(TypedDict, total=False):
     overall_quality_score: Optional[float]
     category_quality_scores: Dict[str, float]
     id: Optional[int]
+    occurrences: List[Union[str, Tuple[str, int]]]
+    review_data: Dict[str, Any]
+    evaluation_state: Any
 
 
 # POエントリの辞書表現
