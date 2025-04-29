@@ -232,6 +232,14 @@ class DatabaseAccessor:
                 "msgstr": row["msgstr"],
                 "fuzzy": bool(row["fuzzy"]),
                 "obsolete": bool(row["obsolete"]),
+                "position": 0,
+                "flags": [],
+                "references": [],
+                "metadata": {},
+                "review_comments": [],
+                "metric_scores": {},
+                "check_results": [],
+                "category_quality_scores": {},
             }
 
     def get_filtered_entries(
