@@ -4,7 +4,7 @@
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from PySide6.QtWidgets import QApplication, QTableWidget
 
@@ -138,7 +138,7 @@ class TestEntryListFilter:
         )
 
         # SearchCriteriaを作成
-        criteria = SearchCriteria(filter=filter_text, filter_keyword="")
+        SearchCriteria(filter=filter_text, filter_keyword="")
 
         # テーブル更新処理を直接呼び出し
         self.manager.update_table()
@@ -151,7 +151,7 @@ class TestEntryListFilter:
         entries = po_file.get_filtered_entries(
             filter_text=filter_text, filter_keyword=""
         )
-        criteria = SearchCriteria(filter=filter_text, filter_keyword="")
+        SearchCriteria(filter=filter_text, filter_keyword="")
 
         self.manager.update_table()
 
@@ -164,7 +164,7 @@ class TestEntryListFilter:
         entries = po_file.get_filtered_entries(
             filter_text=filter_text, filter_keyword=""
         )
-        criteria = SearchCriteria(filter=filter_text, filter_keyword="")
+        SearchCriteria(filter=filter_text, filter_keyword="")
 
         self.manager.update_table()
 
@@ -176,7 +176,7 @@ class TestEntryListFilter:
         entries = po_file.get_filtered_entries(
             filter_text=filter_text, filter_keyword=""
         )
-        criteria = SearchCriteria(filter=filter_text, filter_keyword="")
+        SearchCriteria(filter=filter_text, filter_keyword="")
 
         self.manager.update_table()
 
@@ -201,7 +201,7 @@ class TestEntryListFilter:
         )
 
         # SearchCriteriaを作成
-        criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
+        SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
 
         # テーブル更新
         self.manager.update_table()
@@ -214,7 +214,7 @@ class TestEntryListFilter:
         entries = po_file.get_filtered_entries(
             filter_text=filter_text, filter_keyword=filter_keyword
         )
-        criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
+        SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
 
         self.manager.update_table()
 
@@ -226,7 +226,7 @@ class TestEntryListFilter:
         entries = po_file.get_filtered_entries(
             filter_text=filter_text, filter_keyword=filter_keyword
         )
-        criteria = SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
+        SearchCriteria(filter=filter_text, filter_keyword=filter_keyword)
 
         self.manager.update_table()
 
@@ -338,7 +338,7 @@ class TestEntryListFilter:
             ]
 
             # 検索条件の作成
-            criteria = SearchCriteria(filter=filter_text, filter_keyword=keyword)
+            SearchCriteria(filter=filter_text, filter_keyword=keyword)
 
             # テーブル更新
             self.manager.update_table()
@@ -351,7 +351,7 @@ class TestEntryListFilter:
     def test_update_filtered_table(self, mock_entries):
         """フィルタリングされたテーブル更新のテスト"""
         # 翻訳済みエントリのフィルタリング
-        po_file = self.manager._get_current_po()
+        self.manager._get_current_po()
         translated_entries = [
             entry
             for entry in mock_entries
@@ -359,7 +359,7 @@ class TestEntryListFilter:
         ]
 
         # 検索条件の設定
-        criteria = SearchCriteria(
+        SearchCriteria(
             filter=TranslationStatus.TRANSLATED, filter_keyword=""
         )
 

@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.gui.main_window import MainWindow
 
 logger = logging.getLogger(__name__)
 
@@ -37,19 +38,19 @@ class POSyntaxHighlighter(QSyntaxHighlighter):
         # msgid用のフォーマット (青)
         msgid_format = QTextCharFormat()
         msgid_format.setForeground(QColor(0, 0, 200))
-        msgid_format.setFontWeight(QFont.Bold)
+        msgid_format.setFontWeight(QFont.Weight.Bold)
         self._formats["msgid"] = msgid_format
 
         # msgstr用のフォーマット (緑)
         msgstr_format = QTextCharFormat()
         msgstr_format.setForeground(QColor(0, 150, 0))
-        msgstr_format.setFontWeight(QFont.Bold)
+        msgstr_format.setFontWeight(QFont.Weight.Bold)
         self._formats["msgstr"] = msgstr_format
 
         # msgctxt用のフォーマット (紫)
         msgctxt_format = QTextCharFormat()
         msgctxt_format.setForeground(QColor(150, 0, 150))
-        msgctxt_format.setFontWeight(QFont.Bold)
+        msgctxt_format.setFontWeight(QFont.Weight.Bold)
         self._formats["msgctxt"] = msgctxt_format
 
         # コメント用のフォーマット (灰色)
@@ -98,7 +99,7 @@ class POFormatEditor(QDialog):
         super().__init__(parent)
         self.setWindowTitle("POフォーマットエディタ")
         self.resize(800, 600)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint)
 
         self._get_current_po = get_current_po
         self._entry_map = {}  # キーとEntryModelのマッピング
@@ -117,13 +118,13 @@ class POFormatEditor(QDialog):
         layout.addWidget(info_label)
 
         # スプリッター
-        splitter = QSplitter(Qt.Vertical)
+        splitter = QSplitter(Qt.Orientation.Vertical)
         layout.addWidget(splitter, 1)
 
         # エディタ
         self.editor = QTextEdit()
         self.editor.setAcceptRichText(False)
-        self.editor.setLineWrapMode(QTextEdit.NoWrap)
+        self.editor.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
         font = QFont("Monospace", 10)
         font.setFixedPitch(True)
         self.editor.setFont(font)
@@ -171,7 +172,7 @@ class POFormatEditor(QDialog):
         layout.addLayout(button_layout)
 
         # ダイアログボタン
-        button_box = QDialogButtonBox(QDialogButtonBox.Close)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
@@ -190,8 +191,9 @@ class POFormatEditor(QDialog):
             return
 
         # 親ウィンドウからテーブルを取得
-        if hasattr(self.parent(), "table"):
-            table = self.parent().table
+        if isinstance(self.window(), MainWindow):
+            main_win = self.window()
+            table = main_win.table
             # 現在選択されている行を取得
             current_row = table.currentRow()
             if current_row >= 0:
@@ -248,13 +250,11 @@ class POFormatEditor(QDialog):
                 break
             parent = parent.parent()
 
-        filter_text = None
         filter_keyword = None
 
         if main_window and hasattr(main_window, "search_widget"):
             # SearchWidgetからフィルタ条件を取得
             criteria = main_window.search_widget.get_search_criteria()
-            filter_text = criteria.filter
             filter_keyword = criteria.filter_keyword
 
         # フィルタされたエントリを取得

@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from sgpo_editor.core.sgpo_adapter import SGPOAdapter as POFile
+from sgpo_editor.core.sgpo_adapter import SgpoFile as POFile
 
 
 def main():

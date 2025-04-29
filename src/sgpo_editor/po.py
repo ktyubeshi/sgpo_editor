@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Optional, List
 
-from po_viewer.gui.main_window import MainWindow
+from sgpo_editor.gui.main_window import MainWindow
 from PySide6.QtWidgets import QApplication
 from rich.console import Console
 from rich.table import Table

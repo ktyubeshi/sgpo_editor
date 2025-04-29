@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 from sgpo_editor.core.database_accessor import DatabaseAccessor
 from sgpo_editor.models.database import InMemoryEntryStore
-from sgpo_editor.models.entry import EntryModel
 
 
 class TestKeywordFilter(unittest.TestCase):

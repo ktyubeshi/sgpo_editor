@@ -4,16 +4,14 @@
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from PySide6.QtWidgets import QApplication, QTableWidget
-from PySide6.QtCore import Qt
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
-from sgpo_editor.core.constants import TranslationStatus
 
 
 @pytest.fixture

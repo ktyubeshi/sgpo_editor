@@ -3,17 +3,14 @@
 import pytest
 from pathlib import Path
 
-import pytest_asyncio
 from PySide6.QtWidgets import QApplication, QTableWidget
 
 from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.widgets.search import SearchWidget
-from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.utils.entry_utils import get_entry_key
 from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 from tests.core.filter.test_filter_reset_advanced import create_mock_entry_dicts
 
 
@@ -70,33 +67,19 @@ async def test_entry_list_status_display(app, sample_po_path):
     """エントリリストのステータス表示統合テスト"""
     # テーブルとテーブルマネージャの用意
     mock_po = MagicMock()
-    entries = create_mock_entry_dicts(4)  # 例として4件作成
+    entries = create_mock_entry_dicts(4) # 例として4件作成
 
-    mock_po.get_entries_by_keys.return_value = {get_entry_key(e): e for e in entries}
+    mock_po.get_entries_by_keys.return_value = {e.key: e for e in entries}
     mock_table = MagicMock(spec=QTableWidget)
-    mock_table.rowCount.return_value = 4
     mock_cache_manager = MagicMock(spec=EntryCacheManager)
-    # 状態値を返すitemのサイドエフェクトを設定
-    state_texts = ["未翻訳", "翻訳済み", "ファジー", "廃止"]
-    def item_side_effect(row, col):
-        if col == 4 and 0 <= row < len(state_texts):
-            mock_item = MagicMock()
-            mock_item.text.return_value = state_texts[row]
-            return mock_item
-        else:
-            mock_item = MagicMock()
-            mock_item.text.return_value = ""
-            return mock_item
-    mock_table.item.side_effect = item_side_effect
     table_manager = TableManager(mock_table, mock_cache_manager, lambda: mock_po)
 
     # EntryListFacade の初期化引数を修正
-    entry_list = EntryListFacade(
-        mock_table,
-        table_manager,
-        MagicMock(spec=SearchWidget),  # SearchWidget のモックを追加
-        mock_cache_manager,  # cache_managerを追加
-        lambda: mock_po,  # get_current_po を渡す
+    EntryListFacade(
+        mock_table, 
+        table_manager, 
+        MagicMock(spec=SearchWidget), # SearchWidget のモックを追加
+        lambda: mock_po # get_current_po を渡す
     )
 
     # POファイルの読み込み
@@ -110,7 +93,9 @@ async def test_entry_list_status_display(app, sample_po_path):
     table_manager.update_table(entries)
 
     # 行数チェック
-    assert mock_table.rowCount() == 4, f"Expected 4 rows, got {mock_table.rowCount()}"
+    assert mock_table.rowCount() == 4, (
+        f"Expected 4 rows, got {mock_table.rowCount()}"
+    )
 
     # 状態列の内容チェック
     states = [mock_table.item(i, 4).text() for i in range(mock_table.rowCount())]

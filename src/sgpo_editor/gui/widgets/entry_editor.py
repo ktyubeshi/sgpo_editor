@@ -215,7 +215,6 @@ class EntryEditor(QWidget):
             # ウィジェットがNoneでない場合はレイアウトに追加
             if widget:
                 layout.addWidget(widget)
-                widget.set_entry(self._current_entry)
 
                 # データベース参照を設定（対応するメソッドがある場合）
                 # 注意: 将来的にはファサードを介してデータにアクセスするように修正するべき
@@ -226,7 +225,6 @@ class EntryEditor(QWidget):
                     widget.set_database(self._database)
 
             # ダイアログを保存
-            dialog.widget = widget  # ウィジェットへの参照を保持
             self._review_dialogs[dialog_type] = dialog
             logger.debug(
                 f"EntryEditor._show_review_dialog: ダイアログ作成完了 dialog_type={dialog_type}"
@@ -237,16 +235,17 @@ class EntryEditor(QWidget):
             )
             dialog = self._review_dialogs[dialog_type]
             # 現在のエントリを更新
-            if hasattr(dialog.widget, "set_entry"):
-                dialog.widget.set_entry(self._current_entry)
+            widget = dialog.findChild(QWidget)
+            if widget and hasattr(widget, "set_entry"):
+                widget.set_entry(self._current_entry)
 
             # データベース参照を更新（対応するメソッドがある場合）
             # 注意: 将来的にはファサードを介してデータにアクセスするように修正するべき
-            if hasattr(dialog.widget, "set_database") and self._database:
+            if hasattr(widget, "set_database") and self._database:
                 logger.debug(
                     "EntryEditor._show_review_dialog: ウィジェットのデータベース参照を更新"
                 )
-                dialog.widget.set_database(self._database)
+                widget.set_database(self._database)
 
         # ダイアログを表示
         dialog.show()
@@ -269,12 +268,13 @@ class EntryEditor(QWidget):
         )
         updated_count = 0
         for dialog_type, dialog in self._review_dialogs.items():
-            if dialog.isVisible() and hasattr(dialog.widget, "set_entry"):
+            widget = dialog.findChild(QWidget)
+            if dialog.isVisible() and widget and hasattr(widget, "set_entry"):
                 # ダイアログが表示中の場合のみ更新
                 logger.debug(
                     f"EntryEditor._update_open_review_dialogs: ダイアログを更新 type={dialog_type}"
                 )
-                dialog.widget.set_entry(self._current_entry)
+                widget.set_entry(self._current_entry)
                 updated_count += 1
         logger.debug(
             f"EntryEditor._update_open_review_dialogs: 完了 更新したダイアログ数={updated_count}"
@@ -454,8 +454,9 @@ class EntryEditor(QWidget):
 
         # 開いているダイアログがある場合は、それらにもデータベース参照を設定
         for dialog_type, dialog in self._review_dialogs.items():
-            if hasattr(dialog.widget, "set_database"):
-                dialog.widget.set_database(db)
+            widget = dialog.findChild(QWidget)
+            if widget and hasattr(widget, "set_database"):
+                widget.set_database(db)
         logger.debug("EntryEditor.database.setter: データベース参照の設定完了")
 
     def get_layout_type(self) -> LayoutType:

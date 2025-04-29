@@ -25,7 +25,7 @@ def table_widget(app):
     """テーブルウィジェットのフィクスチャ"""
     table = QTableWidget()
     mock_cache_manager = MagicMock(spec=EntryCacheManager)
-    table_manager = TableManager(table, mock_cache_manager)
+    TableManager(table, mock_cache_manager)
     yield table
 
 

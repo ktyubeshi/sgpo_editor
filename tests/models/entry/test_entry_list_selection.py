@@ -3,10 +3,9 @@
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock
 
-from PySide6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QTableWidget
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager

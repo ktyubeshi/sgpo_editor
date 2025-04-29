@@ -3,7 +3,7 @@
 """
 
 import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from PySide6.QtWidgets import QApplication, QTableWidget, QTableWidgetItem
 from PySide6.QtCore import Qt
@@ -11,7 +11,6 @@ from PySide6.QtCore import Qt
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
 
 
 @pytest.fixture
@@ -201,8 +200,6 @@ class TestEntryListEvents:
         logical_index = 2  # 原文列
 
         # 現在のソート状態を確認
-        initial_sort_column = self.manager._current_sort_column
-        initial_sort_order = self.manager._current_sort_order
 
         # ヘッダークリックイベントを発生させる
         self.manager._on_header_clicked(logical_index)

@@ -10,7 +10,6 @@ from sgpo.core import (
     pofile_from_text,
 )
 from sgpo_editor.core import ViewerPOFile, ViewerPOFileRefactored
-from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.database_accessor import DatabaseAccessor
 
 SgPo = SGPOFile  # Alias for backward compatibility
@@ -24,7 +23,6 @@ __all__ = [
     "SgPo",
     "ViewerPOFile",
     "ViewerPOFileRefactored",  # 後方互換性のため維持
-    "EntryCacheManager",
     "DatabaseAccessor",
     "pofile",
     "pofile_from_text",

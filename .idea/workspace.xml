@@ -5,7 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="839a3ece-7d0e-4aa6-9209-4399dd5eea63" name="変更" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/sgpo_editor.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/sgpo_editor.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/repomix.config.json" beforeDir="false" afterPath="$PROJECT_DIR$/repomix.config.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,7 +34,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "com.codeium.enabled": "true",
-    "com.intellij.codeInspection.ui.actions.InspectionResultsExportActionProvider.location": "/Users/kawaharatomohiro/Git-projects/sgpo_editor/inspection",
+    "com.intellij.codeInspection.ui.actions.InspectionResultsExportActionProvider.location": "/Users/tomohiro/Git-projects/sgpo_editor/inspection",
     "git-widget-placeholder": "wip2",
     "junie.onboarding.icon.badge.shown": "true",
     "node.js.detected.package.eslint": "true",
@@ -40,15 +43,16 @@
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "run.code.analysis.last.selected.profile": "aDefault",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
+    "settings.editor.splitter.proportion": "0.28409094",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-PY-243.26053.29" />
-        <option value="bundled-python-sdk-b1dbf8ef85a6-4df51de95216-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.26053.29" />
+        <option value="bundled-js-predefined-d6986cc7102b-f27c65a3e318-JavaScript-PY-251.23774.444" />
+        <option value="bundled-python-sdk-890ed5b35930-d9c5bdb153f4-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.23774.444" />
       </set>
     </attachedChunks>
   </component>
@@ -67,6 +71,9 @@
       <workItem from="1744233909062" duration="11000" />
       <workItem from="1744233923630" duration="43000" />
       <workItem from="1744233973131" duration="2115000" />
+      <workItem from="1745069702624" duration="303000" />
+      <workItem from="1745070008845" duration="611000" />
+      <workItem from="1745904106769" duration="1749000" />
     </task>
     <servers />
   </component>

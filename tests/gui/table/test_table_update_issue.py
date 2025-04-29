@@ -6,12 +6,10 @@
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
 from PySide6.QtWidgets import QApplication, QTableWidget
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
-from sgpo_editor.models.entry import EntryModel
 
 # QApplication インスタンスを作成（テスト用）
 app = QApplication.instance()

@@ -39,15 +39,19 @@ class ViewerPOFile:
         """エントリ番号（インデックス）からエントリを取得"""
         return self.retriever.get_entry_at(position)
 
-    """POファイルを読み込み、表示するためのクラス
+    def get_entry_at(self, position: int) -> Optional[EntryModel]:
+        """位置（インデックス）からエントリを取得"""
+        return self.retriever.get_entry_at(position)
 
     @property
-    def search_text(self) -> str:
+    def search_text(self) -> Optional[str]:
         return self.filter.search_text
 
     @search_text.setter
-    def search_text(self, value: str):
+    def search_text(self, value: Optional[str]):
         self.filter.search_text = value
+
+    """POファイルを読み込み、表示するためのクラス
 
     このクラスは、コンポジションパターンを使用して実装されており、
     各機能コンポーネントを内部に保持し、その機能を利用します。
@@ -202,17 +206,6 @@ class ViewerPOFile:
             Optional[EntryModel]: 見つかったエントリ、または None
         """
         return self.get_entry_at(position)
-
-    def get_entry_at(self, position: int) -> Optional[EntryModel]:
-        """位置（インデックス）からエントリを取得する
-
-        Args:
-            position: エントリの位置（インデックス）
-
-        Returns:
-            Optional[EntryModel]: 指定された位置のエントリ。見つからない場合はNone
-        """
-        return self.retriever.get_entry_at(position)
 
     def count_entries(self) -> int:
         """全エントリ数を取得する

@@ -27,7 +27,6 @@ from sgpo_editor.gui.metadata_panel import MetadataPanel
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.gui.translation_evaluate_dialog import TranslationEvaluateDialog
 from sgpo_editor.gui.ui_setup import UIManager
-
 # 必要なクラスをインポート
 from sgpo_editor.gui.widgets.entry_editor import EntryEditor, LayoutType
 from sgpo_editor.gui.widgets.po_format_editor import POFormatEditor
@@ -63,10 +62,10 @@ class MainWindow(QMainWindow):
 
         # 各マネージャの初期化
         self.table_manager = TableManager(
-            self.table,
-            self.entry_cache_manager,
+            self.table, 
+            self.entry_cache_manager, 
             self._get_current_po,
-            self._handle_sort_request,
+            self._handle_sort_request
         )
         self.ui_manager = UIManager(
             self, self.entry_editor, self.stats_widget, self.search_widget
@@ -165,7 +164,7 @@ class MainWindow(QMainWindow):
 
     def _get_current_po(self) -> Optional[ViewerPOFile]:
         """現在のPOファイルを取得する
-
+        
         Returns:
             Optional[ViewerPOFile]: 現在のPOファイル
         """
@@ -254,9 +253,9 @@ class MainWindow(QMainWindow):
             "untranslated": 0,
             "fuzzy": 0,
             "progress": 0.0,
-            "file_name": "",
+            "file_name": ""
         }
-
+        
         for key in default_stats:
             if key in stats_dict:
                 value = stats_dict[key]
@@ -275,40 +274,28 @@ class MainWindow(QMainWindow):
                 elif key == "file_name":
                     if value is not None:
                         default_stats[key] = str(value)
-
+                
         stats_model = StatsModel(**default_stats)
         self.stats_widget.update_stats(stats_model)
 
     def _update_table(self) -> None:
         """テーブルを更新する (EntryListFacadeに委譲)"""
-        logger.debug(
-            "MainWindow._update_table: EntryListFacade.update_table を呼び出します"
-        )
+        logger.debug("MainWindow._update_table: EntryListFacade.update_table を呼び出します")
         self.entry_list_facade.update_table()
-        logger.debug(
-            "MainWindow._update_table: EntryListFacade.update_table の呼び出し完了"
-        )
+        logger.debug("MainWindow._update_table: EntryListFacade.update_table の呼び出し完了")
 
     def _handle_sort_request(self, column_name: str, sort_order: str) -> None:
         """TableManager からのソート要求を処理する"""
-        logger.debug(
-            f"MainWindow._handle_sort_request: 要求受信 column='{column_name}', order='{sort_order}'"
-        )
+        logger.debug(f"MainWindow._handle_sort_request: 要求受信 column='{column_name}', order='{sort_order}'")
         current_po = self._get_current_po()
         if current_po:
-            logger.debug(
-                f"MainWindow._handle_sort_request: ViewerPOFile にソート条件を設定"
-            )
+            logger.debug("MainWindow._handle_sort_request: ViewerPOFile にソート条件を設定")
             current_po.set_sort_criteria(column_name, sort_order)
             # ソート条件を設定したらテーブルを更新 (Facade経由)
-            logger.debug(
-                "MainWindow._handle_sort_request: EntryListFacade.update_table を呼び出してテーブルを更新"
-            )
-            self.entry_list_facade.update_table()  # Facade のメソッドを呼び出す
+            logger.debug("MainWindow._handle_sort_request: EntryListFacade.update_table を呼び出してテーブルを更新")
+            self.entry_list_facade.update_table() # Facade のメソッドを呼び出す
         else:
-            logger.warning(
-                "MainWindow._handle_sort_request: POファイルが開かれていません"
-            )
+            logger.warning("MainWindow._handle_sort_request: POファイルが開かれていません")
 
     def _on_entry_selected(self, entry_number: int) -> None:
         """エントリが選択されたときの処理 (レガシー EventHandler からの接続用)
@@ -320,16 +307,14 @@ class MainWindow(QMainWindow):
         Args:
             entry_number: エントリ番号
         """
-        logger.warning(
-            f"MainWindow._on_entry_selected はレガシー接続用に残されています: entry_number={entry_number}"
-        )
+        logger.warning(f"MainWindow._on_entry_selected はレガシー接続用に残されています: entry_number={entry_number}")
         # メタデータパネル更新は entry_selected シグナルから直接 update_metadata_panel に接続
         # プレビュー/評価結果ウィンドウ更新は、各ウィンドウ表示時に entry_selected に接続
-        pass  # 何もしない
+        pass # 何もしない
 
     def _on_entry_updated(self, key: str) -> None:
         """エントリが更新されたときの処理
-
+        
         注意: このメソッドは後方互換性のために維持されていますが、
         将来的には entry_editor_facade.entry_applied シグナルに完全に置き換わる予定です。
 
@@ -340,9 +325,7 @@ class MainWindow(QMainWindow):
         # テーブルの更新
         self.entry_list_facade.update_table_and_reselect(key)
         # 統計情報の更新
-        self._update_stats(
-            self._get_current_po().get_statistics() if self._get_current_po() else {}
-        )
+        self._update_stats(self._get_current_po().get_statistics() if self._get_current_po() else {})
 
     def _change_entry_layout(self, layout_type: LayoutType) -> None:
         """エントリ編集のレイアウトを変更する
@@ -351,7 +334,7 @@ class MainWindow(QMainWindow):
             layout_type: レイアウトタイプ
         """
         # self.event_handler.change_entry_layout(layout_type) # 古い呼び出しを削除
-        self.entry_editor_facade.change_layout(layout_type)  # ファサード経由で呼び出す
+        self.entry_editor_facade.change_layout(layout_type) # ファサード経由で呼び出す
 
     def _show_preview_dialog(self) -> None:
         """プレビューダイアログを表示
@@ -366,23 +349,19 @@ class MainWindow(QMainWindow):
 
         # プレビューダイアログを表示
         dialog = PreviewDialog(self)
-
+        
         # 更新シグナルを設定
         dialog.set_update_signal(self.entry_list_facade.entry_selected)
-
+        
         # entry_selected シグナルを切断するスロット
         def disconnect_preview_update():
             try:
-                self.entry_list_facade.entry_selected.disconnect(
-                    self._update_preview_dialog
-                )
+                self.entry_list_facade.entry_selected.disconnect(self._update_preview_dialog)
                 logger.debug("PreviewDialog: entry_selected シグナルを切断しました")
             except (RuntimeError, TypeError):
                 # RuntimeError: シグナルが接続されていない場合
                 # TypeError: 引数の型が正しくない場合（通常発生しないはず）
-                logger.debug(
-                    "PreviewDialog: entry_selected シグナルは既に切断されているか、接続されていませんでした"
-                )
+                logger.debug("PreviewDialog: entry_selected シグナルは既に切断されているか、接続されていませんでした")
 
         # ダイアログを表示
         dialog.show()
@@ -540,7 +519,7 @@ class MainWindow(QMainWindow):
         current_entry = self.entry_editor_facade.get_current_entry()
         if entry is None and current_entry is not None:
             entry = current_entry
-
+        
         if entry is None:
             self.statusBar().showMessage(
                 "メタデータを編集するエントリが選択/表示されていません"
@@ -569,19 +548,14 @@ class MainWindow(QMainWindow):
                 self,
                 "警告",
                 "エントリが選択されていません。先にエントリを選択してください。",
-                QMessageBox.StandardButton.Ok,
+                QMessageBox.StandardButton.Ok
             )
             return
 
         # 現在のPOファイルを取得
         current_po = self._get_current_po()
         if not current_po:
-            QMessageBox.warning(
-                self,
-                "警告",
-                "POファイルが読み込まれていません。",
-                QMessageBox.StandardButton.Ok,
-            )
+            QMessageBox.warning(self, "警告", "POファイルが読み込まれていません。", QMessageBox.StandardButton.Ok)
             return
 
         try:
@@ -589,10 +563,7 @@ class MainWindow(QMainWindow):
             current_entry = current_po.get_entry_by_key(current_entry_key)
             if not current_entry:
                 QMessageBox.warning(
-                    self,
-                    "警告",
-                    "選択されたエントリを取得できませんでした。",
-                    QMessageBox.StandardButton.Ok,
+                    self, "警告", "選択されたエントリを取得できませんでした。", QMessageBox.StandardButton.Ok
                 )
                 return
 
@@ -633,7 +604,7 @@ class MainWindow(QMainWindow):
                 self,
                 "エラー",
                 f"翻訳品質評価ダイアログの表示中にエラーが発生しました: {e}",
-                QMessageBox.StandardButton.Ok,
+                QMessageBox.StandardButton.Ok
             )
 
     def _update_evaluation_result_window(self, entry_number: int) -> None:
@@ -686,9 +657,7 @@ class MainWindow(QMainWindow):
                 exc_info=True,
             )
 
-    def _on_evaluation_completed(
-        self, entry: EntryModel, result: Union[int, EvaluationResult]
-    ) -> None:
+    def _on_evaluation_completed(self, entry: EntryModel, result: Union[int, EvaluationResult]) -> None:
         """評価完了時の処理
 
         Args:
@@ -719,8 +688,10 @@ class MainWindow(QMainWindow):
                 score = cast(Dict[str, int], result).get("overall_score", 0)
             else:
                 score = getattr(result, "overall_score", 0)
-
-            self.statusBar().showMessage(f"翻訳評価が完了しました。総合スコア: {score}")
+            
+            self.statusBar().showMessage(
+                f"翻訳評価が完了しました。総合スコア: {score}"
+            )
 
             # ファイルの変更フラグを設定
             self.file_handler.set_modified(True)
@@ -838,39 +809,25 @@ class MainWindow(QMainWindow):
                 # entry_selected シグナルを切断するスロット
                 def disconnect_eval_update():
                     try:
-                        self.entry_list_facade.entry_selected.disconnect(
-                            self._update_evaluation_result_window
-                        )
-                        logger.debug(
-                            "EvaluationResultWindow: entry_selected シグナルを切断しました"
-                        )
+                        self.entry_list_facade.entry_selected.disconnect(self._update_evaluation_result_window)
+                        logger.debug("EvaluationResultWindow: entry_selected シグナルを切断しました")
                     except (RuntimeError, TypeError):
-                        logger.debug(
-                            "EvaluationResultWindow: entry_selected シグナルは既に切断されているか、接続されていませんでした"
-                        )
+                        logger.debug("EvaluationResultWindow: entry_selected シグナルは既に切断されているか、接続されていませんでした")
 
                 # entry_selected シグナルを接続
                 try:
                     # 既存の接続があれば切断してから再接続
                     disconnect_eval_update()
-                    self.entry_list_facade.entry_selected.connect(
-                        self._update_evaluation_result_window
-                    )
-                    logger.debug(
-                        "EvaluationResultWindow: entry_selected シグナルを接続しました"
-                    )
+                    self.entry_list_facade.entry_selected.connect(self._update_evaluation_result_window)
+                    logger.debug("EvaluationResultWindow: entry_selected シグナルを接続しました")
                     # ウィンドウが閉じられたときにシグナルを切断 (closeEvent or finished)
                     # TranslationEvaluationResultWindow が QDialog か QWidget かで適切なシグナルを選ぶ
                     # ここでは finished を使うと仮定 (QWidgetの場合は closeEvent をオーバーライドする必要があるかも)
-                    if hasattr(self._evaluation_result_window, "finished"):
-                        self._evaluation_result_window.finished.connect(
-                            disconnect_eval_update
-                        )
-                    else:  # QWidgetの場合 (closeEventをハンドルする前提)
+                    if hasattr(self._evaluation_result_window, 'finished'):
+                        self._evaluation_result_window.finished.connect(disconnect_eval_update)
+                    else: # QWidgetの場合 (closeEventをハンドルする前提)
                         # closeEventで明示的にdisconnectを呼ぶ実装が必要
-                        logger.warning(
-                            "EvaluationResultWindowにfinishedシグナルがないため、自動切断できません。"
-                        )
+                        logger.warning("EvaluationResultWindowにfinishedシグナルがないため、自動切断できません。")
                 except Exception as e:
                     logger.error(f"評価結果ウィンドウのシグナル接続中にエラー: {e}")
 
@@ -931,9 +888,7 @@ class MainWindow(QMainWindow):
 
     def _update_editor_on_selection(self, entry_number: int) -> None:
         """エントリ選択時にエディタの内容を更新するスロット"""
-        logger.debug(
-            f"MainWindow._update_editor_on_selection: entry_number={entry_number}"
-        )
+        logger.debug(f"MainWindow._update_editor_on_selection: entry_number={entry_number}")
         current_po = self._get_current_po()
         if not current_po:
             return
@@ -944,9 +899,7 @@ class MainWindow(QMainWindow):
         """イベント接続の設定"""
         # ファサードを使用した接続
         # エントリ適用時に更新を通知
-        self.entry_editor_facade.entry_applied.connect(
-            self.entry_list_facade.update_table_and_reselect
-        )
+        self.entry_editor_facade.entry_applied.connect(self.entry_list_facade.update_table_and_reselect)
         self.entry_editor_facade.entry_applied.connect(self.update_metadata_panel)
         self.entry_editor_facade.entry_applied.connect(self._on_entry_updated)
 

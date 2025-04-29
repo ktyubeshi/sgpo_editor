@@ -17,9 +17,9 @@
     }
   },
   "include": [],
-  "forceInclude": ["inspection/**", "test_result.txt"],
+  "forceInclude": [],
   "ignore": {
-    "useGitignore": true,
+    "useGitignore": false,
     "useDefaultPatterns": true,
     "customPatterns": ["_doc/.obsidian/**", "**/repomix*.*"]
   },
