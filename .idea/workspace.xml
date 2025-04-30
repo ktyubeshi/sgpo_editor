@@ -5,10 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="839a3ece-7d0e-4aa6-9209-4399dd5eea63" name="変更" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/sgpo_editor.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/sgpo_editor.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/repomix.config.json" beforeDir="false" afterPath="$PROJECT_DIR$/repomix.config.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/cache_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/cache_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/database_accessor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/database_accessor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/core/po_components/filter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/event_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/event_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/main_window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/table_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/table_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/ui_setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/ui_setup.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/entry_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/entry_editor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/po_format_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/gui/widgets/po_format_editor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/sgpo_editor/models/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/sgpo_editor/models/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/gui/main_window/test_main_window_sort_filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/gui/main_window/test_main_window_sort_filter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/integration/test_viewer_po_file.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/test_viewer_po_file.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -29,25 +38,25 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "com.codeium.enabled": "true",
-    "com.intellij.codeInspection.ui.actions.InspectionResultsExportActionProvider.location": "/Users/tomohiro/Git-projects/sgpo_editor/inspection",
-    "git-widget-placeholder": "wip2",
-    "junie.onboarding.icon.badge.shown": "true",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "run.code.analysis.last.selected.profile": "aDefault",
-    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
-    "settings.editor.splitter.proportion": "0.28409094",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;com.codeium.enabled&quot;: &quot;true&quot;,
+    &quot;com.intellij.codeInspection.ui.actions.InspectionResultsExportActionProvider.location&quot;: &quot;/Users/tomohiro/Git-projects/sgpo_editor/inspection&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;wip2&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMThirdPartyAiProvidersConfigurable&quot;,
+    &quot;settings.editor.splitter.proportion&quot;: &quot;0.28409094&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -74,6 +83,7 @@
       <workItem from="1745069702624" duration="303000" />
       <workItem from="1745070008845" duration="611000" />
       <workItem from="1745904106769" duration="1749000" />
+      <workItem from="1745937366378" duration="1422000" />
     </task>
     <servers />
   </component>
