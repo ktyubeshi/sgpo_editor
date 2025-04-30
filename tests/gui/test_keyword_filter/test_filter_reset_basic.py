@@ -7,7 +7,7 @@
 import pytest
 
 # テスト対象のモジュールをインポート
-from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
+from sgpo_editor.core.viewer_po_file import ViewerPOFile as ViewerPOFileRefactored
 
 
 class TestFilterResetBasic:
@@ -62,21 +62,18 @@ class TestFilterResetBasic:
         # )
 
         # 2. 初期状態で全エントリを取得
-        initial_entries = po_file.get_filtered_entries()
+        from sgpo_editor.gui.widgets.search import SearchCriteria
+        initial_entries = po_file.get_filtered_entries(SearchCriteria())
         initial_count = len(initial_entries)
         print(f"[TEST] 初期状態のエントリ数: {initial_count}件")
 
         # 3. フィルタを適用（'test'で検索）
-        filtered_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword="test"
-        )
+        filtered_entries = po_file.get_filtered_entries(SearchCriteria(filter_keyword="test", update_filter=True))
         filtered_count = len(filtered_entries)
         print(f"[TEST] 'test'フィルタ適用後のエントリ数: {filtered_count}件")
 
         # 4. フィルタを空にリセット
-        reset_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword=""
-        )
+        reset_entries = po_file.get_filtered_entries(SearchCriteria(filter_keyword="", update_filter=True))
         reset_count = len(reset_entries)
         print(f"[TEST] フィルタリセット後のエントリ数: {reset_count}件")
 
@@ -95,21 +92,18 @@ class TestFilterResetBasic:
         po_file = setup_test_data
 
         # 1. 初期状態の確認
-        initial_entries = po_file.get_filtered_entries()
+        from sgpo_editor.gui.widgets.search import SearchCriteria
+        initial_entries = po_file.get_filtered_entries(SearchCriteria())
         initial_count = len(initial_entries)
         print(f"\n[TEST] 初期状態のエントリ数: {initial_count}件")
 
         # 2. フィルタを適用（'test'で検索）
-        filtered_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword="test"
-        )
+        filtered_entries = po_file.get_filtered_entries(SearchCriteria(filter_keyword="test", update_filter=True))
         filtered_count = len(filtered_entries)
         print(f"[TEST] 'test'フィルタ適用後のエントリ数: {filtered_count}件")
 
         # 3. 空白文字だけのキーワードでフィルタをリセット
-        whitespace_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword="   "
-        )
+        whitespace_entries = po_file.get_filtered_entries(SearchCriteria(filter_keyword="   ", update_filter=True))
         whitespace_count = len(whitespace_entries)
         print(f"[TEST] 空白文字フィルタ後のエントリ数: {whitespace_count}件")
 
@@ -136,15 +130,14 @@ class TestFilterResetBasic:
         po_file = setup_test_data
 
         # 1. 初期状態の確認
-        initial_entries = po_file.get_filtered_entries()
+        from sgpo_editor.gui.widgets.search import SearchCriteria
+        initial_entries = po_file.get_filtered_entries(SearchCriteria())
         initial_count = len(initial_entries)
         print(f"\n[TEST] 初期状態のエントリ数: {initial_count}件")
         # print(f"[TEST] 初期状態のフィルタ状態: search_text={po_file.search_text}")
 
         # 2. フィルタを適用（'test'で検索）
-        filtered_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword="test"
-        )
+        filtered_entries = po_file.get_filtered_entries(SearchCriteria(filter_keyword="test", update_filter=True))
         filtered_count = len(filtered_entries)
         print(f"[TEST] 'test'フィルタ適用後のエントリ数: {filtered_count}件")
         # print(f"[TEST] フィルタ適用後の状態: search_text={po_file.search_text}")
@@ -163,9 +156,7 @@ class TestFilterResetBasic:
         # print("[TEST] キャッシュとsearch_textを手動でリセットしました")
 
         # 3. Noneでフィルタをリセット
-        none_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword=None
-        )
+        none_entries = po_file.get_filtered_entries(SearchCriteria(filter_keyword=None, update_filter=True))
         none_count = len(none_entries)
         print(f"[TEST] Noneフィルタ後のエントリ数: {none_count}件")
         # print(f"[TEST] Noneフィルタ後の状態: search_text={po_file.search_text}")
@@ -208,12 +199,13 @@ class TestFilterResetBasic:
         # )
 
         # 2. 初期状態で全エントリを取得
-        initial_entries = po_file.get_filtered_entries()
+        from sgpo_editor.gui.widgets.search import SearchCriteria
+        initial_entries = po_file.get_filtered_entries(SearchCriteria())
         initial_count = len(initial_entries)
         print(f"[TEST] 初期状態のエントリ数: {initial_count}件")
 
         # 3. フィルタを適用
-        po_file.get_filtered_entries(update_filter=True, filter_keyword="test")
+        po_file.get_filtered_entries(SearchCriteria(filter_keyword="test", update_filter=True))
         filtered_filters = po_file.get_filters()
         print(
             f"[TEST] フィルタ適用後のViewerPOFile状態: search_text={
@@ -229,9 +221,7 @@ class TestFilterResetBasic:
         # )
 
         # 4. フィルタをリセット（空文字列）
-        reset_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword=""
-        )
+        reset_entries = po_file.get_filtered_entries(SearchCriteria(filter_keyword="", update_filter=True))
         reset_count = len(reset_entries)
         reset_filters = po_file.get_filters()
         print(f"[TEST] リセット後のエントリ数: {reset_count}件")

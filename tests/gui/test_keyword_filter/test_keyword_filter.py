@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 from PySide6.QtWidgets import QApplication
 
-from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
+from sgpo_editor.core.viewer_po_file import ViewerPOFile as ViewerPOFileRefactored
 
 # テスト対象のモジュールをインポート
 from sgpo_editor.gui.main_window import MainWindow

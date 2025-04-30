@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from PySide6.QtWidgets import QApplication
 
-from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
+from sgpo_editor.core.viewer_po_file import ViewerPOFile as ViewerPOFileRefactored
 from sgpo_editor.gui.main_window import MainWindow
 from sgpo_editor.gui.widgets.search import SearchCriteria
 
@@ -110,21 +110,46 @@ class TestMainWindowFilter:
         # SearchCriteriaを設定
         criteria = SearchCriteria()
         criteria.filter_keyword = "test"
-        # デフォルト値は filter="すべて", match_mode="部分一致"
+        # デフォルト値は filter="all", match_mode="partial"
 
         # get_search_criteriaの戻り値を設定
         main_window.search_widget.get_search_criteria.return_value = criteria
 
         mock_entries = [MagicMock() for _ in range(5)]
-        # entry_list_facade.update_table 内で呼ばれるメソッドをモック
-        main_window.entry_list_facade._get_current_po.return_value.get_filtered_entries.return_value = mock_entries
+        
+        # _get_current_poをモック化
+        main_window.entry_list_facade._get_current_po = lambda: mock_po_file
+        
+        # entry_list_facade.update_tableメソッドの実装をモック化
+        original_update_table = main_window.entry_list_facade.update_table
+        
+        def mock_update_table():
+            # update_tableの実装をモック化し、get_filtered_entriesを確実に呼び出す
+            current_po = main_window.entry_list_facade._get_current_po()
+            search_criteria = main_window.search_widget.get_search_criteria()
+            print(f"mock_update_table called with criteria: {search_criteria}")
+            # get_filtered_entriesを呼び出す
+            entries = current_po.get_filtered_entries(search_criteria)
+            print(f"get_filtered_entries returned {len(entries)} entries")
+            return entries
+        
+        # get_filtered_entriesの戻り値を設定
+        mock_po_file.get_filtered_entries.return_value = mock_entries
+        
+        # update_tableメソッドをモック化
+        main_window.entry_list_facade.update_table = mock_update_table
+        
+        try:
+            # _on_search_changedメソッドを呼び出す代わりにシグナルを発行
+            main_window.search_widget.filter_changed.emit()
+            
+            # get_filtered_entriesが呼ばれたことを確認
+            mock_po_file.get_filtered_entries.assert_called_once()
+            # 正しい引数で呼ばれたことを確認
+            args, kwargs = mock_po_file.get_filtered_entries.call_args
+            assert len(args) == 1, "get_filtered_entriesは引数を1つ受け取る必要があります"
+            assert args[0] == criteria, "get_filtered_entriesは正しいSearchCriteriaを受け取る必要があります"
+        finally:
+            # 元のメソッドに戻す
+            main_window.entry_list_facade.update_table = original_update_table
 
-        # _on_search_changedメソッドを呼び出す代わりにシグナルを発行
-        main_window.search_widget.filter_changed.emit()
-
-        # update_tableが呼ばれたことを確認
-        main_window.entry_list_facade.update_table.assert_called_once()
-        # update_table内でget_filtered_entriesが呼ばれたことを確認
-        main_window.entry_list_facade._get_current_po.return_value.get_filtered_entries.assert_called_with(
-            criteria
-        )

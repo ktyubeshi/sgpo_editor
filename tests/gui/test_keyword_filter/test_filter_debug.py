@@ -10,7 +10,8 @@ import logging
 import pytest
 
 # テスト対象のモジュールをインポート
-from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
+from sgpo_editor.core.viewer_po_file import ViewerPOFile as ViewerPOFileRefactored
+from sgpo_editor.gui.widgets.search import SearchCriteria
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class TestFilterDebug:
         # logger.debug(
         #     f"[DEBUG] ViewerPOFile状態: search_text={po_file.search_text}, translation_status={po_file.translation_status}"
         # )
-        initial_entries = po_file.get_filtered_entries()
+        initial_entries = po_file.get_filtered_entries(SearchCriteria())
         initial_count = len(initial_entries)
         logger.debug(f"[DEBUG] 初期状態のエントリ数: {initial_count}件")
         logger.debug("初期状態の全エントリ:")
@@ -59,7 +60,7 @@ class TestFilterDebug:
         # 2. フィルタを適用（'debug'で検索）
         logger.debug("\n[DEBUG] 'debug'フィルタ適用")
         filtered_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword="debug"
+            SearchCriteria(update_filter=True, filter_keyword="debug")
         )
         filtered_count = len(filtered_entries)
         logger.debug(f"[DEBUG] 'debug'フィルタ適用後のエントリ数: {filtered_count}件")
@@ -80,7 +81,7 @@ class TestFilterDebug:
         #     f"  filtered_entries: {[e.key for e in po_file.filtered_entries] if po_file.filtered_entries else '[]'}"
         # )
         reset_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword=""
+            SearchCriteria(update_filter=True, filter_keyword="")
         )
         reset_count = len(reset_entries)
         logger.debug(f"[DEBUG] フィルタリセット後のエントリ数: {reset_count}件")
@@ -187,7 +188,7 @@ class TestFilterDebug:
         print("\n[DEBUG] ===== フラグ条件を含むフィルタリセットのテスト =====")
 
         # 1. 初期状態の確認
-        initial_entries = po_file.get_filtered_entries()
+        initial_entries = po_file.get_filtered_entries(SearchCriteria())
         initial_count = len(initial_entries)
         print(f"[DEBUG] 初期状態のエントリ数: {initial_count}件")
 
@@ -196,13 +197,13 @@ class TestFilterDebug:
         print(f"[DEBUG] フラグ条件を設定: {po_file.flag_conditions}")
 
         # 3. フラグ条件でフィルタリング
-        flag_entries = po_file.get_filtered_entries(update_filter=True)
+        flag_entries = po_file.get_filtered_entries(SearchCriteria(update_filter=True))
         flag_count = len(flag_entries)
         print(f"[DEBUG] フラグ条件適用後のエントリ数: {flag_count}件")
 
         # 4. キーワードでさらにフィルタリング
         keyword_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword="test"
+            SearchCriteria(update_filter=True, filter_keyword="test")
         )
         keyword_count = len(keyword_entries)
         print(f"[DEBUG] キーワードフィルタ追加後のエントリ数: {keyword_count}件")
@@ -220,7 +221,7 @@ class TestFilterDebug:
 
         # 7. リセット後のエントリを取得
         reset_entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword=None
+            SearchCriteria(update_filter=True, filter_keyword=None)
         )
         reset_count = len(reset_entries)
         print(f"[DEBUG] 完全リセット後のエントリ数: {reset_count}件")
