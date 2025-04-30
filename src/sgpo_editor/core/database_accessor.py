@@ -27,6 +27,7 @@ from sgpo_editor.types import (
     EntryInputMap,
     FlagConditions,
 )
+from sgpo_editor.core.constants import TranslationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +259,11 @@ class DatabaseAccessor:
         Returns:
             List[EntryDict]: フィルタ条件に一致するエントリのリスト
         """
+        # Accept None values for search_text and filter_keyword as empty string
+        if search_text is None:
+            search_text = ""
+        if filter_keyword is None:
+            filter_keyword = ""
         norm_filter_keyword = filter_keyword.strip()
         norm_search_text = search_text.strip()
         if norm_search_text == "":
@@ -270,7 +276,8 @@ class DatabaseAccessor:
         )
 
         filtered_entries = []
-        for entry_dict in self.db.get_entries():
+        # Retrieve all entries via accessor to avoid store-level SQL issues
+        for entry_dict in self.get_all_entries():
             # 廃止フィルタリング
             if not filter_obsolete and entry_dict.get("obsolete"):
                 continue
@@ -871,7 +878,11 @@ class DatabaseAccessor:
             logger.debug(f"DatabaseAccessor.advanced_search: SQLクエリ実行: {query}")
             logger.debug(f"DatabaseAccessor.advanced_search: SQLパラメータ: {params}")
             cur.execute(query, params)
-            self.last_cursor_description = cur.description
+            # Try to capture cursor description if available
+            try:
+                self.last_cursor_description = cur.description
+            except Exception:
+                self.last_cursor_description = None
 
             # 結果をリストに変換
             result = []
@@ -1143,3 +1154,26 @@ class DatabaseAccessor:
                     entry_dict["category_quality_scores"] = category_scores
 
         return cast(EntryDict, entry_dict)
+
+    def get_entries(
+        self,
+        search_text: Optional[str] = None,
+        translation_status: Optional[str] = None,
+    ) -> List[dict]:
+        """Alias for get_filtered_entries to match test expectations."""
+        # Normalize search_text
+        st = search_text.strip() if search_text is not None else ""
+        # Determine filter_status from translation_status
+        if translation_status and translation_status != TranslationStatus.ALL:
+            fs = {translation_status}
+        else:
+            fs = None
+        return self.get_filtered_entries(
+            filter_text="すべて",
+            filter_keyword="",
+            match_mode="部分一致",
+            case_sensitive=False,
+            filter_status=fs,
+            filter_obsolete=True,
+            search_text=st,
+        )

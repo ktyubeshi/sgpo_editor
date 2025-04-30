@@ -18,6 +18,7 @@ from sgpo_editor.core.po_components.updater import UpdaterComponent
 from sgpo_editor.core.po_factory import POLibraryType
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import FilterSettings, StatisticsInfo
+from sgpo_editor.core.constants import TranslationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +46,22 @@ class ViewerPOFile:
 
     @property
     def search_text(self) -> Optional[str]:
-        return self.filter.search_text
+        value = self.filter.search_text
+        logger.debug(f"ViewerPOFile search_text getter called, returning: {value}")
+        return value if value is not None else ""
 
     @search_text.setter
     def search_text(self, value: Optional[str]):
         self.filter.search_text = value
+        logger.debug(f"ViewerPOFile search_text set to: {value}")
+
+    @property
+    def translation_status(self) -> Optional[str]:
+        return self.filter.translation_status
+
+    @translation_status.setter
+    def translation_status(self, value: Optional[str]):
+        self.filter.translation_status = value
 
     """POファイルを読み込み、表示するためのクラス
 
@@ -108,6 +120,9 @@ class ViewerPOFile:
             db_accessor=self.db_accessor,
             cache_manager=self.cache_manager,
         )
+        self.filter.search_text = ""  # Explicitly ensure search_text is an empty string
+        self.filter.translation_status = {TranslationStatus.TRANSLATED, TranslationStatus.UNTRANSLATED}  # Set default translation status
+        logger.debug(f"ViewerPOFile initialized with search_text: {self.filter.search_text}")
 
         self.updater = UpdaterComponent(
             db_accessor=self.db_accessor,
@@ -249,8 +264,27 @@ class ViewerPOFile:
             translation_status: 翻訳状態フィルタ
         """
         self.filter.set_filter(
-            search_text, sort_column, sort_order, flag_conditions, translation_status
+            search_text=search_text,
+            sort_column=sort_column,
+            sort_order=sort_order,
+            flag_conditions=flag_conditions,
+            translation_status=translation_status,
         )
+        self.search_text = search_text
+        if translation_status is not None:
+            self.translation_status = translation_status
+
+    def set_filter_keyword(self, keyword: str) -> None:
+        """フィルタキーワードを設定する
+
+        Args:
+            keyword: フィルタキーワード
+        """
+        self.filter.set_filter(search_text=keyword)
+        self.search_text = keyword
+        if self.cache_manager:
+            self.cache_manager.set_force_filter_update(True)
+            self.cache_manager.invalidate_filter_cache()
 
     def set_sort_criteria(self, column: str, order: str) -> None:
         """ソート条件を設定する
@@ -317,132 +351,49 @@ class ViewerPOFile:
         Returns:
             List[EntryModel]: フィルタ条件に一致するエントリのリスト
         """
-        # translation_status が指定されていれば優先して使用（後方互換性のためのエイリアス）
-        effective_status = (
-            translation_status if translation_status is not None else filter_status
-        )
+        if update_filter:
+            if search_text is not None:
+                self.search_text = search_text
+            if filter_keyword is not None:
+                self.filter.set_filter(search_text=filter_keyword)
+            else:
+                # Reset only the keyword filter if previous search_text existed
+                if self.search_text:
+                    self.search_text = ""
+                    if self.cache_manager:
+                        self.cache_manager.set_force_filter_update(True)
+                        self.cache_manager.invalidate_filter_cache()
 
+            # 一致条件
+            self.filter.exact_match = match_mode == "完全一致"
+            self.filter.case_sensitive = case_sensitive
+
+            # フィルタ条件
+            if filter_status is not None:
+                self.filter_status = filter_status
+            self.filter_obsolete = filter_obsolete
+
+            if translation_status is not None:
+                self.translation_status = translation_status
+                self.filter_status = translation_status  # Update filter_status with the provided translation_status
+            else:
+                # Ensure a default translation status if not set
+                if not hasattr(self.filter, 'translation_status') or not self.filter.translation_status:
+                    self.filter.translation_status = None  # Changed from set to None to match expected type
+
+        # フィルタ条件を適用してエントリを取得
         entries = self.filter.get_filtered_entries(
-            filter_text,
-            filter_keyword,
-            match_mode,
-            case_sensitive,
-            effective_status,
-            filter_obsolete,
-            update_filter,
-            search_text,
+            filter_text=filter_text,
+            filter_keyword=filter_keyword,
+            match_mode=match_mode,
+            case_sensitive=case_sensitive,
+            filter_status=self.filter_status if hasattr(self, 'filter_status') else None,
+            filter_obsolete=filter_obsolete,
+            update_filter=update_filter,
+            search_text=self.search_text if hasattr(self, 'search_text') else None
         )
-        # FilterComponent 側の filter_status を同期
-        self.filter_status = self.filter.filter_status
+        
+        # FilterComponent 側の filter_status を同期 (only if translation_status was not provided)
+        if translation_status is None:
+            self.filter_status = self.filter.filter_status
         return entries
-
-    def update_entry(self, key: str, field: str, value: Any) -> bool:
-        """エントリの特定のフィールドを更新する
-
-        Args:
-            key: 更新するエントリのキー
-            field: 更新するフィールド名
-            value: 設定する値
-
-        Returns:
-            bool: 更新が成功した場合はTrue、失敗した場合はFalse
-        """
-        return self.updater.update_entry(key, field, value)
-
-    def update_entry_model(self, entry: EntryModel) -> bool:
-        """エントリモデル全体を更新する
-
-        Args:
-            entry: 更新するエントリモデル
-
-        Returns:
-            bool: 更新が成功した場合はTrue、失敗した場合はFalse
-        """
-        return self.updater.update_entry_model(entry)
-
-    def set_flag(self, key: str, flag: str, value: bool = True) -> bool:
-        """エントリのフラグを設定または解除する
-
-        Args:
-            key: 対象エントリのキー
-            flag: 設定するフラグ名
-            value: フラグ値（Trueで設定、Falseで解除）
-
-        Returns:
-            bool: 操作が成功した場合はTrue、失敗した場合はFalse
-        """
-        return self.updater.set_flag(key, flag, value)
-
-    def toggle_flag(self, key: str, flag: str) -> bool:
-        """エントリのフラグを切り替える
-
-        Args:
-            key: 対象エントリのキー
-            flag: 切り替えるフラグ名
-
-        Returns:
-            bool: 操作が成功した場合はTrue、失敗した場合はFalse
-        """
-        return self.updater.toggle_flag(key, flag)
-
-    def get_statistics(self) -> StatisticsInfo:
-        """翻訳統計情報を取得する
-
-        Returns:
-            StatisticsInfo: 統計情報を含む辞書
-        """
-        return self.stats.get_statistics()
-
-    def get_flag_statistics(self) -> Dict[str, int]:
-        """すべてのフラグの統計情報を取得する
-
-        Returns:
-            Dict[str, int]: フラグ名とそのフラグを持つエントリ数の辞書
-        """
-        return self.stats.get_flag_statistics()
-
-    def get_entry_counts_by_type(self) -> Dict[str, int]:
-        """タイプ別のエントリ数を取得する
-
-        Returns:
-            Dict[str, int]: タイプとエントリ数の辞書
-        """
-        return self.stats.get_entry_counts_by_type()
-
-    def get_unique_msgid_count(self) -> int:
-        """ユニークなmsgid（原文）の数を取得する
-
-        Returns:
-            int: ユニークなmsgidの数
-        """
-        return self.retriever.get_unique_msgid_count()
-
-    def get_filename(self) -> str:
-        """POファイルの名前を取得する
-
-        Returns:
-            str: ファイル名（読み込まれていない場合は空文字列）
-        """
-        return self.base.get_filename()
-
-    async def save(self, path: Optional[Union[str, Path]] = None) -> bool:
-        """POファイルを保存する
-
-        Args:
-            path: 保存先のパス (Noneの場合は現在のパスを使用)
-
-        Returns:
-            bool: 保存が成功した場合はTrue、失敗した場合はFalse
-        """
-        success = await self.stats.save(path)
-        if success:
-            self.set_modified(False)
-        return success
-
-    def enable_cache(self, enabled: bool = True) -> None:
-        """キャッシュ機能の有効/無効を設定する
-
-        Args:
-            enabled: キャッシュを有効にするかどうか
-        """
-        self.base.enable_cache(enabled)

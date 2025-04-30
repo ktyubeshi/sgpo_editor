@@ -35,20 +35,22 @@ class FilterComponent:
         self.db_accessor = db_accessor
         self.cache_manager = cache_manager
 
-        # フィルタリング関連の状態
-        self.filtered_entries: List[EntryModel] = []
+        # 検索条件
         self.search_text: str = ""
+        logger.debug(f"FilterComponent initialized with search_text: {self.search_text}")
         self.sort_column: str = "position"
         self.sort_order: str = "ASC"
-        self.flag_conditions: FlagConditions = {}
+        self.flag_conditions: Dict[str, bool] = {}
         self.translation_status: Optional[str] = None
 
-        # フィルタ関連のフラグ
+        # 一致条件
         self.exact_match: bool = False
         self.case_sensitive: bool = False
 
-        # filter_status は translation_status の別名（後方互換性のため）
+        # フィルタリングされたエントリ（キャッシュ用）
+        self.filtered_entries: List[EntryModel] = []
 
+        # フィルタステータス（UIと同期用）
         self.filter_status: Optional[Set[str]] = {
             TranslationStatus.TRANSLATED,
             TranslationStatus.UNTRANSLATED,
@@ -81,6 +83,7 @@ class FilterComponent:
 
         # 検索テキスト
         self.search_text = search_text
+        logger.debug(f"FilterComponent set search_text to: {search_text}")
 
         # ソート条件
         self.sort_column = sort_column or "position"
@@ -171,7 +174,7 @@ class FilterComponent:
         if filter_keyword is None:
             # Reset only the keyword filter if previous search_text existed
             if update_filter and self.search_text:
-                self.search_text = None
+                self.search_text = ""
                 if self.cache_manager:
                     self.cache_manager.set_force_filter_update(True)
             filter_keyword = ""
@@ -195,18 +198,21 @@ class FilterComponent:
         # フィルタ条件をセットアップ
         # キャッシュヒット前に必ずself.search_textを更新
         # 空白のみの場合も空文字列として扱う
-        norm_filter_keyword = filter_keyword.strip()
-        norm_search_text = search_text.strip()
+        norm_filter_keyword = filter_keyword.strip() if filter_keyword is not None else ''
+        norm_search_text = search_text.strip() if search_text is not None else ''
+
+        # Determine component_search_text based on inputs
+        component_search_text = ""
+        if filter_keyword and norm_filter_keyword:
+            component_search_text = filter_keyword
+        elif search_text and norm_search_text:
+            component_search_text = search_text
 
         if update_filter:
-            if norm_filter_keyword != "":
-                self.search_text = norm_filter_keyword
-                if self.cache_manager:
-                    self.cache_manager.set_force_filter_update(True)
-            elif norm_search_text != "":
-                self.search_text = norm_search_text
-                if self.cache_manager:
-                    self.cache_manager.set_force_filter_update(True)
+            self.search_text = component_search_text
+            logger.debug(f"FilterComponent updated search_text to: {self.search_text}")
+            if self.cache_manager:
+                self.cache_manager.set_force_filter_update(True)
         # --- ここまで必ずsearch_textを反映 ---
 
         cached_entries = None
@@ -216,7 +222,7 @@ class FilterComponent:
             else False
         )
 
-        if not force_update and self.filtered_entries:
+        if self.cache_manager and not force_update and self.filtered_entries:
             # 既に計算済みのフィルタ結果がある場合はそれを使用
             return self.filtered_entries
 
@@ -283,7 +289,6 @@ class FilterComponent:
         Returns:
             List[EntryModel]: フィルタリングされたエントリのリスト
         """
-        # （不要なsearch_condition, status_conditionの定義を削除）
         # フラグ条件を構築
         flag_conditions = {}
         for flag, value in self.flag_conditions.items():
@@ -294,14 +299,11 @@ class FilterComponent:
         # advanced_searchを使用してDB検索を行う
         # テスト仕様に合わせてsearch_fields, flag_conditions, translation_statusを明示的に渡す
         search_fields = ["msgid", "msgstr", "reference", "tcomment", "comment"]
-        # flag_conditions: 空dictもそのまま渡す
-        # translation_status: filter_status優先、なければtranslation_status
-        # translation_statusがNoneの場合はテスト期待値に合わせて{"untranslated", "translated"}を渡す
-        translation_status = (
-            self.filter_status if self.filter_status is not None else None
-        )
+        # translation_status: filter_status優先、なければデフォルトを使用
+        translation_status = filter_status if filter_status is not None else {TranslationStatus.UNTRANSLATED, TranslationStatus.TRANSLATED}
+        logger.debug(f"FilterComponent before advanced_search, search_text is: {self.search_text}")
         entries = self.db_accessor.advanced_search(
-            search_text=self.search_text,
+            search_text=self.search_text if self.search_text is not None else "",
             search_fields=search_fields,
             sort_column=self.sort_column,
             sort_order=self.sort_order,

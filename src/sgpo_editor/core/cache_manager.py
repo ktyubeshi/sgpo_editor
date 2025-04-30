@@ -21,10 +21,9 @@ import logging
 import hashlib
 import json
 import time
-import asyncio
 import threading
-from collections import Counter
-from typing import Optional, List, Dict, Set, cast
+from collections import Counter, OrderedDict
+from typing import Optional, List, Dict, Set, Callable
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import (
@@ -37,6 +36,35 @@ from sgpo_editor.types import (
 
 logger = logging.getLogger(__name__)
 
+def get_cache_config() -> Dict[str, any]:
+    return {
+        "COMPLETE_CACHE_MAX_SIZE": 1000,
+        "FILTER_CACHE_MAX_SIZE": 1000,
+        "CACHE_ENABLED": True,
+        "CACHE_TTL": 0,
+        "PREFETCH_ENABLED": True,
+        "PREFETCH_SIZE": 50,
+    }
+
+class _LRUCache:
+    def __init__(self, max_size: int):
+        self.max_size = max_size
+        self._cache = OrderedDict()
+    def set(self, key, value):
+        if key in self._cache:
+            self._cache.move_to_end(key)
+        self._cache[key] = value
+        if len(self._cache) > self.max_size:
+            self._cache.popitem(last=False)
+    def get(self, key):
+        val = self._cache.get(key)
+        if val is not None:
+            self._cache.move_to_end(key)
+        return val
+    def delete(self, key):
+        self._cache.pop(key, None)
+    def clear(self):
+        self._cache.clear()
 
 class EntryCacheManager:
     """POエントリのキャッシュを管理するクラス
@@ -133,6 +161,21 @@ class EntryCacheManager:
         self._row_key_map: Dict[int, str] = {}
         # 逆引き用マップを追加
         self._key_row_map: Dict[str, int] = {}
+
+        # キャッシュ設定
+        config = get_cache_config()
+        self._cache_enabled = config["CACHE_ENABLED"]
+        self._cache_ttl = config["CACHE_TTL"]
+        self._max_cache_size = config["COMPLETE_CACHE_MAX_SIZE"]
+        self._prefetch_enabled = config["PREFETCH_ENABLED"]
+        self._prefetch_batch_size = config["PREFETCH_SIZE"]
+
+        # LRU キャッシュとタイムスタンプ
+        self._complete_cache = _LRUCache(self._max_cache_size)
+        self._entry_timestamps: Dict[str, float] = {}
+
+        # フィルタキャッシュ
+        self._filter_cache: Dict[str, EntryModelList] = {}
 
         logger.debug("EntryCacheManager: 初期化完了")
 
@@ -973,6 +1016,7 @@ class EntryCacheManager:
                 self._prefetch_in_progress = True
                 logger.debug("EntryCacheManager: 非同期プリフェッチ処理を開始します。")
                 # asyncioを使ってバックグラウンドで実行
+                import asyncio
                 asyncio.run_coroutine_threadsafe(
                     self._async_prefetch(fetch_callback),
                     asyncio.get_event_loop() # 現在のスレッドのイベントループを取得
@@ -1044,3 +1088,55 @@ class EntryCacheManager:
         """指定されたキーが現在プリフェッチ処理中かどうかを確認する"""
         with self._prefetch_lock:
             return key in self._keys_being_prefetched
+
+    def set_entry(self, key: str, entry: EntryModel) -> None:
+        if not self._cache_enabled:
+            return
+        self._complete_cache.set(key, entry)
+        self._entry_timestamps[key] = time.time()
+
+    def get_entry(self, key: str) -> Optional[EntryModel]:
+        if not self._cache_enabled:
+            return None
+        if self._cache_ttl > 0:
+            ts = self._entry_timestamps.get(key)
+            if ts is not None and time.time() - ts > self._cache_ttl:
+                self.invalidate_entry(key)
+                return None
+        return self._complete_cache.get(key)
+
+    def invalidate_entry(self, key: str) -> None:
+        self._complete_cache.delete(key)
+        self._entry_timestamps.pop(key, None)
+
+    def set_filtered_entries(self, cond: FilterConditions, entries: EntryModelList) -> None:
+        key = json.dumps(cond, sort_keys=True)
+        self._filter_cache[key] = entries
+
+    def get_filtered_entries(self, cond: FilterConditions) -> Optional[EntryModelList]:
+        return self._filter_cache.get(json.dumps(cond, sort_keys=True))
+
+    def invalidate_filter_cache(self) -> None:
+        self._filter_cache.clear()
+
+    def disable_cache(self) -> None:
+        self._cache_enabled = False
+
+    def enable_cache(self) -> None:
+        self._cache_enabled = True
+
+    def prefetch_entries(self, keys: List[str], fetch_callback: Callable[[List[str]], Dict[str, EntryModel]]) -> None:
+        if not self._prefetch_enabled:
+            return
+        for k in keys:
+            self._keys_being_prefetched.add(k)
+        try:
+            results = fetch_callback(keys)
+            for k, e in results.items():
+                self.set_entry(k, e)
+        finally:
+            for k in keys:
+                self._keys_being_prefetched.discard(k)
+
+    def is_key_being_prefetched(self, key: str) -> bool:
+        return key in self._keys_being_prefetched
