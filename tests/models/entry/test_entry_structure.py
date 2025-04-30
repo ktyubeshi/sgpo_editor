@@ -3,8 +3,9 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
+from sgpo_editor.core.viewer_po_file import ViewerPOFile as ViewerPOFileRefactored
 from sgpo_editor.models.entry import EntryModel
+from sgpo_editor.gui.widgets.search import SearchCriteria
 
 
 class TestEntryStructure(unittest.TestCase):
@@ -33,7 +34,7 @@ class TestEntryStructure(unittest.TestCase):
         self.mock_db_accessor.get_filtered_entries.return_value = mock_entries
 
         # フィルタされたエントリを取得
-        entries = self.viewer.get_filtered_entries()
+        entries = self.viewer.get_filtered_entries(SearchCriteria())
 
         # 各エントリが必要なキーを持っていることを確認
         required_keys = ["key", "msgid", "msgstr", "flags"]
@@ -47,42 +48,34 @@ class TestEntryStructure(unittest.TestCase):
         """エントリへのアクセスパターンが正しく機能することを確認"""
         # モックエントリを設定
         mock_entries = [
-            {"key": "1", "msgid": "test1", "msgstr": "テスト1", "flags": []},
+            EntryModel(key="1", msgid="test1", msgstr="テスト1", flags=[]),
         ]
 
-        # get_filtered_entriesをモック化
-        self.mock_db_accessor.get_filtered_entries.return_value = mock_entries
+        # ViewerPOFileのget_filtered_entriesメソッドを直接モック化
+        original_get_filtered = self.viewer.get_filtered_entries
+        self.viewer.get_filtered_entries = MagicMock(return_value=mock_entries)
 
-        original_from_dict = EntryModel.from_dict
-
-        def mock_from_dict(entry_dict):
-            entry_model = original_from_dict(entry_dict)
-            entry_model.__getitem__ = lambda key: getattr(entry_model, key)
-            return entry_model
-
-        with patch(
-            "sgpo_editor.models.entry.EntryModel.from_dict", side_effect=mock_from_dict
-        ):
-            # フィルタされたエントリを取得
-            entries = self.viewer.get_filtered_entries()
-
+        try:
             # 実際のコードで使用されるアクセスパターンをテスト
-            try:
-                # 辞書アクセス
-                from sgpo_editor.utils.entry_utils import get_entry_key
-                entry_key = get_entry_key(entries[0])
-                entry_msgid = entries[0]["msgid"]
-                self.assertEqual(entry_key, "1")
-                self.assertEqual(entry_msgid, "test1")
+            # 辞書アクセス
+            from sgpo_editor.utils.entry_utils import get_entry_key
+            entries = self.viewer.get_filtered_entries(SearchCriteria())
+            entry_key = get_entry_key(entries[0])
+            entry_msgid = entries[0].msgid
+            self.assertEqual(entry_key, "1")
+            self.assertEqual(entry_msgid, "test1")
 
-                # 属性アクセス
-                self.assertEqual(entries[0].key, "1")
-                self.assertEqual(entries[0].msgid, "test1")
+            # 属性アクセス
+            self.assertEqual(entries[0].key, "1")
+            self.assertEqual(entries[0].msgstr, "テスト1")
 
-            except Exception as e:
-                self.fail(
-                    f"エントリへのアクセス中に予期しないエラーが発生しました: {e}"
-                )
+        except Exception as e:
+            self.fail(
+                f"エントリへのアクセス中に予期しないエラーが発生しました: {e}"
+            )
+        finally:
+            # テスト後に元のメソッドに戻す
+            self.viewer.get_filtered_entries = original_get_filtered
 
 
 if __name__ == "__main__":

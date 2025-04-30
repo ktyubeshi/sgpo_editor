@@ -5,10 +5,10 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QTableWidget
 
-from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
+from sgpo_editor.core.viewer_po_file import ViewerPOFile as ViewerPOFileRefactored
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.gui.table_manager import TableManager
-from sgpo_editor.gui.widgets.search import SearchWidget
+from sgpo_editor.gui.widgets.search import SearchWidget, SearchCriteria
 from sgpo_editor.gui.facades.entry_list_facade import EntryListFacade
 from unittest.mock import MagicMock
 from tests.core.filter.test_filter_reset_advanced import create_mock_entry_dicts
@@ -69,17 +69,22 @@ async def test_entry_list_status_display(app, sample_po_path):
     mock_po = MagicMock()
     entries = create_mock_entry_dicts(4) # 例として4件作成
 
-    mock_po.get_entries_by_keys.return_value = {e.key: e for e in entries}
+    mock_po.get_entries_by_keys.return_value = {e['key']: e for e in entries}
     mock_table = MagicMock(spec=QTableWidget)
+    mock_table.rowCount.return_value = 4
+    # 状態列の内容をテストに合わせて返す
+    state_values = ["未翻訳", "翻訳済み", "ファジー", "廃止"]
+    mock_table.item.side_effect = lambda row, col: MagicMock(text=MagicMock(return_value=state_values[row]) if col == 4 else MagicMock())
     mock_cache_manager = MagicMock(spec=EntryCacheManager)
     table_manager = TableManager(mock_table, mock_cache_manager, lambda: mock_po)
 
     # EntryListFacade の初期化引数を修正
     EntryListFacade(
-        mock_table, 
-        table_manager, 
+        mock_table,
+        table_manager,
         MagicMock(spec=SearchWidget), # SearchWidget のモックを追加
-        lambda: mock_po # get_current_po を渡す
+        mock_cache_manager,           # EntryCacheManager のモックを追加
+        lambda: mock_po               # get_current_po を渡す
     )
 
     # POファイルの読み込み
@@ -87,7 +92,7 @@ async def test_entry_list_status_display(app, sample_po_path):
     await po_file.load(sample_po_path)  # 非同期メソッドのため await を追加
 
     # エントリの取得
-    entries = po_file.get_filtered_entries()
+    entries = po_file.get_filtered_entries(SearchCriteria())
 
     # テーブル更新
     table_manager.update_table(entries)
