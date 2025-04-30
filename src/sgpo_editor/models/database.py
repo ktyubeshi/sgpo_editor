@@ -373,9 +373,12 @@ class InMemoryEntryStore:
             """,
                 (key,),
             )
+            # fetch row
+            # record column names before fetching row to avoid ExecutionCompleteError
+            cols = [desc[0] for desc in cur.description]
             row = cur.fetchone()
             if row:
-                entry = self._row_to_dict_from_cursor(cur, row)
+                entry = dict(zip(cols, row))
 
                 # リファレンスを取得
                 cur.execute(
@@ -383,18 +386,14 @@ class InMemoryEntryStore:
                     (entry["id"],),
                 )
                 rows = cur.fetchall()
-                entry["references"] = [
-                    self._row_to_dict_from_cursor(cur, row)["reference"] for row in rows
-                ]
+                entry["references"] = [row[0] for row in rows]
 
                 # フラグを取得
                 cur.execute(
                     "SELECT flag FROM entry_flags WHERE entry_id = ?", (entry["id"],)
                 )
                 rows = cur.fetchall()
-                entry["flags"] = [
-                    self._row_to_dict_from_cursor(cur, row)["flag"] for row in rows
-                ]
+                entry["flags"] = [row[0] for row in rows]
 
                 # レビュー関連データを取得
                 entry["review_data"] = self._get_review_data(entry["id"])
@@ -446,9 +445,10 @@ class InMemoryEntryStore:
                 if row:
                     # idのみ取得なのでタプルでOK
                     entry_id = self._row_to_dict_from_cursor(id_cur, row)["id"]
-                    # レビューデータを保存
+                    # Use empty dict if review_data is missing to avoid AttributeError
+                    raw_review_data = entry_data.get("review_data") or {}
                     self._save_review_data_in_transaction(
-                        cur, entry_id, entry_data.get("review_data")
+                        cur, entry_id, raw_review_data
                     )
 
                 logger.debug("エントリ更新完了: %s, 結果: %s", key, rows_updated > 0)
@@ -458,14 +458,92 @@ class InMemoryEntryStore:
             return False
 
     def _get_review_data(self, entry_id: int) -> dict:
-        """レビュー関連データのダミー取得"""
-        # 必要に応じて本実装を追加
-        return {}
+        """レビュー関連データの取得"""
+        review_data: Dict[str, Any] = {}
+        with self.transaction() as cur:
+            # レビューコメント
+            cur.execute(
+                "SELECT comment_id, author, comment, created_at FROM review_comments WHERE entry_id = ?",
+                (entry_id,),
+            )
+            rows = cur.fetchall()
+            review_data["review_comments"] = [
+                {"id": r[0], "author": r[1], "comment": r[2], "created_at": r[3]}
+                for r in rows
+            ]
+            # 品質スコア
+            cur.execute(
+                "SELECT id, overall_score FROM quality_scores WHERE entry_id = ?",
+                (entry_id,),
+            )
+            qs = cur.fetchone()
+            category_scores: Dict[str, Any] = {}
+            if qs:
+                quality_score_id, overall_score = qs
+                review_data["quality_score"] = overall_score
+                # カテゴリスコア
+                cur.execute(
+                    "SELECT category, score FROM category_scores WHERE quality_score_id = ?",
+                    (quality_score_id,),
+                )
+                cs = cur.fetchall()
+                category_scores = {c[0]: c[1] for c in cs}
+            review_data["category_scores"] = category_scores
+            # チェック結果
+            cur.execute(
+                "SELECT code, message, severity, created_at FROM check_results WHERE entry_id = ?",
+                (entry_id,),
+            )
+            cr = cur.fetchall()
+            review_data["check_results"] = [
+                {"code": r[0], "message": r[1], "severity": r[2], "created_at": r[3]}
+                for r in cr
+            ]
+        return review_data
 
     def _save_review_data_in_transaction(self, cur, entry_id: int, review_data: dict) -> None:
-        """レビュー関連データのダミー保存"""
-        # 必要に応じて本実装を追加
-        pass
+        """レビュー関連データの保存"""
+        # レビューコメント
+        comments = review_data.get("review_comments") or []
+        for cm in comments:
+            cur.execute(
+                "INSERT INTO review_comments (entry_id, comment_id, author, comment, created_at) VALUES (?, ?, ?, ?, ?)",
+                (entry_id, cm.get("id"), cm.get("author"), cm.get("comment"), cm.get("created_at")),
+            )
+        # 品質スコア
+        if "quality_score" in review_data:
+            qs_val = review_data["quality_score"]
+            # upsert
+            cur.execute("SELECT id FROM quality_scores WHERE entry_id = ?", (entry_id,))
+            row = cur.fetchone()
+            if row:
+                cur.execute(
+                    "UPDATE quality_scores SET overall_score = ? WHERE entry_id = ?",
+                    (qs_val, entry_id),
+                )
+                qsid = row[0]
+            else:
+                cur.execute(
+                    "INSERT INTO quality_scores (entry_id, overall_score) VALUES (?, ?)",
+                    (entry_id, qs_val),
+                )
+                qsid = self._conn.last_insert_rowid()
+            # カテゴリスコア
+            cs_map = review_data.get("category_scores") or {}
+            # clear existing
+            cur.execute("DELETE FROM category_scores WHERE quality_score_id = ?", (qsid,))
+            for cat, sc in cs_map.items():
+                cur.execute(
+                    "INSERT INTO category_scores (quality_score_id, category, score) VALUES (?, ?, ?)",
+                    (qsid, cat, sc),
+                )
+        # チェック結果
+        checks = review_data.get("check_results") or []
+        for ck in checks:
+            cur.execute(
+                "INSERT INTO check_results (entry_id, code, message, severity, created_at) VALUES (?, ?, ?, ?, ?)",
+                (entry_id, ck.get("code"), ck.get("message"), ck.get("severity"), ck.get("created_at")),
+            )
 
     def get_entries_by_keys(self, keys: List[str]) -> List[EntryDict]:
         """複数のキーに対応するエントリを一度に取得する
@@ -829,7 +907,7 @@ class InMemoryEntryStore:
 
     def _row_to_dict_from_cursor(self, cur, row) -> dict:
         """apswの行を辞書に変換"""
-        columns = [desc[0] for desc in cur.getdescription()]
+        columns = [desc[0] for desc in cur.description]
         result = dict(zip(columns, row))
         if "flags" in result and result["flags"]:
             result["flags"] = result["flags"].split(",")
@@ -861,3 +939,138 @@ class InMemoryEntryStore:
         finally:
             if close_cur:
                 cur.close()
+
+    def delete_entry(self, key: str) -> bool:
+        """指定したキーのエントリを削除する"""
+        logger.debug(f"InMemoryEntryStore.delete_entry: キー={key}のエントリを削除")
+        with self.transaction() as cur:
+            cur.execute("DELETE FROM entries WHERE key = ?", (key,))
+            rows_deleted = self._conn.changes()
+        return rows_deleted > 0
+
+    def get_entry_by_key(self, key: str) -> Optional[EntryDict]:
+        """キーでエントリを取得（get_entryのエイリアス）"""
+        return self.get_entry(key)
+
+    def update_entry_field(self, key: str, field: str, value: Any) -> bool:
+        """単一フィールドを部分更新する"""
+        logger.debug(f"InMemoryEntryStore.update_entry_field: キー={key}, フィールド={field}, 値={value}")
+        with self.transaction() as cur:
+            # エントリID取得
+            cur.execute("SELECT id FROM entries WHERE key = ?", (key,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            entry_id = row[0]
+            # フラグ(Fuzzyなど)の場合はentry_flagsテーブルを更新
+            if field == 'fuzzy':
+                # entriesテーブルの列も更新
+                cur.execute("UPDATE entries SET fuzzy = ? WHERE id = ?", (bool(value), entry_id))
+                if value:
+                    cur.execute("INSERT OR IGNORE INTO entry_flags (entry_id, flag) VALUES (?, ?)", (entry_id, field))
+                else:
+                    cur.execute("DELETE FROM entry_flags WHERE entry_id = ? AND flag = ?", (entry_id, field))
+            else:
+                # その他はentriesテーブルの列として更新
+                cur.execute(f"UPDATE entries SET {field} = ? WHERE id = ?", (value, entry_id))
+        return True
+
+    def update_entry_review_data(self, key: str, data_type: str, value: Any) -> bool:
+        """レビュー関連データの部分更新"""
+        logger.debug(f"InMemoryEntryStore.update_entry_review_data: キー={key}, タイプ={data_type}, 値={value}")
+        entry_id = self._get_entry_id_by_key(None, key)
+        if not entry_id:
+            return False
+        with self.transaction() as cur:
+            if data_type == "quality_score":
+                # upsert overall_score
+                cur.execute("SELECT id FROM quality_scores WHERE entry_id = ?", (entry_id,))
+                row = cur.fetchone()
+                if row:
+                    cur.execute(
+                        "UPDATE quality_scores SET overall_score = ? WHERE entry_id = ?",
+                        (value, entry_id),
+                    )
+                else:
+                    cur.execute(
+                        "INSERT INTO quality_scores (entry_id, overall_score) VALUES (?, ?)",
+                        (entry_id, value),
+                    )
+            elif data_type == "category_scores" and isinstance(value, dict):
+                cur.execute("SELECT id FROM quality_scores WHERE entry_id = ?", (entry_id,))
+                qs = cur.fetchone()
+                if qs:
+                    quality_score_id = qs[0]
+                else:
+                    # create quality_scores entry if not exists
+                    cur.execute(
+                        "INSERT INTO quality_scores (entry_id, overall_score) VALUES (?, NULL)",
+                        (entry_id,)
+                    )
+                    quality_score_id = self._conn.last_insert_rowid()
+                # delete existing category_scores
+                cur.execute(
+                    "DELETE FROM category_scores WHERE quality_score_id = ?",
+                    (quality_score_id,)
+                )
+                # insert new scores
+                for category, score in value.items():
+                    cur.execute(
+                        "INSERT INTO category_scores (quality_score_id, category, score) VALUES (?, ?, ?)",
+                        (quality_score_id, category, score)
+                    )
+            else:
+                return False
+        return True
+
+    def add_review_comment(self, key: str, comment: ReviewCommentType) -> bool:
+        """レビューコメントを追加"""
+        logger.debug(f"InMemoryEntryStore.add_review_comment: キー={key}, コメントID={comment.get('id')}")
+        entry_id = self._get_entry_id_by_key(None, key)
+        if not entry_id:
+            return False
+        with self.transaction() as cur:
+            cur.execute(
+                "INSERT INTO review_comments (entry_id, comment_id, author, comment, created_at) VALUES (?, ?, ?, ?, ?)",
+                (entry_id, comment.get("id"), comment.get("author"), comment.get("comment"), comment.get("created_at"))
+            )
+        return True
+
+    def remove_review_comment(self, key: str, comment_id: str) -> bool:
+        """レビューコメントを削除"""
+        logger.debug(f"InMemoryEntryStore.remove_review_comment: キー={key}, コメントID={comment_id}")
+        entry_id = self._get_entry_id_by_key(None, key)
+        if not entry_id:
+            return False
+        with self.transaction() as cur:
+            cur.execute(
+                "DELETE FROM review_comments WHERE entry_id = ? AND comment_id = ?",
+                (entry_id, comment_id),
+            )
+        return True
+
+    def add_check_result(self, key: str, check_result: CheckResultType) -> bool:
+        """チェック結果を追加"""
+        logger.debug(f"InMemoryEntryStore.add_check_result: キー={key}, コード={check_result.get('code')}")
+        entry_id = self._get_entry_id_by_key(None, key)
+        if not entry_id:
+            return False
+        with self.transaction() as cur:
+            cur.execute(
+                "INSERT INTO check_results (entry_id, code, message, severity, created_at) VALUES (?, ?, ?, ?, ?)",
+                (entry_id, check_result.get("code"), check_result.get("message"), check_result.get("severity"), check_result.get("created_at"))
+            )
+        return True
+
+    def remove_check_result(self, key: str, code: str) -> bool:
+        """チェック結果を削除"""
+        logger.debug(f"InMemoryEntryStore.remove_check_result: キー={key}, コード={code}")
+        entry_id = self._get_entry_id_by_key(None, key)
+        if not entry_id:
+            return False
+        with self.transaction() as cur:
+            cur.execute(
+                "DELETE FROM check_results WHERE entry_id = ? AND code = ?",
+                (entry_id, code),
+            )
+        return True

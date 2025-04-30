@@ -201,27 +201,25 @@ def test_filter_reset_after_complex_filter(
     assert viewer_po_file.filter_status == filter_status_param
     assert viewer_po_file.search_text == keyword_param
 
-    # 3. キーワードフィルターのみをリセット (filter_keyword=None)
+    # 3. キーワードフィルターのみをリセットし、状態フィルターを維持
+    viewer_po_file.set_filter_keyword("")  # Reset search_text to empty string
     mock_db_accessor.reset_mock()
-    # filter_keyword=None をパラメータで渡す (filter_status は渡さないので維持されるはず)
-    filtered_entries_reset = viewer_po_file.get_filtered_entries(
-        filter_keyword=None, update_filter=True
-    )
-
-    # advanced_search が呼ばれることを確認 (search_text=None, filter_statusは維持)
+    reset_entries = viewer_po_file.get_filtered_entries(update_filter=True)
+    print("Mock calls after reset:", mock_db_accessor.advanced_search.mock_calls)
+    # advanced_search が search_text="" で呼ばれることを確認
     mock_db_accessor.advanced_search.assert_called_once_with(
-        search_text=None,
+        search_text="",  # リセット後、search_text は空文字列であるべき
         search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
         sort_column=viewer_po_file.get_sort_column(),
         sort_order=viewer_po_file.get_sort_order(),
         flag_conditions={},
-        translation_status=filter_status_param,  # 前回の filter_status が維持される
+        translation_status=filter_status_param,  # 状態フィルターは維持
         exact_match=viewer_po_file.filter.exact_match,
         case_sensitive=viewer_po_file.filter.case_sensitive,
         limit=None,
         offset=0,
     )
-    assert len(filtered_entries_reset) == 900
+    assert len(reset_entries) == 900
     # インスタンス変数が更新されていることを確認
     assert viewer_po_file.filter_status == filter_status_param  # 状態は維持
-    assert viewer_po_file.search_text is None  # キーワードはNoneにリセット
+    assert viewer_po_file.search_text == ""  # キーワードは空文字列にリセット

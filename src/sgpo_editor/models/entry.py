@@ -756,6 +756,20 @@ class EntryModel(BaseModel):
             
         raise KeyError(f"キー '{key}' は存在しません")
 
+    def __setitem__(self, key: str, value: Any) -> None:
+        """辞書アクセスをサポートするためのメソッド
+
+        テスト互換性のために、EntryModelオブジェクトを辞書のように扱えるようにする
+
+        Args:
+            key: 設定するキー
+            value: 設定する値
+        """
+        if hasattr(self, key):
+            setattr(self, key, value)
+        else:
+            raise KeyError(f"キー '{key}' は存在しません")
+
     def __contains__(self, key: str) -> bool:
         """キーが存在するかどうかを確認するためのメソッド
 

@@ -44,6 +44,9 @@ class TestMainWindowFilter:
         # 検索ウィジェットのget_search_criteriaメソッドをモック化
         main_window.search_widget.get_search_criteria = MagicMock()
 
+        # entry_list_facadeのupdate_tableメソッドをモック化
+        main_window.entry_list_facade.update_table = MagicMock()
+
         yield main_window, mock_po_file
 
     def test_on_search_changed_with_none_keyword(self, setup_main_window):

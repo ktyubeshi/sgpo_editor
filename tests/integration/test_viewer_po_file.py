@@ -10,7 +10,6 @@ from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 
 logger = logging.getLogger(__name__)
 
-import pytest
 from sgpo_editor.models.database import InMemoryEntryStore
 from sgpo_editor.core.database_accessor import DatabaseAccessor
 
