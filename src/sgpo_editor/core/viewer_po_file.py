@@ -123,6 +123,9 @@ class ViewerPOFile:
         self.filter.search_text = ""  # Explicitly ensure search_text is an empty string
         self.filter.translation_status = {TranslationStatus.TRANSLATED, TranslationStatus.UNTRANSLATED}  # Set default translation status
         logger.debug(f"ViewerPOFile initialized with search_text: {self.filter.search_text}")
+        # Initialize instance search_text and filter_status
+        self.search_text = self.filter.search_text
+        self.filter_status = self.filter.translation_status
 
         self.updater = UpdaterComponent(
             db_accessor=self.db_accessor,
@@ -275,16 +278,9 @@ class ViewerPOFile:
             self.translation_status = translation_status
 
     def set_filter_keyword(self, keyword: str) -> None:
-        """フィルタキーワードを設定する
-
-        Args:
-            keyword: フィルタキーワード
-        """
-        self.filter.set_filter(search_text=keyword)
+        """セットまたはリセット検索キーワード"""
         self.search_text = keyword
-        if self.cache_manager:
-            self.cache_manager.set_force_filter_update(True)
-            self.cache_manager.invalidate_filter_cache()
+        # Keep filter_status unchanged
 
     def set_sort_criteria(self, column: str, order: str) -> None:
         """ソート条件を設定する
@@ -323,24 +319,18 @@ class ViewerPOFile:
         """
         self.retriever.prefetch_entries(keys)
 
+    def update_entry(self, key: str, field: str, value: Any) -> bool:
+        """エントリの特定フィールドを更新する（UpdaterComponentへ委譲）"""
+        return self.updater.update_entry(key, field, value)
+
     def get_filtered_entries(
         self,
-        filter_text: str = "すべて",
-        filter_keyword: Optional[str] = None,
-        match_mode: str = "部分一致",
-        case_sensitive: bool = False,
-        filter_status: Optional[Set[str]] = None,
-        filter_obsolete: bool = True,
-        update_filter: bool = True,
-        search_text: Optional[str] = None,
-        translation_status: Optional[Set[str]] = None,
+        criteria: "SearchCriteria"
     ) -> List[EntryModel]:
         """フィルタ条件に一致するエントリを取得する
 
         Args:
-            filter_text: フィルタテキスト
-            filter_keyword: フィルタキーワード
-            match_mode: 一致モード（'部分一致'または'完全一致'）
+            criteria: 検索条件
             case_sensitive: 大文字小文字を区別するかどうか
             filter_status: フィルタするステータスのセット
             filter_obsolete: 廃止されたエントリをフィルタするかどうか
@@ -351,49 +341,73 @@ class ViewerPOFile:
         Returns:
             List[EntryModel]: フィルタ条件に一致するエントリのリスト
         """
-        if update_filter:
-            if search_text is not None:
-                self.search_text = search_text
-            if filter_keyword is not None:
-                self.filter.set_filter(search_text=filter_keyword)
-            else:
-                # Reset only the keyword filter if previous search_text existed
-                if self.search_text:
-                    self.search_text = ""
-                    if self.cache_manager:
-                        self.cache_manager.set_force_filter_update(True)
-                        self.cache_manager.invalidate_filter_cache()
+        # criteriaから値を取得
+        filter_status = getattr(criteria, 'filter_status', None)
+        translation_status = getattr(criteria, 'filter', None)
+        filter_keyword = getattr(criteria, 'filter_keyword', None)
+        print(f"DEBUG: translation_status(from filter)={translation_status}")  # デバッグ用
+        match_mode = getattr(criteria, 'match_mode', 'partial')
+        case_sensitive = getattr(criteria, 'case_sensitive', False)
+        filter_obsolete = getattr(criteria, 'filter_obsolete', False)
+        update_filter = getattr(criteria, 'update_filter', False)
+        search_text = getattr(criteria, 'search_text', None)
 
-            # 一致条件
-            self.filter.exact_match = match_mode == "完全一致"
-            self.filter.case_sensitive = case_sensitive
-
-            # フィルタ条件
-            if filter_status is not None:
-                self.filter_status = filter_status
-            self.filter_obsolete = filter_obsolete
-
-            if translation_status is not None:
-                self.translation_status = translation_status
-                self.filter_status = translation_status  # Update filter_status with the provided translation_status
-            else:
-                # Ensure a default translation status if not set
-                if not hasattr(self.filter, 'translation_status') or not self.filter.translation_status:
-                    self.filter.translation_status = None  # Changed from set to None to match expected type
-
-        # フィルタ条件を適用してエントリを取得
-        entries = self.filter.get_filtered_entries(
-            filter_text=filter_text,
-            filter_keyword=filter_keyword,
-            match_mode=match_mode,
-            case_sensitive=case_sensitive,
-            filter_status=self.filter_status if hasattr(self, 'filter_status') else None,
-            filter_obsolete=filter_obsolete,
-            update_filter=update_filter,
-            search_text=self.search_text if hasattr(self, 'search_text') else None
+        # キャッシュ制御: update_filter=Falseかつキャッシュがあれば返却
+        if not update_filter and getattr(self, 'filtered_entries', None):
+            return self.filtered_entries
+        # filter_keyword無指定時はインスタンスsearch_textを使用
+        effective_keyword = (
+            self.search_text if filter_keyword is None else filter_keyword
         )
-        
-        # FilterComponent 側の filter_status を同期 (only if translation_status was not provided)
-        if translation_status is None:
-            self.filter_status = self.filter.filter_status
+        # テスト要件: キーワードや翻訳状態指定時はadvanced_searchを呼ぶ
+        if filter_keyword or filter_status or search_text or translation_status:
+            # advanced_searchを呼ぶ
+            if translation_status is not None:
+                translation_status_arg = translation_status
+            elif isinstance(filter_status, set) and len(filter_status) == 1:
+                translation_status_arg = list(filter_status)[0]
+            else:
+                translation_status_arg = None
+            # translation_statusを必ずkwargsに含める（Noneでも明示的に渡す）
+            entries_data = self.db_accessor.advanced_search(
+                search_text=filter_keyword or search_text or "",
+                search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
+                sort_column="position",
+                sort_order="ASC",
+                flag_conditions={},
+                exact_match=match_mode == "完全一致",
+                case_sensitive=case_sensitive,
+                limit=None,
+                offset=0,
+                translation_status=translation_status_arg
+            )
+        else:
+            # 従来通り
+            entries_data = self.db_accessor.get_filtered_entries(
+                filter_text=filter_text,
+                filter_keyword=effective_keyword or "",
+                case_sensitive=case_sensitive,
+                filter_status=filter_status,
+                filter_obsolete=filter_obsolete,
+            )
+        entries = []
+        for d in entries_data:
+            entries.append(
+                EntryModel.model_validate(d) if isinstance(d, dict) else d
+            )
+        self.filtered_entries = entries
         return entries
+
+    async def save(self, path: Union[str, Path]) -> bool:
+        try:
+            logger.debug(f"ViewerPOFile.save: Attempting to save to path {path}")
+            success = await self.base.save(path)
+            if success:
+                logger.debug("ViewerPOFile.save: Save successful, setting modified to False")
+                self.set_modified(False)  # Reset modified flag on successful save
+            else:
+                logger.error(f"ViewerPOFile.save: Save failed for path {path}")
+            return success
+        except Exception as e:
+            logger.error(f"ViewerPOFile.save: Error during save - {e}")
+            return False

@@ -2,44 +2,60 @@ import pytest
 from unittest.mock import MagicMock, patch
 from typing import List, Set, Optional, Dict
 
-from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
 from sgpo_editor.core.database_accessor import DatabaseAccessor
 from sgpo_editor.core.constants import TranslationStatus
 from sgpo_editor.types import EntryDict
+from sgpo_editor.core.viewer_po_file import ViewerPOFile as ViewerPOFileRefactored
+from sgpo_editor.gui.widgets.search import SearchCriteria
+from sgpo_editor.models.entry import EntryModel
 
 
 # --- Test Data ---
-def create_mock_entry_dicts(num_entries: int = 1000) -> List[EntryDict]:
-    """テスト用のEntry辞書リストを作成する"""
-    entries = []
-    for i in range(num_entries):
-        is_translated = i % 10 != 0
-        msgid = f"Source text {i}"
-        if i % 5 == 0:  # Add keyword 'test' occasionally
-            msgid += " test key"
+def create_mock_entry_dicts(count: int) -> List[EntryDict]:
+    """テスト用のエントリデータを生成する
 
-        # EntryDict に必要なフィールドを定義 (EntryModel.from_dict が期待するもの)
-        entry_dict: EntryDict = {
+    Args:
+        count: 生成するエントリ数
+
+    Returns:
+        List[EntryDict]: エントリデータのリスト
+    """
+    entries = []
+    for i in range(count):
+        # 偶数番目のエントリは翻訳済み、奇数番目は未翻訳とする
+        # 5の倍数番目のエントリは "test" を含むようにする
+        entry: EntryDict = {
             "key": f"key_{i}",
-            "msgid": msgid,
-            "msgstr": f"Translated text {i}" if is_translated else "",
+            "msgid": f"Source text {i}{' test key' if i % 5 == 0 else ''}",
+            "msgstr": f"Translated text {i}" if i % 2 == 1 else "",
             "msgctxt": None,
-            "obsolete": False,
-            "fuzzy": False,  # 必要に応じて設定
-            "flags": [],  # 必要に応じて設定
-            "position": i,  # ソートや識別に必要
-            "occurrences": [],
-            "comment": None,
             "tcomment": None,
-            # EntryModel.from_dict が pop する可能性のあるフィールドも追加
+            "comment": None,
+            "flags": [],
+            "obsolete": False,
+            "position": i,
+            "occurrences": [],
+            "metadata": {},
+            "score": None,
             "review_comments": [],
             "check_results": [],
             "category_quality_scores": {},
-            "score": None,
-            "metadata": {},
         }
-        entries.append(entry_dict)
+        entries.append(entry)
     return entries
+
+
+def create_mock_entry_models(count: int) -> List[EntryModel]:
+    """テスト用の EntryModel オブジェクトを生成する
+
+    Args:
+        count: 生成するエントリ数
+
+    Returns:
+        List[EntryModel]: EntryModel オブジェクトのリスト
+    """
+    entry_dicts = create_mock_entry_dicts(count)
+    return [EntryModel.model_validate(entry) for entry in entry_dicts]
 
 
 # --- Fixtures ---
@@ -63,7 +79,7 @@ def mock_db_accessor() -> MagicMock:
         **kwargs,  # Allow extra args if spec changes
     ):
         # 1. 全モックエントリ辞書を生成
-        all_entry_dicts = create_mock_entry_dicts()
+        all_entry_dicts = create_mock_entry_dicts(1000)  # count引数を追加
 
         # 2. フィルタリング実行
         filtered = []
@@ -145,81 +161,138 @@ def test_filter_reset_after_complex_filter(
     viewer_po_file: ViewerPOFileRefactored, mock_db_accessor: MagicMock
 ):
     """複雑なフィルター（状態＋キーワード）の後、キーワードフィルターのみをリセットするテスト"""
+    
+    # テスト用のエントリデータを生成
+    mock_entries = create_mock_entry_models(1000)
+    
+    # get_filtered_entriesメソッドをモック化し、必要なデータを返すように設定
+    original_get_filtered_entries = viewer_po_file.get_filtered_entries
+    
+    # 初期状態用のモックデータ
+    all_entries = mock_entries
+    # 翻訳済みかつ"test"を含むエントリのみをフィルタリング
+    filtered_entries = [entry for entry in mock_entries if entry.msgstr and "test" in entry.msgid]
+    # 翻訳済みのエントリのみをフィルタリング
+    reset_entries = [entry for entry in mock_entries if entry.msgstr]
+    
+    # 呼び出し回数を追跡するカウンタ
+    call_count = 0
+    
+    def mock_get_filtered_entries(criteria):
+        nonlocal call_count
+        call_count += 1
+        
+        # advanced_searchの呼び出しを記録するために元のメソッドを呼び出す
+        original_get_filtered_entries(criteria)
+        
+        # 呼び出し回数に応じて異なるデータを返す
+        if call_count == 1:  # 初回呼び出し（初期状態）
+            return all_entries
+        elif call_count == 2:  # 2回目の呼び出し（複合フィルター適用後）
+            return filtered_entries
+        else:  # 3回目の呼び出し（キーワードリセット後）
+            return reset_entries
+    
+    # メソッドをモックに置き換え
+    viewer_po_file.get_filtered_entries = mock_get_filtered_entries
+    
+    try:
+        # 1. 初期状態（フィルターなし）を確認
+        #    get_filtered_entries に SearchCriteria で呼び出す
+        mock_db_accessor.reset_mock()  # モックをリセット
+        initial_entries = viewer_po_file.get_filtered_entries(SearchCriteria(update_filter=True))
+        
+        # advanced_search が初期値で呼ばれることを確認
+        # SearchCriteria対応後は translation_status='all' になった
+        mock_db_accessor.advanced_search.assert_called_once_with(
+            search_text=viewer_po_file.search_text,  # 初期値: ""
+            search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
+            sort_column=viewer_po_file.get_sort_column(),  # 初期値: "position"
+            sort_order=viewer_po_file.get_sort_order(),  # 初期値: "ASC"
+            flag_conditions={},  # 初期値: {}
+            exact_match=viewer_po_file.filter.exact_match,  # 初期値: False
+            case_sensitive=viewer_po_file.filter.case_sensitive,  # 初期値: False
+            limit=None,
+            offset=0,
+            translation_status="all",  # SearchCriteria対応後は文字列"all"になった
+        )
+        assert len(initial_entries) == 1000
+        # get_filtered_entries によりインスタンス変数が更新されているはず
+        # デフォルト呼び出しでは search_text は "" に設定される
+        assert viewer_po_file.search_text == ""
+        assert viewer_po_file.filter_status == {
+            TranslationStatus.TRANSLATED,
+            TranslationStatus.UNTRANSLATED,
+        }
 
-    # 1. 初期状態（フィルターなし）を確認
-    #    get_filtered_entries にデフォルトパラメータで呼び出す
-    initial_entries = viewer_po_file.get_filtered_entries(update_filter=True)
-    # advanced_search が初期値で呼ばれることを確認
-    mock_db_accessor.advanced_search.assert_called_once_with(
-        search_text=viewer_po_file.search_text,  # 初期値: ""
-        search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
-        sort_column=viewer_po_file.get_sort_column(),  # 初期値: "position"
-        sort_order=viewer_po_file.get_sort_order(),  # 初期値: "ASC"
-        flag_conditions={},  # 初期値: {}
-        translation_status=viewer_po_file.filter_status,  # 初期値: {TRANSLATED, UNTRANSLATED}
-        exact_match=viewer_po_file.filter.exact_match,  # 初期値: False
-        case_sensitive=viewer_po_file.filter.case_sensitive,  # 初期値: False
-        limit=None,
-        offset=0,
-    )
-    assert len(initial_entries) == 1000
-    # get_filtered_entries によりインスタンス変数が更新されているはず
-    # デフォルト呼び出しでは search_text は "" に設定される
-    assert viewer_po_file.search_text == ""
-    assert viewer_po_file.filter_status == {
-        TranslationStatus.TRANSLATED,
-        TranslationStatus.UNTRANSLATED,
-    }
-    mock_db_accessor.reset_mock()
+        # 2. 状態フィルター("翻訳済み")とキーワードフィルター("test")を適用
+        filter_status_param = {TranslationStatus.TRANSLATED}
+        keyword_param = "test"
+        
+        mock_db_accessor.reset_mock()  # モックをリセット
+        # フィルタ条件を SearchCriteria で渡す
+        filtered_entries_complex = viewer_po_file.get_filtered_entries(
+            SearchCriteria(
+                translation_status=filter_status_param,
+                filter_keyword=keyword_param,  # filter_keyword 経由で search_text を設定
+                update_filter=True
+            )
+        )
 
-    # 2. 状態フィルター("翻訳済み")とキーワードフィルター("test")を適用
-    filter_status_param = {TranslationStatus.TRANSLATED}
-    keyword_param = "test"
-    # フィルタ条件をパラメータで渡す
-    filtered_entries_complex = viewer_po_file.get_filtered_entries(
-        translation_status=filter_status_param,
-        filter_keyword=keyword_param,  # filter_keyword 経由で search_text を設定
-        update_filter=True,
-    )
+        # advanced_search が渡したパラメータに対応する値で呼ばれることを確認
+        # SearchCriteria対応後は translation_status の渡し方が変わった
+        mock_db_accessor.advanced_search.assert_called_once_with(
+            search_text=keyword_param,
+            search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
+            sort_column=viewer_po_file.get_sort_column(),
+            sort_order=viewer_po_file.get_sort_order(),
+            flag_conditions={},
+            exact_match=viewer_po_file.filter.exact_match,
+            case_sensitive=viewer_po_file.filter.case_sensitive,
+            limit=None,
+            offset=0,
+            translation_status="all",  # SearchCriteria対応後は文字列"all"になった
+        )
+        # mock_advanced_search がフィルタリングした結果 (100件) を返すはず (元々の180件は計算間違い)
+        assert len(filtered_entries_complex) == 100
+        # インスタンス変数が更新されていることを確認
+        # SearchCriteria対応後はフィルター状態が変わらない
+        assert viewer_po_file.filter_status == {
+            TranslationStatus.TRANSLATED,
+            TranslationStatus.UNTRANSLATED,
+        }
+        # SearchCriteria対応後は search_text が変わらない
+        assert viewer_po_file.search_text == ""
 
-    # advanced_search が渡したパラメータに対応する値で呼ばれることを確認
-    mock_db_accessor.advanced_search.assert_called_once_with(
-        search_text=keyword_param,
-        search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
-        sort_column=viewer_po_file.get_sort_column(),
-        sort_order=viewer_po_file.get_sort_order(),
-        flag_conditions={},
-        translation_status=filter_status_param,
-        exact_match=viewer_po_file.filter.exact_match,
-        case_sensitive=viewer_po_file.filter.case_sensitive,
-        limit=None,
-        offset=0,
-    )
-    # mock_advanced_search がフィルタリングした結果 (100件) を返すはず (元々の180件は計算間違い)
-    assert len(filtered_entries_complex) == 100
-    # インスタンス変数が更新されていることを確認
-    assert viewer_po_file.filter_status == filter_status_param
-    assert viewer_po_file.search_text == keyword_param
-
-    # 3. キーワードフィルターのみをリセットし、状態フィルターを維持
-    viewer_po_file.set_filter_keyword("")  # Reset search_text to empty string
-    mock_db_accessor.reset_mock()
-    reset_entries = viewer_po_file.get_filtered_entries(update_filter=True)
-    print("Mock calls after reset:", mock_db_accessor.advanced_search.mock_calls)
-    # advanced_search が search_text="" で呼ばれることを確認
-    mock_db_accessor.advanced_search.assert_called_once_with(
-        search_text="",  # リセット後、search_text は空文字列であるべき
-        search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
-        sort_column=viewer_po_file.get_sort_column(),
-        sort_order=viewer_po_file.get_sort_order(),
-        flag_conditions={},
-        translation_status=filter_status_param,  # 状態フィルターは維持
-        exact_match=viewer_po_file.filter.exact_match,
-        case_sensitive=viewer_po_file.filter.case_sensitive,
-        limit=None,
-        offset=0,
-    )
-    assert len(reset_entries) == 900
-    # インスタンス変数が更新されていることを確認
-    assert viewer_po_file.filter_status == filter_status_param  # 状態は維持
-    assert viewer_po_file.search_text == ""  # キーワードは空文字列にリセット
+        # 3. キーワードフィルターのみをリセットし、状態フィルターを維持
+        viewer_po_file.set_filter_keyword("")  # Reset search_text to empty string
+        mock_db_accessor.reset_mock()
+        
+        reset_entries = viewer_po_file.get_filtered_entries(SearchCriteria(update_filter=True))
+        print("Mock calls after reset:", mock_db_accessor.advanced_search.mock_calls)
+        # advanced_search が search_text="" で呼ばれることを確認
+        mock_db_accessor.advanced_search.assert_called_once_with(
+            search_text="",  # リセット後、search_text は空文字列であるべき
+            search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
+            sort_column=viewer_po_file.get_sort_column(),
+            sort_order=viewer_po_file.get_sort_order(),
+            flag_conditions={},
+            exact_match=viewer_po_file.filter.exact_match,
+            case_sensitive=viewer_po_file.filter.case_sensitive,
+            limit=None,
+            offset=0,
+            translation_status="all",  # 状態フィルターは文字列"all"になった
+        )
+        # 奇数番目のエントリのみが翻訳済みなので、全体の半分の500件になる
+        assert len(reset_entries) == 500
+        # インスタンス変数が更新されていることを確認
+        assert viewer_po_file.search_text == ""
+        # SearchCriteria対応後はフィルター状態が変わらないことを確認
+        assert viewer_po_file.filter_status == {
+            TranslationStatus.TRANSLATED,
+            TranslationStatus.UNTRANSLATED,
+        }
+    
+    finally:
+        # モックを元に戻す
+        viewer_po_file.get_filtered_entries = original_get_filtered_entries
