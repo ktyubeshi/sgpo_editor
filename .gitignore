@@ -18,3 +18,7 @@
 /.env
 /mypy_result.txt
 /test_result.txt
+
+# macOS system files
+.DS_Store
+**/.DS_Store
