@@ -1,74 +1,99 @@
-# ToDo - Refine Cache System based on New Design
+# コーディングエージェント向け ToDo リスト: 最新設計への移行
 
-**Objective:** Verify, enhance, and refactor the existing cache (`EntryCacheManager`) and database (`DatabaseAccessor`, `InMemoryEntryStore`) components to fully align with the improved design specified in `_doc/2_2_dbcash_architecture.md`.
-
-**Primary Reference:** `_doc/2_2_dbcash_architecture.md` (All implementation details, API definitions, configurations, and behaviors must strictly follow this document).
+**目的:** コードとテストを最新の設計（ViewerPOFileコンポーネント分割、新しいキャッシュ戦略、EntryModel改善など）に合わせます。古い互換APIは残しません。
 
 ---
 
-## Task List
+## Phase 1: ViewerPOFile API & キャッシュ連携
 
-**IMPORTANT:** Perform all changes within a dedicated feature branch (e.g., `feature/refine-cache-design`).
+### `src/sgpo_editor/core/cache_manager.py`
+- [ ] `invalidate_filter_cache(filter_key: Optional[str] = None)` メソッドを実装します。
+    - `filter_key` が指定された場合は、該当するフィルターキャッシュのみを削除します。
+    - `filter_key` が `None` の場合は、すべてのフィルターキャッシュを削除します。
+    - （依存タスク）フィルタキーの生成ロジックを `ViewerPOFileFilter` から呼び出せるように、ヘルパーメソッドまたはクラス設計を検討・実装します。
+- [ ] `EntryCacheManager` の基本実装（ファイルレビュー済）に、LRU（Least Recently Used）ロジックとサイズ制限の強制を実装します。
+- [ ] `EntryCacheManager` にフィルター結果（`List[EntryId]`）をキャッシュする機能（`get_filtered_ids`, `cache_filtered_ids`）を実装します。
 
-### 1. Enhance Cache Module (`EntryCacheManager`)
+### `src/sgpo_editor/core/viewer_po_file_filter.py`
+- [ ] `get_filtered_entries` メソッド（または関連メソッド）内で、引数として渡される `filter_keyword` と、クラスインスタンス変数（例: `self.search_text` など）に保持されているフィルタ条件をマージするロジックを実装します。
+- [ ] フィルター条件が更新され、再フィルタリングが必要な場合（例: `update_filter=True` のような引数や状態変更時）に、`EntryCacheManager.invalidate_filter_cache()` を適切な `filter_key` で呼び出す処理を追加します。
+    - （依存タスク）`cache_manager.py` で実装されたキー生成ロジックを利用します。
 
-*   **File:** `src/sgpo_editor/core/cache_manager.py`
-    *   `[ ]` **Implement Custom LRU:** Verify or implement the custom LRU mechanism for `CompleteEntryCache` and `FilterCache` considering both item count (`max_size`) and estimated memory usage (`sys.getsizeof`), as per the design document.
-    *   `[ ]` **Implement TTL Logic:** If specified in the design, implement Time-To-Live (TTL) functionality for `CompleteEntryCache`.
-    *   `[ ]` **Implement Prefetching:** Implement the `prefetch_entries` method and related logic (`is_key_being_prefetched`, `_prefetching_keys`) to work with UI requests (likely from `EntryListFacade`) and the provided `fetch_callback`. Ensure thread safety if using background threads.
-    *   `[ ]` **Implement Automatic Invalidation API:** Implement `invalidate_entry(key)` and `invalidate_filter_cache()` methods. These will be called externally (e.g., by the SQLite update hook handler or Facades). Ensure `invalidate_entry` also clears relevant filter cache entries if feasible, or rely on `invalidate_filter_cache` for broader invalidation upon DB change.
-    *   `[ ]` **Implement Configuration Handling:** Ensure the cache manager correctly reads and applies settings from `src/sgpo_editor/config.py` (e.g., `CACHE_ENABLED`, `COMPLETE_CACHE_MAX_SIZE`, `FILTER_CACHE_MAX_SIZE`, `PREFETCH_ENABLED`, `PREFETCH_SIZE`, `CACHE_TTL`) upon initialization.
-    *   `[ ]` **Refine Type Hinting:** Ensure all methods use precise type hints, including those defined in `src/sgpo_editor/types.py`.
+### `src/sgpo_editor/core/viewer_po_file_updater.py`
+- [ ] `update_entry_model(self, entry_model: EntryModel, ...) ` メソッドの公開インターフェース（引数、戻り値）を最終確認し、仕様に沿っていることを確認します。
+- [ ] `update_entry_model` メソッドの docstring を、最終的なインターフェースに合わせて更新します。
+- [ ] エントリ更新時に、関連するキャッシュ（`EntryCacheManager` のエントリキャッシュやフィルターキャッシュ）を適切に無効化する処理を追加します（例: `cache_manager.invalidate(...)` の呼び出し）。
 
-### 2. Enhance Database Components (`DatabaseAccessor`, `InMemoryEntryStore`)
+### `tests/integration/test_viewer_po_file_refactored.py`
+- [ ] `viewer.update_entry_model(...)` の呼び出し箇所を、新しいインターフェース `viewer.updater.update_entry_model(...)` を使うように書き換えます。
+- [ ] 不要になった旧 `viewer.update_entry_model` API へのモック設定があれば削除します。
 
-*   **Files:** `src/sgpo_editor/core/database_accessor.py`, `src/sgpo_editor/models/database.py`
-    *   `[ ]` **Implement FTS5 Search:**
-        *   In `InMemoryEntryStore`: Ensure the `entries_fts` virtual table is correctly created and maintained (e.g., via triggers) for relevant fields (`msgid`, `msgstr`, etc.).
-        *   In `DatabaseAccessor`: Modify `advanced_search` (and potentially `get_filtered_entries` if it calls the former) to utilize the FTS5 `MATCH` operator for keyword searches instead of `LIKE`, when `search_text` is provided. Ensure correct query construction based on `search_fields`.
-    *   `[ ]` **Implement SQLite Update Hook:**
-        *   In `InMemoryEntryStore` or a dedicated handler class: Set up an SQLite `update_hook` (using `sqlite3.Connection.set_update_hook`).
-        *   The hook callback must identify the modified `key` (or `rowid`) and the type of operation (INSERT, UPDATE, DELETE).
-        *   The callback should then trigger the appropriate invalidation method(s) in the `EntryCacheManager` instance (e.g., `invalidate_entry(key)`, `invalidate_filter_cache()`). Dependency injection or a signaling mechanism might be needed to link the hook to the cache manager.
-    *   `[ ]` **Optimize SQL Queries:** Review all queries in `DatabaseAccessor` (especially `advanced_search` and `get_filtered_entries`). Ensure proper use of WHERE, ORDER BY, LIMIT, OFFSET to minimize data transfer and Python-side processing. Verify index usage (`EXPLAIN QUERY PLAN`).
-    *   `[ ]` **Ensure Dictionary Return Type:** Confirm that all data retrieval methods in `DatabaseAccessor` return results as lists of dictionaries (`EntryDict`) or dictionaries mapping keys to `EntryDict`, not `EntryModel` objects, as specified in the design.
-
-### 3. Verify and Refactor Cache/DB Usage
-
-*   **Files:** `src/sgpo_editor/core/viewer_po_file.py` (and its component files: `base.py`, `retriever.py`, `filter.py`, `updater.py`, `stats.py`), `src/sgpo_editor/gui/facades/*.py`
-    *   `[ ]` **Data Flow Verification:** Trace the data flow for filtering, single entry retrieval, and updates. Ensure it matches the sequence described in the design document (UI ↔ Facade ↔ CacheManager ↔ DBAccessor ↔ SQLite).
-    *   `[ ]` **Cache Interaction:** Verify that `ViewerPOFile` components and Facades correctly interact with `EntryCacheManager`: check cache first (`get_entry`, `get_filtered_entries`), cache results after DB fetch (`set_entry`, `set_filtered_entries`), and trigger invalidation appropriately (though automatic invalidation via hook is preferred).
-    *   `[ ]` **DB Interaction:** Verify that database access *only* happens through `DatabaseAccessor` and occurs primarily on cache misses or when forced updates are needed.
-    *   `[ ]` **`EntryModel` Instantiation:** Search the codebase (especially where data is retrieved from `DatabaseAccessor`) and ensure `EntryModel` instances are created using standard validation (`EntryModel(**data)` or `model_validate`) and **not** `model_construct()`.
-    *   `[ ]` **Facade Logic:** Ensure Facades correctly handle data conversion (Dict → Model) if needed and manage interactions between UI events and cache/DB operations.
-
-### 4. Update Configuration
-
-*   **File:** `src/sgpo_editor/config.py`
-    *   `[ ]` **Verify/Add Cache Settings:** Ensure all settings specified in `2_2_dbcash_architecture.md` (e.g., sizes, TTL, prefetch options) are present in `DEFAULT_CONFIG` and handled correctly by `EntryCacheManager`. Add any missing settings with appropriate defaults.
-
-### 5. Implement/Update Tests
-
-*   **Files:** `tests/`
-    *   `[ ]` **Write Unit Tests for `EntryCacheManager`:** Test custom LRU logic (item count and memory), TTL expiration, prefetching mechanism (`prefetch_entries`, `is_key_being_prefetched`), invalidation methods (`invalidate_entry`, `invalidate_filter_cache`), and configuration handling. Use mocking for dependencies like `DatabaseAccessor`.
-    *   `[ ]` **Write Unit/Integration Tests for `DatabaseAccessor`:** Test FTS5 search functionality (`advanced_search` with `MATCH`), optimized query results, and dictionary return types.
-    *   `[ ]` **Write Integration Tests for Update Hook:** Simulate DB updates and verify that the corresponding `EntryCacheManager` invalidation methods are called correctly.
-    *   `[ ]` **Update `ViewerPOFile` / Facade Tests:** Modify existing tests to reflect the refined cache/DB interaction logic. Test scenarios involving cache hits, misses, and invalidations.
-    *   `[ ]` **Performance Tests:** Update or create performance tests (using `pytest-benchmark`) for key operations like filtering/searching large datasets to verify the effectiveness of FTS5 and caching, comparing against defined KPIs.
-
-### 6. Documentation
-
-*   **Files:** `_doc/context_summary.md`, `_doc/todo.md`, `_doc/2_architecture_design.md`, `_doc/2_2_dbcash_architecture.md`
-    *   `[x]` **Update `context_summary.md`:** Reflect the refined understanding of the codebase and the goal of enhancing the existing cache system (Done via this response).
-    *   `[x]` **Update `todo.md`:** Replace the content with this new task list (Done via this response).
-    *   `[ ]` **Review/Update Architecture Docs:** Ensure `2_architecture_design.md` and `2_2_dbcash_architecture.md` accurately reflect the final implemented architecture and cache strategy. Add details about FTS5 usage and the update hook mechanism if missing.
-
-### 7. Final Cleanup (After verification)
-
-*   **Files:** Entire Codebase
-    *   `[ ]` **Remove Redundant Logic:** Remove any old caching logic or state management within `ViewerPOFile` components or Facades that is now handled by `EntryCacheManager` or `DatabaseAccessor`.
-    *   `[ ]` **Code Review:** Perform a code review focusing on adherence to the cache design document and overall code quality.
+### `tests/integration/test_viewer_po_file_filtered_entries.py`
+- [ ] `db_accessor.get_filtered_entries` のモック設定で、期待される引数（フィルタ条件の形式など）を、`viewer_po_file_filter.py` で実装された最新の仕様に合わせます。
+- [ ] `update_filter=True` （または同等の条件）でフィルターが実行されるテストケースにおいて、`EntryCacheManager.invalidate_filter_cache` が呼び出されることをモックで確認（`assert_called_once_with` など）するアサーションを追加します。
 
 ---
 
-**Final Verification:** After completing all tasks, run the entire test suite (`uv run pytest`). Manually test UI responsiveness with large PO files for filtering, searching, and scrolling. Confirm data consistency after edits. Ensure the implementation strictly adheres to `_doc/2_2_dbcash_architecture.md`.
+## Phase 2: EntryModel & データ変換
+
+### `src/sgpo_editor/models/entry.py`
+- [ ] `flags` 属性に値が設定される際、または初期化時に、すべてのフラグ文字列が小文字 (`lower()`) で保持されるように処理を追加します（例: `field_validator` 内や `__init__`）。
+- [ ] `@property def fuzzy(self) -> bool:` を実装または修正し、`self.flags` 内に 'fuzzy' という文字列が大文字・小文字に関わらず存在するかどうかで判定するようにします (例: `any(flag.lower() == 'fuzzy' for flag in self.flags)`)。
+- [ ] `validate_flags` という `field_validator` を `flags` フィールドに追加、または既存のものを強化し、不正なフラグ形式（例: 空白を含むなど）をチェックまたは整形するロジックを追加します。
+- [ ] `comment` 属性の型ヒント `Optional[str]` と `occurrences` 属性の型ヒント `List[Tuple[str, Union[str, int]]]` が、実際の利用箇所と整合性が取れているか再確認し、必要であれば関連コード（値の設定箇所）を修正します。 `occurrences` のバリデータ (`parse_occurrences`) が期待通り動作することを確認します。
+
+### `src/sgpo_editor/core/viewer_po_file_entry_retriever.py`
+- [ ] データベース (`DatabaseAccessor`) からエントリデータを辞書形式で受け取る箇所で、その辞書を `EntryModel.model_validate()` メソッド（Pydantic v2）を使用して `EntryModel` インスタンスに変換・検証する処理を**必ず**行うようにします。
+
+### `tests/models/entry/test_entry_model.py`
+- [ ] `entry4` （または 'fuzzy' フラグを持つ他のテスト用エントリ）のテストケースで、`entry.fuzzy` プロパティの期待値を `True` に修正します（大文字・小文字非依存の判定ロジック変更に対応）。
+
+### `tests/models/entry/test_entry_structure.py` および `tests/models/entry/test_entry_list_integration.py`
+- [ ] テストデータとして辞書 (`dict`) を使用している箇所があれば、原則として `EntryModel` のインスタンスを使用するように期待データやモックの戻り値を差し替えます。
+
+---
+
+## Phase 3: Statistics Component
+
+### `src/sgpo_editor/core/viewer_po_file_stats.py`
+- [ ] `DatabaseAccessor` から統計関連のカウント数（例: `count_entries`, `get_translation_status_counts` など）を取得する箇所で、戻り値が `int` 型であることを確認する型チェック（`isinstance` など）またはアサーションを追加します。もし `int` でない場合に警告ログを出力するか、エラーハンドリングを行います。
+
+### `tests/integration/test_viewer_po_file_stats.py`
+- [ ] `db_accessor.count_entries` （および他のカウント系メソッド）のモック (`MagicMock` など) の `return_value` に、必ず `int` 型の値を設定するように修正します。これにより、テスト内で発生する可能性のある `MagicMock` オブジェクトと `int` の比較エラーを解消します。
+
+---
+
+## Phase 4: GUI & Recent-Files 周り
+
+### `tests/gui/test_keyword_filter/test_main_window_filter.py`
+- [ ] フィルター結果を取得する際のモックの戻り値設定のチェーン (`mock_xyz.return_value. ... .return_value = ...`) を、現在のファサードとコンポーネントの構造に合わせて修正します。具体的には、`main_window.entry_list_facade._get_current_po().get_filtered_entries.return_value` のような、実際の呼び出しパスに即した形にします。
+
+### `src/sgpo_editor/gui/main_window.py`
+- [ ] `_show_preview_dialog()` メソッド（または関連するプレビュー表示ロジック）内で、ダイアログ (`dialog`) を表示する前に、`dialog.set_entry(current_entry)` を呼び出す処理を追加します。
+- [ ] `current_entry` が `None` の場合にはプレビューダイアログを表示しない、または適切にハンドルするガード節 (`if current_entry is None: return`) を追加します。
+
+### `tests/gui/widgets/test_preview_widget.py`
+- [ ] `PreviewWidget.set_entry` が呼び出されることのアサーションを、`PreviewWidget` のモックではなく、`PreviewDialog` のモック（`dialog_mock.set_entry.assert_called_with(...)` のような形）に対して行うように修正します（`main_window.py` の変更に合わせる）。
+
+### `src/sgpo_editor/gui/table_manager.py` （または `src/sgpo_editor/gui/recent_files_manager.py` が存在する場合）
+- [ ] 「最近使ったファイル」メニュー項目を生成するロジックで、表示されるテキスト形式を `&1. filename`, `&2. filename` のように、アンパサンド(&) + 番号 + ピリオド + スペース + ファイル名、という形式で統一します。
+
+### `tests/utils/test_recent_files.py` および `tests/core/recent_files/test_recent_files.py` (該当する場合)
+- [ ] 最近使ったファイル関連のテストで、期待されるメニュー項目の文字列を `"&<index>. <filename>"` 形式に更新します。
+- [ ] メニューアクションの数に関するアサーションがあれば、現在の仕様（表示されるファイル数など）に合わせて修正します。
+
+---
+
+## Phase 5: ドキュメント & ロギング
+
+### `_doc/updated_filtering_logic.md` (または関連ドキュメント)
+- [ ] Phase 1 で実装・変更されたフィルタリング処理とキャッシュ戦略（キーワードとインスタンス変数のマージ、キャッシュキー生成、キャッシュ無効化フローなど）について、最新のコードの動作に合わせて説明を追記・更新します。
+
+### `src/` ディレクトリ配下の各コンポーネントファイル
+- [ ] 設計ガイドラインに従い、デバッグに有用な情報を `logger.debug()` を用いて出力するログ文を補完します。特に以下の箇所を重点的に行います。
+    - `ViewerPOFileFilter`: フィルタリング条件がどのように生成・マージされたか。
+    * `EntryCacheManager`: キャッシュのヒット/ミス判定、キャッシュの追加/削除/無効化イベント、キャッシュサイズ。
+    - `ViewerPOFileUpdater`: どのエントリが更新され、どのキャッシュが無効化されたか。
+    - `ViewerPOFileEntryRetriever`: DBからの取得件数、`EntryModel` への変換状況。
+
+---
