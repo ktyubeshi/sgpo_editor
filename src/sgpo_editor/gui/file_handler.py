@@ -157,7 +157,7 @@ class FileHandler:
             self.add_recent_file(filepath)
 
             # 統計情報の更新
-            stats = po_file.get_statistics()
+            stats = po_file.get_stats()
             self._update_stats(stats)
 
             # テーブルの更新 - ファイル読み込み直後は重要
