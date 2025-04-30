@@ -68,36 +68,32 @@ class FileHandler:
             最近使用したファイルのリスト
         """
         settings = QSettings()
-        # 新しい形式（JSONリスト）を先に試す
-        recent_files_json = settings.value("recent_files", None, type=str)
-        if recent_files_json is not None:
+        recent_value = settings.value("recent_files", None)
+        # First, try to load list directly if it's a sequence and non-empty
+        if isinstance(recent_value, (list, tuple)):
+            if recent_value:
+                logger.debug(f"Loaded recent files from QSettings sequence: {recent_value}")
+                return [str(f) for f in recent_value]
+        # If value is JSON string, parse it
+        if isinstance(recent_value, str):
             try:
-                files = json.loads(recent_files_json)
-                if isinstance(files, list):
+                files = json.loads(recent_value)
+                if isinstance(files, list) and files:
                     logger.debug(f"Loaded recent files (JSON): {files}")
-                    return [
-                        str(f) for f in files
-                    ]  # Pathオブジェクトかもしれないのでstrに変換
-                else:
-                    logger.warning(
-                        f"'recent_files' setting is not a valid JSON list: {recent_files_json}"
-                    )
+                    return [str(f) for f in files]
             except json.JSONDecodeError as e:
                 logger.warning(
-                    f"Failed to parse 'recent_files' JSON: {e}. Value: {recent_files_json}"
+                    f"Failed to parse 'recent_files' JSON: {e}. Value: {recent_value}"
                 )
-
-        # 新しい形式が失敗または存在しない場合、古い形式（セミコロン区切り文字列）を試す
+        # Fallback to old format using semicolon-delimited string
         logger.debug("Trying to load recent files using old format (recent_files_str)")
         recent_files_str = settings.value("recent_files_str", "", type=str)
         if recent_files_str:
             files = [f.strip() for f in recent_files_str.split(";") if f.strip()]
             logger.debug(f"Loaded recent files (old format): {files}")
-            # 古い形式から読み込んだ場合、新しい形式で保存し直す
-            settings.setValue("recent_files", json.dumps(files))
-            settings.remove("recent_files_str")  # 古いキーを削除
+            # Save new format for future
+            settings.setValue("recent_files", files)
             settings.sync()
-            logger.info("Converted recent files to new JSON format.")
             return files
 
         # どちらの形式でも読み込めなかった場合
@@ -107,7 +103,10 @@ class FileHandler:
     def _save_recent_files(self) -> None:
         """最近使用したファイルのリストをJSON形式で保存する（新形式のみ対応）"""
         settings = QSettings()
-        settings.setValue("recent_files", json.dumps(self.recent_files))
+        # Save list directly
+        settings.setValue("recent_files", self.recent_files)
+        # Save in old semicolon-delimited format for backward compatibility
+        settings.setValue("recent_files_str", ";".join(self.recent_files))
         settings.sync()
 
     def add_recent_file(self, filepath: str) -> None:

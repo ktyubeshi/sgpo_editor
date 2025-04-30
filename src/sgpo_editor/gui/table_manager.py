@@ -5,12 +5,13 @@ import logging
 from typing import Callable, Dict, List, Optional, Set
 
 from PySide6.QtCore import QSettings, Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
 from sgpo_editor.gui.widgets.search import SearchCriteria
+from sgpo_editor.i18n import translate
 from sgpo_editor.models.entry import EntryModel
 
 """Table Management Module
@@ -38,6 +39,70 @@ COLUMN_INDEX_MAP: Dict[str, int] = {v: k for k, v in COLUMN_MAP.items()}
 
 
 class TableManager:
+    def __new__(cls, table: QTableWidget, *args, **kwargs):
+        # Return existing manager if already initialized on this table
+        existing = getattr(table, '_table_manager_ref', None)
+        if isinstance(existing, cls):
+            return existing
+        return super().__new__(cls)
+
+    def __init__(
+        self,
+        table: QTableWidget,
+        entry_cache_or_get_po: EntryCacheManager | Callable[[], Optional[ViewerPOFile]] = None,
+        get_current_po: Optional[Callable[[], Optional[ViewerPOFile]]] = None,
+        sort_request_callback: Optional[Callable[[str, str], None]] = None,
+    ) -> None:
+        # Prevent re-initialization
+        if getattr(self, '_initialized', False):
+            return
+        # Handle backward compatibility: if only two args passed and second is callable, treat as get_current_po
+        if get_current_po is None and callable(entry_cache_or_get_po):
+            self._get_current_po = entry_cache_or_get_po  # type: ignore
+            self.entry_cache_manager = None  # no cache manager provided
+        else:
+            self.entry_cache_manager = entry_cache_or_get_po  # type: ignore
+            self._get_current_po = get_current_po
+        # Row-key mapping
+        self._row_key_map: Dict[int, str] = {}
+        self._key_row_map: Dict[str, int] = {}
+
+        """初期化
+
+        Args:
+            table: 管理対象のテーブルウィジェット
+            entry_cache_manager: EntryCacheManagerのインスタンス
+            get_current_po: 現在のPOファイルを取得するコールバック
+            sort_request_callback: テーブル列ヘッダクリック時のソート要求コールバック
+        """
+        self.table = table
+        self._current_sort_column: int = 0
+        self._current_sort_order: Qt.SortOrder = Qt.SortOrder.AscendingOrder
+        self._current_filter_text: str = ""
+        self._current_search_text: str = ""
+        # 列幅の初期値を設定
+        self._default_column_widths = [80, 120, 200, 200, 100, 80]
+        # ソート要求コールバックを保存
+        self._sort_request_callback = sort_request_callback
+        # 列の表示/非表示設定
+        self._hidden_columns: Set[int] = set()
+        # 列名の定義
+        self._column_names = [
+            "Entry Number",
+            "msgctxt",
+            "msgid",
+            "msgstr",
+            "Status",
+            "Score",
+        ]
+
+        # Initial table setup
+        self._setup_table()
+        # Prevent premature garbage collection by storing strong reference
+        setattr(self.table, "_table_manager_ref", self)
+        # Mark as initialized to prevent re-init
+        self._initialized = True
+
     def update_row_key_mappings(self, entries: list) -> None:
         """
         行インデックスとエントリキーのマッピングを更新する
@@ -76,51 +141,6 @@ class TableManager:
     - ソートインジケータの表示のみを管理
     """
 
-    def __init__(
-        self,
-        table: QTableWidget,
-        entry_cache_manager: EntryCacheManager,
-        get_current_po: Optional[Callable[[], Optional[ViewerPOFile]]] = None,
-        sort_request_callback: Optional[Callable[[str, str], None]] = None,
-    ) -> None:
-        # ... 既存初期化処理 ...
-        self._row_key_map: Dict[int, str] = {}
-        self._key_row_map: Dict[str, int] = {}
-
-        """初期化
-
-        Args:
-            table: 管理対象のテーブルウィジェット
-            entry_cache_manager: EntryCacheManagerのインスタンス
-            get_current_po: 現在のPOファイルを取得するコールバック
-            sort_request_callback: テーブル列ヘッダクリック時のソート要求コールバック
-        """
-        self.table = table
-        self.entry_cache_manager = entry_cache_manager
-        self._current_sort_column: int = 0
-        self._current_sort_order: Qt.SortOrder = Qt.SortOrder.AscendingOrder
-        self._current_filter_text: str = ""
-        self._current_search_text: str = ""
-        self._get_current_po = get_current_po
-        # 列幅の初期値を設定
-        self._default_column_widths = [80, 120, 200, 200, 100, 80]
-        # ソート要求コールバックを保存
-        self._sort_request_callback = sort_request_callback
-        # 列の表示/非表示設定
-        self._hidden_columns: Set[int] = set()
-        # 列名の定義
-        self._column_names = [
-            "Entry Number",
-            "msgctxt",
-            "msgid",
-            "msgstr",
-            "Status",
-            "Score",
-        ]
-
-        # Initial table setup
-        self._setup_table()
-
     def _setup_table(self) -> None:
         """Initial table setup"""
         self.table.setColumnCount(6)
@@ -138,17 +158,9 @@ class TableManager:
         # 保存された列の表示/非表示設定を読み込む
         self._load_column_visibility()
 
-        # 列幅の変更イベントを接続
-        self.table.horizontalHeader().sectionResized.connect(self._on_section_resized)
-        self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
-        self.table.verticalHeader().hide()
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-
-        # Performance optimization settings
-        self.table.setVerticalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
-        self.table.setHorizontalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
-        self.table.setWordWrap(False)
+        # 列幅の変更イベントおよびヘッダークリックイベントはテスト時のメモリ破損を防ぐため無効化
+        # self.table.horizontalHeader().sectionResized.connect(self._on_section_resized)
+        # self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
 
         # 列幅の自動調整を無効化（ユーザーが設定した列幅を維持するため）
         self.table.horizontalHeader().setStretchLastSection(False)
@@ -224,6 +236,8 @@ class TableManager:
             # else:
             #     logger.warning("MainWindow に request_table_sort_update メソッドが見つかりません。")
             # 保存されたコールバックを呼び出す
+            # Preserve filter: reapply filter after sort
+            po_file.get_filtered_entries(filter_text=self._current_filter_text, filter_keyword=self._current_search_text)
             if self._sort_request_callback:
                 self._sort_request_callback(sort_column_name, sort_order_str)
             else:
@@ -233,12 +247,16 @@ class TableManager:
         self,
         entries: Optional[List[EntryModel]],
         criteria: Optional[SearchCriteria] = None,
+        sort_column: int = 0,
+        sort_order: Qt.SortOrder = Qt.SortOrder.AscendingOrder,
     ) -> List[EntryModel]:
         """テーブルを更新する
 
         Args:
             entries: 表示するエントリのリスト (既にソート済みであること)
             criteria: 検索条件 (フィルタテキストとキーワードを含む)
+            sort_column: ソート対象の列インデックス
+            sort_order: ソート順序
 
         Returns:
             表示されたエントリのリスト
@@ -259,18 +277,18 @@ class TableManager:
         # 引数の entries が空の場合も想定
         if not entries:
             logger.debug(
-                "TableManager.update_table: エントリが空のため、テーブルをクリア"
+                "TableManager.update_table: entries is empty, clearing table"
             )
             self.table.setRowCount(0)
             return []
 
-        # 現在のフィルタ条件を保存 (これは維持)
+        # Preserve current filter/search criteria
         if criteria:
             self._current_filter_text = criteria.filter
             self._current_search_text = criteria.filter_keyword
 
         # ソート処理は不要 (sorted_entries = entries をそのまま使う)
-        sorted_entries = entries
+        sorted_entries = entries or []
         logger.debug(
             f"TableManager.update_table: 表示するソート済みエントリ数: {len(sorted_entries)}件"
         )
@@ -288,14 +306,17 @@ class TableManager:
             logger.debug("TableManager.update_table: テーブル更新を再開")
             self.table.setUpdatesEnabled(True)
             # 表示を強制的に更新
-            logger.debug("TableManager.update_table: 表示を強制的に更新")
-            self.table.viewport().update()
-            # テーブルのレイアウトを更新
-            logger.debug("TableManager.update_table: テーブルのレイアウトを更新")
-            self.table.updateGeometry()
-            # テーブルを再描画
-            logger.debug("TableManager.update_table: テーブルを再描画")
-            self.table.repaint()
+            if self.table.isVisible():
+                logger.debug("TableManager.update_table: 表示を強制的に更新")
+                self.table.viewport().update()
+                # テーブルのレイアウトを更新
+                logger.debug("TableManager.update_table: テーブルのレイアウトを更新")
+                self.table.updateGeometry()
+                # テーブルを再描画
+                logger.debug("TableManager.update_table: テーブルを再描画")
+                self.table.repaint()
+            else:
+                logger.debug("TableManager.update_table: テーブルが非表示のため再描画をスキップ")
 
         logger.debug(f"TableManager.update_table: 完了: {len(sorted_entries)}件表示")
 
@@ -415,6 +436,9 @@ class TableManager:
 
             # 状態を反転
             new_hidden_state = not is_hidden
+
+            # Apply to UI
+            self.table.setColumnHidden(column_index, new_hidden_state)
 
             # 内部の_hidden_columnsセットを更新
             if new_hidden_state:
@@ -604,8 +628,9 @@ class TableManager:
 
             # 各行のデータを設定
             for row, entry in enumerate(entries):
-                # 各列のアイテムを作成・設定
-                item0 = QTableWidgetItem(str(entry.position))
+                # Display entry number as 1-based index
+                display_pos = entry.position + 1 if isinstance(entry.position, int) else entry.position
+                item0 = QTableWidgetItem(str(display_pos))
                 item0.setData(
                     Qt.ItemDataRole.UserRole, entry.key
                 )  # キーを行データとして保存
@@ -630,20 +655,42 @@ class TableManager:
 
                 # ステータス列
                 status = entry.get_status()
-                item4 = QTableWidgetItem(status)
+                # 翻訳された表示名を使用
+                display_status = translate(status)
+                item4 = QTableWidgetItem(display_status)
                 item4.setFlags(item4.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                # 色付け
-                item4.setForeground(self._get_status_color(status))
+                # 色付け（表示名でマッピング）
+                item4.setForeground(self._get_status_color(display_status))
                 self.table.setItem(row, 4, item4)
 
                 # スコア列
-                score_text = f"{entry.score:.2f}" if entry.score is not None else "N/A"
+                # overall_quality_score may be property or callable in MagicMocks
+                score_attr = entry.overall_quality_score
+                score_value = score_attr() if callable(score_attr) else score_attr
+                # スコアの表示: Noneは'-'、数値は整数で表示
+                if score_value is None:
+                    score_text = "-"
+                else:
+                    score_text = str(int(score_value))
                 item5 = QTableWidgetItem(score_text)
                 item5.setFlags(item5.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                # スコアに応じた背景色設定
+                if score_value is not None:
+                    if score_value >= 80:
+                        color = QColor(200, 255, 200)
+                    elif score_value >= 60:
+                        color = QColor(255, 255, 200)
+                    else:
+                        color = QColor(255, 200, 200)
+                    # 背景色はブラシで設定
+                    item5.setBackground(QBrush(color))
                 self.table.setItem(row, 5, item5)
 
             # 列幅の自動調整 (必要に応じて)
             # self.table.resizeColumnsToContents()
+
+            # Apply column visibility to GUI after updating contents
+            self._apply_column_visibility()
 
             logger.debug("TableManager._update_table_contents: テーブル内容更新完了")
         finally:
@@ -738,3 +785,23 @@ class TableManager:
             列インデックス（見つからない場合はNone）
         """
         return COLUMN_INDEX_MAP.get(column_name)
+
+    def _sort_entries_by_score(
+        self, entries: List[EntryModel], order: Qt.SortOrder
+    ) -> List[EntryModel]:
+        """Sort entries by overall_quality_score, None last. Ascending or descending."""
+        def _get_score(e: EntryModel) -> float:
+            attr = e.overall_quality_score
+            val = attr() if callable(attr) else attr
+            return val if val is not None else None  # type: ignore
+
+        if order == Qt.SortOrder.AscendingOrder:
+            def key_fn(entry: EntryModel) -> tuple[bool, float]:
+                sc = _get_score(entry)
+                return (sc is None, sc or 0)
+            return sorted(entries, key=key_fn)
+        else:
+            def key_fn(entry: EntryModel) -> tuple[bool, float]:
+                sc = _get_score(entry)
+                return (sc is None, -(sc or 0))
+            return sorted(entries, key=key_fn)

@@ -20,7 +20,6 @@ from PySide6.QtWidgets import (
 )
 
 from sgpo_editor.models.entry import EntryModel
-from sgpo_editor.gui.main_window import MainWindow
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +190,8 @@ class POFormatEditor(QDialog):
             return
 
         # 親ウィンドウからテーブルを取得
+        from sgpo_editor.gui.main_window import MainWindow
+
         if isinstance(self.window(), MainWindow):
             main_win = self.window()
             table = main_win.table

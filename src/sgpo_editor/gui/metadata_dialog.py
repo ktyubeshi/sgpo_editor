@@ -122,6 +122,7 @@ class MetadataEditDialog(QDialog):
         """
         # 引数の型に応じて適切に処理
         if isinstance(entry_or_parent, EntryModel):
+            self._entry_model = entry_or_parent
             actual_parent = parent
             self._metadata = (
                 entry_or_parent.metadata.copy()
@@ -129,6 +130,7 @@ class MetadataEditDialog(QDialog):
                 else {}
             )
         else:
+            self._entry_model = None
             actual_parent = entry_or_parent
             self._metadata = metadata.copy() if metadata else {}
 
@@ -421,4 +423,9 @@ class MetadataEditDialog(QDialog):
 
                 self._metadata[key] = value
 
+        # 更新対象のEntryModelがあれば変更を反映
+        if hasattr(self, '_entry_model') and self._entry_model:
+            self._entry_model.clear_metadata()
+            for k, v in self._metadata.items():
+                self._entry_model.add_metadata(k, v)
         self.accept()

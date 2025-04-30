@@ -215,14 +215,21 @@ class EntryEditor(QWidget):
             # ウィジェットがNoneでない場合はレイアウトに追加
             if widget:
                 layout.addWidget(widget)
+                # expose widget for testing
+                dialog.widget = widget
+                # ensure review widget state
+                # direct assign database and entry
+                widget._db = self._database
+                widget._current_entry = self._current_entry
 
-                # データベース参照を設定（対応するメソッドがある場合）
-                # 注意: 将来的にはファサードを介してデータにアクセスするように修正するべき
+                # データベース参照とエントリを設定（対応するメソッドがある場合）
                 if hasattr(widget, "set_database") and self._database:
                     logger.debug(
                         "EntryEditor._show_review_dialog: ウィジェットにデータベース参照を設定"
                     )
                     widget.set_database(self._database)
+                if hasattr(widget, "set_entry"):
+                    widget.set_entry(self._current_entry)
 
             # ダイアログを保存
             self._review_dialogs[dialog_type] = dialog
@@ -315,7 +322,7 @@ class EntryEditor(QWidget):
             entries = getattr(main_window, "_display_entries", [])
             if not entries:
                 return None
-            return entries.index(self._current_entry["key"])
+            return entries.index(self._current_entry.key)
         except (ValueError, AttributeError):
             return None
 
@@ -331,17 +338,17 @@ class EntryEditor(QWidget):
         # テキスト編集フィールドからmsgstrを取得して更新
         msgstr = self._get_msgstr_from_fields()
         logger.debug(
-            f"EntryEditor._on_apply_clicked: 更新前のmsgstr={self.current_entry['msgstr']}"
+            f"EntryEditor._on_apply_clicked: 更新前のmsgstr={self.current_entry.msgstr}"
         )
         logger.debug(f"EntryEditor._on_apply_clicked: 更新後のmsgstr={msgstr}")
 
         # 内容が変更されていなければ何もしない
-        if self.current_entry["msgstr"] == msgstr:
+        if self.current_entry.msgstr == msgstr:
             logger.debug("EntryEditor._on_apply_clicked: 内容に変更がないため終了")
             return
 
         # エントリの更新（msgstrの更新）
-        self.current_entry["msgstr"] = msgstr
+        self.current_entry.msgstr = msgstr
 
         # ファザードパターン適用のため、データベース更新は行わず、シグナル発行のみ行う
         # データベース更新はEntryEditorFacadeが処理する
@@ -362,7 +369,8 @@ class EntryEditor(QWidget):
 
         # エントリのmsgstrを更新
         new_msgstr = self.msgstr_edit.toPlainText()
-        self._current_entry["msgstr"] = new_msgstr
+        # use attribute setter
+        self._current_entry.msgstr = new_msgstr
 
         # 変更通知タイマーをリセット
         self._text_change_timer.start(200)
@@ -374,9 +382,9 @@ class EntryEditor(QWidget):
 
         # エントリオブジェクトを更新（ただしデータベースには書き込まない）
         if self.msgstr_edit:
-            self._current_entry["msgstr"] = self.msgstr_edit.toPlainText()
+            self._current_entry.msgstr = self.msgstr_edit.toPlainText()
         if self.context_edit:
-            self._current_entry["msgctxt"] = self.context_edit.text() or None
+            self._current_entry.msgctxt = self.context_edit.text() or None
 
         self.text_changed.emit()
 
@@ -387,10 +395,10 @@ class EntryEditor(QWidget):
 
         is_fuzzy = state == Qt.CheckState.Checked
         # エントリオブジェクトを更新
-        self._current_entry["fuzzy"] = is_fuzzy
-
-        # テキスト変更を通知する（apply_clickedを使用して変更を保存するため）
-        self.text_changed.emit()
+        self._current_entry.fuzzy = is_fuzzy
+        # テキスト変更を遅延通知（タイマー）
+        self._text_change_timer.stop()
+        self._text_change_timer.start(5)
 
     def set_entry(self, entry: Optional[EntryModel]) -> None:
         """エントリを設定"""
@@ -421,23 +429,23 @@ class EntryEditor(QWidget):
             return
 
         logger.debug(
-            f"EntryEditor.set_entry: エントリ設定 key={entry['key']}, msgctxt='{entry['msgctxt']}'"
+            f"EntryEditor.set_entry: エントリ設定 key={entry.key}, msgctxt='{entry.msgctxt}'"
         )
         self.setEnabled(True)
         if self.msgid_edit:
             self.msgid_edit.blockSignals(True)
-            self.msgid_edit.setPlainText(entry["msgid"] or "")
+            self.msgid_edit.setPlainText(entry.msgid or "")
             self.msgid_edit.blockSignals(False)
         if self.msgstr_edit:
             self.msgstr_edit.blockSignals(True)
-            self.msgstr_edit.setPlainText(entry["msgstr"] or "")
+            self.msgstr_edit.setPlainText(entry.msgstr or "")
             self.msgstr_edit.blockSignals(False)
         if self.fuzzy_checkbox:
             self.fuzzy_checkbox.blockSignals(True)
-            self.fuzzy_checkbox.setChecked(entry["fuzzy"])
+            self.fuzzy_checkbox.setChecked(entry.fuzzy)
             self.fuzzy_checkbox.blockSignals(False)
         if self.context_edit:
-            context_text = entry["msgctxt"] if entry["msgctxt"] is not None else ""
+            context_text = entry.msgctxt if entry.msgctxt is not None else ""
             logger.debug(f"EntryEditor.set_entry: コンテキスト設定 '{context_text}'")
             self.context_edit.setText(context_text)
 

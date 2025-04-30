@@ -126,14 +126,10 @@ class SearchWidget(QWidget):
     def _start_filter_timer(self) -> None:
         """フィルタタイマーを開始"""
         self._filter_timer.start()
-        # フィルタ変更シグナルを発行
-        self.filter_changed.emit()
 
     def _start_search_timer(self) -> None:
         """キーワードフィルタタイマーを開始"""
         self._search_timer.start()
-        # フィルタ変更シグナルを発行
-        self.filter_changed.emit()
 
     def _clear_filter(self) -> None:
         """フィルタ条件をクリア"""

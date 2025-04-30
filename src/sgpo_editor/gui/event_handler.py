@@ -11,7 +11,7 @@
 import logging
 from typing import Callable, Optional, TYPE_CHECKING
 
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, QTimer, Signal, Qt
 from PySide6.QtWidgets import QTableWidget
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
@@ -78,10 +78,9 @@ class EventHandler(QObject):
         新しいコードでは EntryListFacade と EntryEditorFacade を使用してください。
         """
         logger.debug("EventHandler.setup_connections: このクラスは廃止予定です")
-        # 実際の接続はもう不要ですが、後方互換性のために一部を維持
-        pass
+        # Connect table cell change to handler
+        self.table.currentCellChanged.connect(self._on_current_cell_changed)
 
-    # 一部の基本的なメソッドだけを保持し、他はすべて削除
     def _on_item_double_clicked(self, item) -> None:
         """テーブルアイテムがダブルクリックされたときの処理
 
@@ -94,3 +93,17 @@ class EventHandler(QObject):
             logger.debug(
                 f"EventHandler: Item double clicked: row={row}, key={key} (廃止予定のメソッド)"
             )
+
+    def _on_current_cell_changed(self, currentRow: int, currentColumn: int, previousRow: int, previousColumn: int) -> None:
+        """テーブルの選択セルが変更されたときの処理"""
+        try:
+            item = self.table.item(currentRow, currentColumn)
+        except Exception:
+            return
+        if not item:
+            return
+        key = item.data(Qt.ItemDataRole.UserRole)
+        po_file = self._get_current_po()
+        if po_file and key:
+            entry = po_file.get_entry_by_key(key)
+            self.entry_editor.set_entry(entry)

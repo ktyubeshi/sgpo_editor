@@ -99,6 +99,9 @@ class EntryListFacade(QObject):
         )  # update_table に接続
 
     def update_table(self) -> None:
+        import traceback
+        logger.debug("EntryListFacade.update_table called. Stack trace:\n%s", traceback.format_stack())
+        logger.debug("EntryListFacade.update_table: Criteria before retrieval: %s", self._search_widget.get_search_criteria() if self._search_widget else 'No search widget')
         """テーブルを最新の状態に更新する
 
         POファイルからフィルタリング/ソートされたエントリを取得し、

@@ -5,6 +5,7 @@
 """
 
 import logging
+import re
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
@@ -89,18 +90,20 @@ class PreviewWidget(QWidget):
 
     def _process_escape_sequences(self, text: str) -> str:
         """文字列内のエスケープシーケンスを処理する"""
-        # \\r や \\n を \r や \n に変換 (より直接的な方法)
         try:
-            # まず二重バックスラッシュを一時的なプレースホルダに置換
-            temp_text = text.replace("\\\\", "__BACKSLASH__")
-            # \r, \n などを置換
-            processed_text = (
-                temp_text.replace("\\r", "\r").replace("\\n", "\n").replace("\\t", "\t")
-            )  # 他のエスケープも必要なら追加
-            # プレースホルダを元に戻す
-            return processed_text.replace("__BACKSLASH__", "\\")
+            # collapse double backslashes
+            processed = re.sub(r"\\\\", r"\\", text)
+            # replace common escapes
+            processed = (
+                processed
+                .replace("\\r", "\r")
+                .replace("\\n", "\n")
+                .replace("\\t", "\t")
+                .replace('\\"', '"')
+                .replace("\\'", "'")
+            )
+            return processed
         except Exception as e:
-            # エラー発生時は元のテキストを返す
             logger.error(f"Error processing escape sequences: {e}")
             return text
 
@@ -164,7 +167,7 @@ class PreviewWidget(QWidget):
             html_text = ""
             for char in processed_text:
                 if char == "\n":
-                    html_text += "<br>"
+                    html_text += "<br />"
                 elif char == "\t":
                     html_text += "&nbsp;&nbsp;&nbsp;&nbsp;"
                 elif char == " ":
