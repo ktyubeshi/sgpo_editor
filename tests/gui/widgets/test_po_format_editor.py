@@ -54,12 +54,13 @@ def mock_po_file() -> Any:
     ]
 
     # モックPOファイルのメソッドを設定
+    from sgpo_editor.gui.widgets.search import SearchCriteria
     mock_po.get_filtered_entries.return_value = entries
+    mock_po.get_filtered_entries.side_effect = lambda criteria=None: entries if criteria is None or isinstance(criteria, SearchCriteria) else []
     mock_po.get_entry_by_key.side_effect = lambda key: next(
         (e for e in entries if e.key == key), None
     )
     mock_po.update_entry.return_value = True
-
     return mock_po
 
 
@@ -127,7 +128,9 @@ class MockPOFormatEditor:
             self._show_warning("POファイルが読み込まれていません")
             return
 
-        entries = current_po.get_filtered_entries()
+        from sgpo_editor.gui.widgets.search import SearchCriteria
+        criteria = SearchCriteria()
+        entries = current_po.get_filtered_entries(criteria)
         if entries:
             po_text = self._format_entries_to_po(entries)
             self.text_edit.setPlainText(po_text)

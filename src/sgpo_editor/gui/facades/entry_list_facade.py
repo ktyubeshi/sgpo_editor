@@ -126,12 +126,8 @@ class EntryListFacade(QObject):
             # get_filtered_entries は内部で現在のソート条件を使用する
             logger.debug("EntryListFacade.update_table: POファイルからエントリ取得開始")
 
-            # criteriaから個別のパラメータを取り出してget_filtered_entriesを呼び出す
-            sorted_entries = current_po.get_filtered_entries(
-                filter_text=criteria.filter,
-                filter_keyword=criteria.filter_keyword,
-                match_mode=criteria.match_mode,
-            )
+            # SearchCriteriaを直接渡してPOファイルからエントリを取得
+            sorted_entries = current_po.get_filtered_entries(criteria)
 
             logger.debug(
                 f"EntryListFacade.update_table: 取得したエントリ数: {len(sorted_entries)}件"
@@ -378,3 +374,6 @@ class EntryListFacade(QObject):
 
         except Exception as e:
             logger.exception(f"EntryListFacade: プリフェッチ中にエラー: {e}")
+
+    def __getattr__(self, name: str):
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")

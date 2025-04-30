@@ -222,8 +222,10 @@ class POFormatEditor(QDialog):
             QMessageBox.warning(self, "エラー", "POファイルが読み込まれていません")
             return
 
-        # すべてのエントリを取得
-        entries = po_file.get_filtered_entries()
+        # すべてのエントリを取得（SearchCriteriaを必ず渡す）
+        from sgpo_editor.gui.search_criteria import SearchCriteria
+        criteria = SearchCriteria()
+        entries = po_file.get_filtered_entries(criteria)
         if not entries:
             QMessageBox.warning(self, "エラー", "エントリがありません")
             return
@@ -258,10 +260,10 @@ class POFormatEditor(QDialog):
             criteria = main_window.search_widget.get_search_criteria()
             filter_keyword = criteria.filter_keyword
 
-        # フィルタされたエントリを取得
-        entries = po_file.get_filtered_entries(
-            update_filter=True, filter_keyword=filter_keyword
-        )
+        # フィルタされたエントリを取得（SearchCriteriaを必ず渡す）
+        from sgpo_editor.gui.search_criteria import SearchCriteria
+        criteria = SearchCriteria(update_filter=True, filter_keyword=filter_keyword)
+        entries = po_file.get_filtered_entries(criteria)
 
         if not entries:
             QMessageBox.warning(self, "エラー", "フィルタされたエントリがありません")

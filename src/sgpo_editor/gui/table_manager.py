@@ -237,7 +237,9 @@ class TableManager:
             #     logger.warning("MainWindow に request_table_sort_update メソッドが見つかりません。")
             # 保存されたコールバックを呼び出す
             # Preserve filter: reapply filter after sort
-            po_file.get_filtered_entries(filter_text=self._current_filter_text, filter_keyword=self._current_search_text)
+            from sgpo_editor.gui.search_criteria import SearchCriteria
+            criteria = SearchCriteria(filter=self._current_filter_text, filter_keyword=self._current_search_text)
+            po_file.get_filtered_entries(criteria)
             if self._sort_request_callback:
                 self._sort_request_callback(sort_column_name, sort_order_str)
             else:
