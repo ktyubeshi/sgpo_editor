@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-from sgpo_editor.core.viewer_po_file_refactored import ViewerPOFileRefactored
+from sgpo_editor.core.viewer_po_file import ViewerPOFile as ViewerPOFileRefactored
 from sgpo_editor.core.database_accessor import DatabaseAccessor
 from sgpo_editor.models.database import InMemoryEntryStore
 
@@ -36,8 +36,10 @@ class TestKeywordFilter(unittest.TestCase):
 
     def test_filter_keyword_is_passed_to_database(self):
         """キーワードフィルタがデータベースに正しく渡されることを確認するテスト"""
-        # get_filtered_entriesを呼び出し
-        self.po_file.get_filtered_entries(filter_keyword="keyword")
+        # get_filtered_entriesをSearchCriteriaで呼び出し
+        from sgpo_editor.gui.widgets.search import SearchCriteria
+        criteria = SearchCriteria(filter_keyword="keyword")
+        self.po_file.get_filtered_entries(criteria)
 
         self.mock_db_accessor.advanced_search.assert_called_once()
         args, kwargs = self.mock_db_accessor.advanced_search.call_args
@@ -49,16 +51,17 @@ class TestKeywordFilter(unittest.TestCase):
         """翻訳ステータスとキーワードの両方が正しく渡されることを確認するテスト"""
         # 翻訳ステータスを設定 (内部状態ではなくメソッド呼び出しで渡す想定)
         # self.po_file.translation_status = "translated"
-        # get_filtered_entriesを呼び出し
-        self.po_file.get_filtered_entries(
-            filter_keyword="keyword", filter_status="translated", update_filter=True
-        )
+        # get_filtered_entriesをSearchCriteriaで呼び出し
+        from sgpo_editor.gui.widgets.search import SearchCriteria
+        criteria = SearchCriteria(filter_keyword="keyword", filter="translated", update_filter=True)
+        self.po_file.get_filtered_entries(criteria)
 
         self.mock_db_accessor.advanced_search.assert_called_once()
         args, kwargs = self.mock_db_accessor.advanced_search.call_args
 
-        # 翻訳ステータスとキーワードが正しく渡されていることを確認
-        self.assertEqual(kwargs.get("translation_status"), "translated")
+        # translation_statusがNoneの場合もあるため、キーの存在と値を明示的にチェック
+        self.assertIn("translation_status", kwargs)
+        self.assertEqual(kwargs["translation_status"], "translated")
         self.assertEqual(kwargs.get("search_text"), "keyword")
 
     def test_database_query_with_keyword(self):
@@ -75,8 +78,10 @@ class TestKeywordFilter(unittest.TestCase):
         ]
         db_accessor.add_entries_bulk(test_data)
 
-        # get_filtered_entriesを呼び出し
-        filtered_entries = db_accessor.get_filtered_entries(search_text="keyword")
+        # get_filtered_entriesをSearchCriteriaで呼び出し
+        from sgpo_editor.gui.widgets.search import SearchCriteria
+        criteria = SearchCriteria(filter_keyword="keyword")
+        filtered_entries = db_accessor.get_filtered_entries(criteria)
 
         # 結果を検証
         self.assertEqual(len(filtered_entries), 1)
