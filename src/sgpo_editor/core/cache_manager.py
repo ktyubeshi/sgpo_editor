@@ -82,7 +82,7 @@ class EntryCacheManager:
        - キー: エントリのキー
        - 値: 基本情報のみを含むEntryModelオブジェクト（msgid, msgstr, fuzzy, obsoleteなど）
 
-    3. filtered_entries_cache: フィルタリング結果のキャッシュ
+    3. filtered_entries_cache: フィルタ結果のキャッシュ
        - 用途: 同じフィルタ条件での再検索を高速化
        - キー: フィルタ条件を表す文字列（_filtered_entries_cache_key）
        - 値: フィルタ条件に一致するEntryModelオブジェクトのリスト
@@ -175,7 +175,7 @@ class EntryCacheManager:
         self._entry_timestamps: Dict[str, float] = {}
 
         # フィルタキャッシュ
-        self._filter_cache: Dict[str, EntryModelList] = {}
+        self._filter_cache = _LRUCache(config["FILTER_CACHE_MAX_SIZE"])  # ToDo Phase 1: LRUCacheに更新
 
         logger.debug("EntryCacheManager: 初期化完了")
 
@@ -326,18 +326,16 @@ class EntryCacheManager:
         )
         self._entry_basic_info_cache.clear()
 
-    def invalidate_filter_cache(self) -> None:
+    def invalidate_filter_cache(self, filter_key: Optional[str] = None) -> None:
         """フィルタキャッシュを無効化する
 
-        フィルタ結果キャッシュをクリアし、次回のフィルタリング時に
-        強制的に再計算されるようにします。
+        ToDo Phase 1: filter_keyを指定するとそのキーに対応するキャッシュのみを削除
         """
-        logger.debug(
-            "EntryCacheManager.invalidate_filter_cache: フィルタキャッシュを無効化"
-        )
-        self._filtered_entries_cache = []
-        self._filtered_entries_cache_key = ""
-        self._force_filter_update = True
+        if filter_key is not None:
+            self._filter_cache.delete(filter_key)
+        else:
+            self._filter_cache.clear()
+        logger.debug(f"Filter cache invalidated for key: {filter_key}")
 
     def invalidate_entry(self, key: str) -> None:
         """特定のエントリのキャッシュを無効化する
@@ -781,6 +779,20 @@ class EntryCacheManager:
         logger.debug(f"EntryCacheManager.get_filter_cache: キャッシュヒット ({len(self._filtered_entries_cache)}件)")
         return self._filtered_entries_cache
 
+    def get_filtered_ids(self, filter_key: str) -> Optional[List[str]]:
+        """フィルタ条件に合致するエントリIDのキャッシュを取得する
+
+        ToDo Phase 1: フィルタ条件に合致するエントリIDのキャッシュを取得する
+        """
+        return self._filter_cache.get(filter_key)
+
+    def cache_filtered_ids(self, filter_key: str, entry_ids: List[str]) -> None:
+        """フィルタ条件に合致するエントリIDをキャッシュする
+
+        ToDo Phase 1: フィルタ条件に合致するエントリIDをキャッシュする
+        """
+        self._filter_cache.set(filter_key, entry_ids)
+
     def evaluate_cache_efficiency(self) -> CacheEfficiency:
         """キャッシュ効率の評価情報を取得する
 
@@ -1111,7 +1123,7 @@ class EntryCacheManager:
 
     def set_filtered_entries(self, cond: FilterConditions, entries: EntryModelList) -> None:
         key = json.dumps(cond, sort_keys=True)
-        self._filter_cache[key] = entries
+        self._filter_cache.set(key, entries)
 
     def get_filtered_entries(self, cond: FilterConditions) -> Optional[EntryModelList]:
         return self._filter_cache.get(json.dumps(cond, sort_keys=True))

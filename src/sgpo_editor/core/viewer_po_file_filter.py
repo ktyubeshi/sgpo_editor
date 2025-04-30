@@ -6,11 +6,13 @@ ViewerPOFileEntryRetrieverを継承し、フィルタリングに関連する機
 
 import logging
 from typing import List, Optional, cast
+import hashlib
 
 from sgpo_editor.core.constants import TranslationStatus
 from sgpo_editor.core.viewer_po_file_entry_retriever import ViewerPOFileEntryRetriever
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import FlagConditions
+import sgpo_editor.core.cache_manager as cm  # EntryCacheManager をインポート
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +102,31 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
         )
         return cache_key
 
+    def _merge_filters(self, new_keyword: str, current_search_text: str) -> str:
+        """フィルターキーワードと検索テキストをマージする
+
+        Args:
+            new_keyword: フィルターキーワード
+            current_search_text: 検索テキスト
+
+        Returns:
+            str: マージされたフィルターキーワード
+        """
+        if new_keyword:
+            return new_keyword if not current_search_text else f'{current_search_text} {new_keyword}'  # シンプルなマージ、必要に応じて調整
+        return current_search_text or ''
+
+    def _generate_filter_key(self, filter_keyword: str) -> str:
+        """フィルターキーを生成する
+
+        Args:
+            filter_keyword: フィルターキーワード
+
+        Returns:
+            str: フィルターキー
+        """
+        return f'filter_key_{hashlib.md5(filter_keyword.encode()).hexdigest()}'
+
     def get_filtered_entries(
         self,
         update_filter: bool = False,
@@ -110,28 +137,40 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
 
         Args:
             update_filter: フィルター条件を強制的に更新するフラグ
-            translation_status: 翻訳ステータス（TranslationStatus定数を使用）
-            filter_keyword: 検索キーワード（空文字列の場合はフィルタなしで全件取得。Noneは不可）
+            translation_status: 翻訳ステータス
+            filter_keyword: フィルターキーワード
 
         Returns:
             フィルター条件に一致するEntryModelのリスト
         """
         logger.debug(
             f"ViewerPOFileFilter.get_filtered_entries: 開始 update_filter={update_filter}, "
-            f"translation_status={translation_status}, filter_keyword={filter_keyword}, "
-            f"_force_filter_update={self._force_filter_update}"
+            f"filter_keyword={filter_keyword}, _force_filter_update={self._force_filter_update}"
         )
-        # フィルタ条件の更新
+        # フィルタ条件の更新検知とマージ
+        conditions_changed = False
         if update_filter or translation_status is not None:
-            if translation_status is not None:
+            if translation_status is not None and translation_status != self.translation_status:
                 self.translation_status = translation_status
                 self._set_flag_conditions_from_status(translation_status)
-            self._force_filter_update = True
-
-        # 検索キーワードの更新
-        if filter_keyword != "":
-            self.search_text = filter_keyword
-            self._force_filter_update = True
+                conditions_changed = True
+            if filter_keyword and filter_keyword != self.search_text:
+                self.search_text = self._merge_filters(filter_keyword, self.search_text)
+                conditions_changed = True
+            if conditions_changed:
+                # キャッシュを無効化
+                cache_manager = cm.EntryCacheManager()  # インスタンス取得、必要に応じてシングルトンを考慮
+                filter_key = self._generate_filter_key(self.search_text)  # フィルターキーを生成
+                cache_manager.invalidate_filter_cache(filter_key)
+                self._force_filter_update = True
+        else:
+            # 既存の検索キーワード更新ロジック（filter_keywordが指定された場合）
+            if filter_keyword != "":
+                self.search_text = self._merge_filters(filter_keyword, self.search_text)
+                cache_manager = cm.EntryCacheManager()
+                filter_key = self._generate_filter_key(self.search_text)
+                cache_manager.invalidate_filter_cache(filter_key)
+                self._force_filter_update = True
 
         # キャッシュキーの生成
         cache_key = self._generate_filter_cache_key()

@@ -56,8 +56,8 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         # データベースからエントリを取得
         entry_dict = self.db_accessor.get_entry_by_key(key)
         if entry_dict:
-            # EntryModelオブジェクトに変換
-            entry = EntryModel.from_dict(entry_dict)
+            # EntryModelオブジェクトに変換 (Pydantic v2)
+            entry = EntryModel.model_validate(entry_dict)
             # キャッシュに追加
             self.cache_manager.set_entry(key, entry)
             return entry
@@ -107,8 +107,8 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         if missing_keys:
             db_entries = self.db_accessor.get_entries_by_keys(missing_keys)
             for key, entry_dict in db_entries.items():
-                # EntryModelオブジェクトに変換
-                entry = EntryModel.from_dict(entry_dict)
+                # EntryModelオブジェクトに変換 (Pydantic v2)
+                entry = EntryModel.model_validate(entry_dict)
                 # キャッシュに追加
                 self.cache_manager.set_entry(key, entry)
                 result[key] = entry
@@ -145,8 +145,8 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         # データベースからエントリの基本情報を取得
         basic_info_dict = self.db_accessor.get_entry_basic_info(key)
         if basic_info_dict:
-            # EntryModelオブジェクトに変換
-            basic_info = EntryModel.from_dict(basic_info_dict)
+            # EntryModelオブジェクトに変換 (Pydantic v2)
+            basic_info = EntryModel.model_validate(basic_info_dict)
             # キャッシュに追加
             self.cache_manager.add_entry(key, basic_info)
             return basic_info
@@ -175,7 +175,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
 
         # キャッシュに保存
         for key, entry in entries.items():
-            entry_model = EntryModel.from_dict(entry)
+            entry_model = EntryModel.model_validate(entry)
             self.cache_manager.add_entry(key, entry_model)
 
     def get_entry_at(self, position: int) -> Optional[EntryModel]:

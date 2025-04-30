@@ -42,6 +42,8 @@ class EntryModel(BaseModel):
     msgid: str = ""
     msgstr: str = ""
     msgctxt: Optional[str] = None
+    msgid_plural: Optional[str] = None  # Plural message ID
+    msgstr_plural: Dict[int, str] = Field(default_factory=dict)  # Plural translations
     obsolete: bool = False
     position: Optional[int] = 0
     flags: List[str] = Field(default_factory=list)
@@ -100,16 +102,16 @@ class EntryModel(BaseModel):
 
     @property
     def fuzzy(self) -> bool:
-        """ファジーかどうか"""
-        return "fuzzy" in self.flags
+        """ファジーかどうか (大文字小文字を無視)"""
+        return any(flag.lower() == 'fuzzy' for flag in self.flags)
 
     @fuzzy.setter
     def fuzzy(self, value: bool) -> None:
         """ファジーフラグを設定"""
-        if value and "fuzzy" not in self.flags:
+        if value and "fuzzy" not in [flag.lower() for flag in self.flags]:
             self.flags.append("fuzzy")
-        elif not value and "fuzzy" in self.flags:
-            self.flags.remove("fuzzy")
+        elif not value and "fuzzy" in [flag.lower() for flag in self.flags]:
+            self.flags = [flag for flag in self.flags if flag.lower() != "fuzzy"]
 
     @computed_field
     @property
@@ -344,6 +346,8 @@ class EntryModel(BaseModel):
             "comment": getattr(po_entry, "comment", None),
             "tcomment": getattr(po_entry, "tcomment", None),
             "occurrences": getattr(po_entry, "occurrences", []),
+            "msgid_plural": getattr(po_entry, "msgid_plural", None),
+            "msgstr_plural": getattr(po_entry, "msgstr_plural", {}),
         }
 
         # flagsの変換
@@ -365,16 +369,42 @@ class EntryModel(BaseModel):
 
         return model_data
 
-    @field_validator("flags", mode="before")
+    @field_validator('flags', mode='before')
     @classmethod
-    def validate_flags(cls, v: Any) -> List[str]:
-        """flagsの変換"""
+    def _normalize_flags(cls, v):
+        """Normalize flags: strings split by comma, lists cast to str, trimmed and lowercased."""
+        if v is None:
+            return []
         if isinstance(v, str):
-            return [flag.strip() for flag in v.split(",") if flag.strip()]
-        elif isinstance(v, list):
-            # ストリング化
-            return [str(flag) for flag in v]
+            parts = [p.strip().lower() for p in v.split(',')]
+            return [p for p in parts if p]
+        if isinstance(v, list):
+            return [str(item).strip().lower() for item in v]
+        # unsupported types
         return []
+
+    @field_validator('occurrences', mode='before')
+    @classmethod
+    def _parse_occurrences(cls, v):
+        """Parse occurrences into List[Tuple[str, int]] from strings or tuples."""
+        if v is None:
+            return []
+        items = v if isinstance(v, list) else [v]
+        result = []
+        for item in items:
+            if isinstance(item, str) and ':' in item:
+                file, line = item.rsplit(':', 1)
+                try:
+                    result.append((file, int(line)))
+                except ValueError:
+                    continue
+            elif isinstance(item, (list, tuple)) and len(item) == 2:
+                file, line = item
+                try:
+                    result.append((str(file), int(line)))
+                except ValueError:
+                    continue
+        return result
 
     def to_dict(self) -> Dict[str, Any]:
         """辞書化"""
@@ -383,6 +413,8 @@ class EntryModel(BaseModel):
             "msgid": self.msgid,
             "msgstr": self.msgstr,
             "msgctxt": self.msgctxt,
+            "msgid_plural": self.msgid_plural,
+            "msgstr_plural": self.msgstr_plural,
             "obsolete": self.obsolete,
             "position": self.position,
             "flags": self.flags,
@@ -465,8 +497,11 @@ class EntryModel(BaseModel):
             msgid=po_entry.msgid,
             msgstr=po_entry.msgstr,
             msgctxt=msgctxt,
+            msgid_plural=safe_getattr(po_entry, "msgid_plural", None),
+            msgstr_plural=safe_getattr(po_entry, "msgstr_plural", {}),
             obsolete=safe_getattr(po_entry, "obsolete", False),
             position=position,
+            flags=safe_getattr(po_entry, "flags", []),
             previous_msgid=safe_getattr(po_entry, "previous_msgid", None),
             previous_msgid_plural=safe_getattr(po_entry, "previous_msgid_plural", None),
             previous_msgctxt=safe_getattr(po_entry, "previous_msgctxt", None),
@@ -526,12 +561,31 @@ class EntryModel(BaseModel):
             data["flags"] = []
             
         flags_list = data.get("flags", [])
-        if fuzzy and "fuzzy" not in flags_list:
+        if fuzzy and "fuzzy" not in [flag.lower() for flag in flags_list]:
             flags_list.append("fuzzy")
             data["flags"] = flags_list
 
         # 基本モデルを作成
-        model = cls(**data)
+        model = cls(
+            key=data.get('key',''),
+            msgid=data.get('msgid',''),
+            msgstr=data.get('msgstr',''),
+            msgctxt=data.get('msgctxt'),
+            msgid_plural=data.get('msgid_plural'),
+            msgstr_plural=data.get('msgstr_plural',{}),
+            obsolete=data.get('obsolete',False),
+            position=data.get('position'),
+            flags=data.get('flags',[]),
+            previous_msgid=data.get('previous_msgid'),
+            previous_msgid_plural=data.get('previous_msgid_plural'),
+            previous_msgctxt=data.get('previous_msgctxt'),
+            comment=data.get('comment'),
+            tcomment=data.get('tcomment'),
+            occurrences=data.get('occurrences',[]),
+            references=data.get('references',[]),
+            metadata=data.get('metadata',{}),
+            evaluation_state=data.get('evaluation_state')
+        )
 
         # 拡張フィールドを設定
         if isinstance(review_comments, list):
@@ -685,6 +739,10 @@ class EntryModel(BaseModel):
         # オプションフィールドを追加
         if self.msgctxt:
             kwargs["msgctxt"] = self.msgctxt
+        if self.msgid_plural:
+            kwargs["msgid_plural"] = self.msgid_plural
+        if self.msgstr_plural:
+            kwargs["msgstr_plural"] = self.msgstr_plural
         if self.previous_msgid:
             kwargs["previous_msgid"] = self.previous_msgid
         if self.previous_msgid_plural:

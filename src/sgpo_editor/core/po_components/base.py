@@ -176,6 +176,31 @@ class POFileBaseComponent:
             # 元の例外を再スロー
             raise
 
+    async def save(self, path: Union[str, Path]) -> bool:
+        logger.debug(f"POFileBaseComponent.save: Attempting to save to path {path}")
+        try:
+            factory = get_po_factory(self.library_type)
+            pofile = factory.create_file()
+            # Set metadata
+            pofile.metadata = self.metadata.copy()
+            # Append entries
+            for entry_dict in self.db_accessor.get_all_entries():
+                entry_model = EntryModel.from_dict(entry_dict)
+                po_entry = self._convert_entry_model_to_po_entry(entry_model)
+                pofile.append(po_entry)
+            # Save file: consider successful if no exception
+            try:
+                await asyncio.to_thread(pofile.save, path)
+                self.modified = False
+                logger.debug(f"POFileBaseComponent.save: Save successful to {path}")
+                return True
+            except Exception as save_err:
+                logger.error(f"POFileBaseComponent.save: Save failed - {save_err}")
+                return False
+        except Exception as e:
+            logger.error(f"POFileBaseComponent.save: Error during save - {e}")
+            return False
+
     def _load_all_basic_info(self) -> None:
         """すべてのエントリの基本情報を一括ロード
 
@@ -244,6 +269,22 @@ class POFileBaseComponent:
 
         return entry_dict
 
+    def _convert_entry_model_to_po_entry(self, entry_model: EntryModel) -> POEntry:
+        factory = get_po_factory(self.library_type)
+        po_entry = factory.create_entry()
+        po_entry.msgid = entry_model.msgid
+        po_entry.msgstr = entry_model.msgstr
+        po_entry.msgctxt = entry_model.msgctxt
+        po_entry.flags = entry_model.flags or []
+        po_entry.obsolete = entry_model.obsolete
+        po_entry.comment = entry_model.comment
+        po_entry.tcomment = entry_model.tcomment
+        po_entry.occurrences = entry_model.occurrences or []
+        po_entry.fuzzy = 'fuzzy' in (entry_model.flags or [])
+        po_entry.msgid_plural = entry_model.msgid_plural
+        po_entry.msgstr_plural = entry_model.msgstr_plural or {}
+        return po_entry
+
     def enable_cache(self, enabled: bool = True) -> None:
         """キャッシュ機能の有効/無効を設定する
 
@@ -288,4 +329,4 @@ class POFileBaseComponent:
         """
         if not self.path:
             return ""
-        return self.path.name 
+        return self.path.name

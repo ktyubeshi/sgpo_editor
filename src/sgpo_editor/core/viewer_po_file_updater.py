@@ -36,11 +36,12 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
             or entry_obj.fuzzy != ("fuzzy" in entry_dict.get("flags", []))
         )
 
-    def update_entry(self, entry: EntryInput) -> bool:
+    # 変更: update_entry メソッドのインターフェースとdocstringを更新、キャッシュ無効化を追加
+    def update_entry(self, entry: EntryModel) -> bool:
         """エントリを更新する
 
         Args:
-            entry: 更新するエントリ（辞書またはEntryModelオブジェクト）
+            entry: 更新するエントリ (EntryModelオブジェクト)
 
         Returns:
             bool: 更新が成功したかどうか
@@ -48,27 +49,25 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
         logger.debug("ViewerPOFileUpdater.update_entry: 開始")
         try:
             # データベースアクセサを使用してエントリを更新
-            result = self.db_accessor.update_entry(entry)
-            logger.debug(
-                f"ViewerPOFileUpdater.update_entry: データベース更新結果 result={result}"
-            )
+            result = self.db_accessor.update_entry(entry.dict())  # EntryModelを辞書形式に変換して更新
+            logger.debug(f"ViewerPOFileUpdater.update_entry: データベース更新結果 result={result}")
 
             if not result:
                 logger.error("ViewerPOFileUpdater.update_entry: データベース更新失敗")
                 return False
 
+            # キャッシュを無効化
+            from sgpo_editor.core.cache_manager import EntryCacheManager  # インポート追加
+            cache_manager = EntryCacheManager()  # インスタンス取得、シングルトンを考慮
+            cache_manager.invalidate_filter_cache()  # フィルターキャッシュを無効化 (filter_key=Noneで全てをクリア)
+
             # キャッシュを更新
             if result:
                 # EntryModelオブジェクトに変換
-                entry_obj = (
-                    entry
-                    if isinstance(entry, EntryModel)
-                    else EntryModel.from_dict(entry)
-                )
-                key = entry_obj.key
+                entry_obj = entry
 
                 # キャッシュマネージャを使用してキャッシュを更新
-                self.cache_manager.set_entry(key, entry_obj)
+                self.cache_manager.set_entry(entry_obj.key, entry_obj)
 
                 # 基本情報キャッシュも更新
                 basic_info = EntryModel(
@@ -79,7 +78,7 @@ class ViewerPOFileUpdater(ViewerPOFileFilter):
                     flags=entry_obj.flags,  # flagsも含める
                     obsolete=entry_obj.obsolete,
                 )
-                self.cache_manager.set_entry(key, basic_info)
+                self.cache_manager.set_entry(entry_obj.key, basic_info)
 
                 # 変更フラグを設定
                 self.modified = True

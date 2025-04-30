@@ -113,25 +113,27 @@ class UpdaterComponent:
         Returns:
             bool: 更新が成功した場合はTrue、失敗した場合はFalse
         """
-        logger.debug(f"UpdaterComponent.update_entry_model: key={entry['key']}")
-
-        # エントリをディクショナリに変換
-        entry_dict = entry.model_dump()
-
-        # データベースを更新
-        success = self.db_accessor.update_entry(entry_dict)
-        if not success:
-            logger.error(f"キー {entry['key']} のエントリの更新に失敗しました")
+        logger.debug(f"UpdaterComponent.update_entry_model: Updating entry with key {entry['key']}")
+        try:
+            # エントリをディクショナリに変換
+            entry_dict = entry.model_dump()
+            # データベースを更新
+            success = self.db_accessor.update_entry(entry_dict)
+            if not success:
+                logger.error(f"UpdaterComponent.update_entry_model: Database update failed for key {entry['key']}")
+                return False
+            logger.debug(f"UpdaterComponent.update_entry_model: Database update successful for key {entry['key']}")
+            # キャッシュを無効化
+            self.cache_manager.invalidate_entry(entry['key'])
+            self.cache_manager.invalidate_filter_cache()
+            logger.debug(f"UpdaterComponent.update_entry_model: Cache invalidated for key {entry['key']} and filters")
+            # 変更フラグを設定
+            self.modified = True
+            logger.debug("UpdaterComponent.update_entry_model: Set modified flag to True")
+            return True
+        except Exception as e:
+            logger.error(f"UpdaterComponent.update_entry_model: Error during update - {e}")
             return False
-
-        # キャッシュから削除して次回アクセス時に再取得
-        self.cache_manager.invalidate_entry(entry["key"])
-        self.cache_manager.invalidate_filter_cache()
-
-        # 変更フラグを設定
-        self.modified = True
-
-        return True
 
     def set_flag(self, key: str, flag: str, value: bool = True) -> bool:
         """エントリのフラグを設定または解除する

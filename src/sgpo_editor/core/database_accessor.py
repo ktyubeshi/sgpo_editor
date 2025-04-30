@@ -245,20 +245,45 @@ class DatabaseAccessor:
 
     def get_filtered_entries(
         self,
-        filter_text: str = "すべて",
-        filter_keyword: str = "",
-        match_mode: str = "部分一致",
-        case_sensitive: bool = False,
-        filter_status: Optional[Set[str]] = None,
-        filter_obsolete: bool = True,
-        search_text: str = "",
-    ) -> List[dict]:
+        *args,
+        **kwargs
+    ) -> list:
         """
         フィルタ条件に一致するエントリを取得する
-
+        - SearchCriteria型を受けた場合は自動的に各フィールドへ分解
+        - 旧来の引数方式も後方互換でサポート
         Returns:
             List[EntryDict]: フィルタ条件に一致するエントリのリスト
         """
+        # SearchCriteria対応
+        criteria = None
+        if args and hasattr(args[0], '__class__') and args[0].__class__.__name__ == "SearchCriteria":
+            criteria = args[0]
+        elif 'criteria' in kwargs and kwargs['criteria'].__class__.__name__ == "SearchCriteria":
+            criteria = kwargs['criteria']
+
+        if criteria:
+            # SearchCriteriaから各フィールドを抽出
+            filter_text = getattr(criteria, 'filter', 'すべて')
+            filter_keyword = getattr(criteria, 'filter_keyword', '')
+            match_mode = getattr(criteria, 'match_mode', '部分一致')
+            case_sensitive = getattr(criteria, 'case_sensitive', False)
+            filter_status = getattr(criteria, 'filter_status', None)
+            filter_obsolete = getattr(criteria, 'filter_obsolete', True)
+            search_text = getattr(criteria, 'filter_keyword', '')  # filter_keyword→search_text
+            translation_status = getattr(criteria, 'translation_status', None)
+            # translation_statusをfilter_statusに反映（Set型で渡す）
+            if translation_status and not filter_status:
+                filter_status = {translation_status}
+        else:
+            filter_text = kwargs.get('filter_text', 'すべて')
+            filter_keyword = kwargs.get('filter_keyword', '')
+            match_mode = kwargs.get('match_mode', '部分一致')
+            case_sensitive = kwargs.get('case_sensitive', False)
+            filter_status = kwargs.get('filter_status', None)
+            filter_obsolete = kwargs.get('filter_obsolete', True)
+            search_text = kwargs.get('search_text', '')
+
         # Accept None values for search_text and filter_keyword as empty string
         if search_text is None:
             search_text = ""
@@ -276,7 +301,6 @@ class DatabaseAccessor:
         )
 
         filtered_entries = []
-        # Retrieve all entries via accessor to avoid store-level SQL issues
         for entry_dict in self.get_all_entries():
             # 廃止フィルタリング
             if not filter_obsolete and entry_dict.get("obsolete"):
@@ -285,11 +309,13 @@ class DatabaseAccessor:
             # 状態フィルタリング
             if filter_status:
                 # EntryModel.get_status()相当のロジックをここで実装する必要がある場合は追加
-                pass  # 必要に応じて拡張
+                # 例: entry_dict["status"] in filter_status
+                entry_status = entry_dict.get("status")
+                if entry_status not in filter_status:
+                    continue
 
             # キーワードフィルタリング
             if norm_search_text:
-                # msgid, msgstr, msgctxt, comment, tcomment, references などで部分一致
                 targets = [
                     entry_dict.get("msgid", ""),
                     entry_dict.get("msgstr", ""),
@@ -297,7 +323,6 @@ class DatabaseAccessor:
                     entry_dict.get("comment", ""),
                     entry_dict.get("tcomment", ""),
                 ]
-                # references等もあれば追加
                 if not any(norm_search_text in (t or "") for t in targets):
                     continue
 

@@ -6,7 +6,7 @@
 import sgpo
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, Iterator, Protocol
-
+import polib
 from sgpo_editor.core.po_interface import POEntry, POFile, POFileFactory
 
 
@@ -271,10 +271,7 @@ class SgpoFactory(POFileFactory):
 
     def create_entry(self, **kwargs) -> POEntry:
         """POエントリを作成"""
-        # sgpoはPOEntryを直接作成する方法を提供していないため、
-        # polibのPOEntryを作成してから変換する
-        import polib
-
+        # sgpo is not providing a direct way to create POEntry, so create polib's POEntry and then convert it
         entry = polib.POEntry(**kwargs)
         return SgpoEntry(entry)
 
