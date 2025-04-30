@@ -752,7 +752,10 @@ class MainWindow(QMainWindow):
         logger.debug(
             "MainWindow._update_preview_dialog: フィルタリングされたエントリを取得"
         )
-        entries = current_po.get_filtered_entries()
+        # SearchCriteriaを使用してエントリを取得
+        from sgpo_editor.gui.widgets.search import SearchCriteria
+        criteria = SearchCriteria()
+        entries = current_po.get_filtered_entries(criteria)
         logger.debug(
             f"MainWindow._update_preview_dialog: 取得したエントリ数={len(entries)}"
         )

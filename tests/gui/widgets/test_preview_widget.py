@@ -202,6 +202,18 @@ class TestPreviewIntegration:
         # プレビューダイアログを表示
         window._show_preview_dialog()
 
+        # 現在の実装では、プレビューダイアログを表示した後、entry_selectedシグナルを通じて
+        # _update_preview_dialogメソッドが呼び出される設計になっている
+        # テストでは、このフローをシミュレートする
+
+        # ViewerPOFileのモックを設定
+        mock_po_file = MagicMock()
+        mock_po_file.get_filtered_entries.return_value = [mock_entry]
+        window._get_current_po = MagicMock(return_value=mock_po_file)
+
+        # エントリ選択シグナルを発行して_update_preview_dialogを呼び出す
+        window._update_preview_dialog(0)  # エントリ番号を0として呼び出す
+
         # 検証
         mock_preview_dialog.assert_called_once()
         mock_preview_dialog_instance.set_entry.assert_called_once_with(mock_entry)

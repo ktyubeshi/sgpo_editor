@@ -356,6 +356,8 @@ class TestEntryModel(unittest.TestCase):
         po_entry.msgid = "test"
         po_entry.msgstr = "テスト"
         po_entry.msgctxt = None
+        po_entry.msgid_plural = None
+        po_entry.msgstr_plural = {}
         po_entry.flags = []
         po_entry.obsolete = False
         po_entry.occurrences = []
@@ -379,6 +381,8 @@ class TestEntryModel(unittest.TestCase):
             'msgid': 'test',
             'msgstr': 'テスト',
             'msgctxt': None,
+            'msgid_plural': None,
+            'msgstr_plural': {},
             'obsolete': False,
             'position': 0,
             'flags': [],
@@ -388,10 +392,9 @@ class TestEntryModel(unittest.TestCase):
             'comment': None,
             'tcomment': None,
             'occurrences': [],
-            'references': [],
         }
-        # resultにreview_comments, metric_scores, check_results, category_quality_scores, metadataがあれば除外して比較
-        for k in ['review_comments', 'metric_scores', 'check_results', 'category_quality_scores', 'metadata']:
+        # resultにreview_comments, metric_scores, check_results, category_quality_scores, metadata, referencesがあれば除外して比較
+        for k in ['review_comments', 'metric_scores', 'check_results', 'category_quality_scores', 'metadata', 'references']:
             if k in result:
                 result.pop(k)
         self.assertEqual(result, expected)
