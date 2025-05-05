@@ -3,7 +3,8 @@ In BUILD: 21014, information to track where the unknown entry came from was adde
 It is tested whether this can be imported correctly.
 
 The extracted-comment is imported into the pot as is.
-This specification is made with the anticipation that a process to manually delete the pot after checking and editing will be executed separately.
+This specification is made with the anticipation that a process to manually delete the pot after checking and editing
+will be executed separately.
 
 ---
 このテストケースではextracted-comment付きのエントリが取り込まれることをテストします。

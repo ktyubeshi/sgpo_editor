@@ -8,3 +8,13 @@
 *.db
 *.db-shm
 *.db-wal
+/build/
+/test_log.txt
+/inspection/**
+/profile_results/**
+**/repomix-output.txt
+/testlog.txt
+*.mojibake-report.txt
+/.env
+/mypy_result.txt
+/test_result.txt

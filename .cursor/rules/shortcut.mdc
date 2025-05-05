@@ -1,0 +1,11 @@
+---
+description: /で始まるコマンドを入力されたとき
+globs: *
+alwaysApply: true
+---
+
+# short cut
+
+/todo
+[todo.md](mdc:_doc/todo.md) を参照してtodoリストを確認・更新して下さい。
+

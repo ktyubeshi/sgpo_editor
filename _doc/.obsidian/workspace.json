@@ -1,0 +1,192 @@
+{
+  "main": {
+    "id": "eb4fea461e65e767",
+    "type": "split",
+    "children": [
+      {
+        "id": "a7bb0d573cb2e3f1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0461c2f95a5e9987",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "test_guideline.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "test_guideline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "dff86f67ec2b1460",
+    "type": "split",
+    "children": [
+      {
+        "id": "17776c4960384174",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "15242c4fd63326ef",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "ファイルエクスプローラ"
+            }
+          },
+          {
+            "id": "94ccf1788bb08398",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "検索"
+            }
+          },
+          {
+            "id": "93580ace6bfe6d45",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "ブックマーク"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 308.5
+  },
+  "right": {
+    "id": "5f2a9855b8ed6340",
+    "type": "split",
+    "children": [
+      {
+        "id": "92637f445f4638b0",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "96038cdf33758de8",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "test_guideline.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "test_guidelineへのバックリンク"
+            }
+          },
+          {
+            "id": "fb3de3dd42fe2f5f",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "アウトゴーイングリンク"
+            }
+          },
+          {
+            "id": "36f334815e220d2e",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "タグ"
+            }
+          },
+          {
+            "id": "507f65344fd6207e",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "アウトライン"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:クイックスイッチャーを開く": false,
+      "graph:グラフビューを開く": false,
+      "canvas:新規キャンバスを作成": false,
+      "daily-notes:今日のデイリーノートを開く": false,
+      "templates:テンプレートを挿入": false,
+      "command-palette:コマンドパレットを開く": false
+    }
+  },
+  "active": "0461c2f95a5e9987",
+  "lastOpenFiles": [
+    "todo.md",
+    "test_guideline.md",
+    "Pasted image 20250317155259.png",
+    "gui_components_specification.md",
+    "facade_pattern.md",
+    "edit_behavior.md",
+    "6_glossary.md",
+    "5_test_plan.md",
+    "4_ui_component_design.md",
+    "3_data_model_design.md",
+    "1_system_overview.md",
+    "0_requirements_specification.md",
+    "memo/po_format_window 適用ボタン.md",
+    "test.py",
+    "issue/po_format_window/適用に失敗する.md",
+    "memo",
+    "2_architecture_design.md",
+    "issue/main",
+    "issue/po_format_window",
+    "Welcome.md",
+    "issue"
+  ]
+}
