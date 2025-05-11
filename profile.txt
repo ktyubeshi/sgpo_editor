@@ -1,0 +1,310 @@
+Sun May  4 21:21:41 2025    profile.prof
+
+         21377172 function calls (21256768 primitive calls) in 20.703 seconds
+
+   Ordered by: internal time
+   List reduced from 5784 to 300 due to restriction <300>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1   13.874   13.874   18.412   18.412 {built-in method exec}
+     8298    1.320    0.000    2.529    0.000 polib.py:469(find)
+17378865/17353977    1.242    0.000    1.252    0.000 {built-in method builtins.getattr}
+    20755    0.823    0.000    0.991    0.000 {built-in method builtins.print}
+        1    0.590    0.590    0.590    0.590 ui_setup.py:47(__init__)
+        1    0.178    0.178   19.479   19.479 main_window.py:962(main)
+        1    0.105    0.105    0.106    0.106 entry_editor.py:44(__init__)
+    40/39    0.066    0.002    0.129    0.003 {built-in method _imp.create_dynamic}
+        1    0.063    0.063    0.226    0.226 table_manager.py:588(_update_table_contents)
+     3506    0.061    0.000    0.076    0.000 enum.py:254(__set_name__)
+515332/507460    0.059    0.000    0.066    0.000 {built-in method builtins.isinstance}
+   480520    0.059    0.000    0.059    0.000 {method 'get' of 'dict' objects}
+     8296    0.059    0.000    0.095    0.000 _model_construction.py:327(init_private_attributes)
+   165924    0.057    0.000    0.135    0.000 _repr.py:61(<genexpr>)
+   165924    0.057    0.000    0.078    0.000 main.py:1098(__repr_args__)
+        3    0.055    0.018    0.055    0.018 {method 'setWidget' of 'PySide6.QtWidgets.QDockWidget' objects}
+     1176    0.045    0.000    0.045    0.000 {built-in method marshal.loads}
+     8296    0.039    0.000    0.826    0.000 entry.py:574(from_dict)
+        5    0.038    0.008    0.038    0.008 {method 'menuBar' of 'PySide6.QtWidgets.QMainWindow' objects}
+    25190    0.035    0.000    0.092    0.000 __init__.py:280(_compile)
+23198/22956    0.035    0.000    0.173    0.000 {method 'join' of 'str' objects}
+     2547    0.034    0.000    0.034    0.000 {built-in method builtins.compile}
+     1176    0.034    0.000    0.038    0.000 {built-in method _io.open_code}
+     1217    0.032    0.000    0.033    0.000 {built-in method _io.open}
+     1160    0.032    0.000    0.036    0.000 {method 'readlines' of '_io._IOBase' objects}
+     8297    0.032    0.000    2.560    0.000 polib.py:359(__contains__)
+     4148    0.031    0.000    0.075    0.000 database_accessor.py:1057(_row_to_entry_dict)
+     8302    0.028    0.000    0.131    0.000 {method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects}
+     6889    0.027    0.000    0.028    0.000 {built-in method posix.stat}
+        2    0.026    0.013    0.026    0.013 {method 'repaint' of 'PySide6.QtWidgets.QWidget' objects}
+        1    0.025    0.025    0.354    0.354 database_accessor.py:156(get_all_entries_basic_info)
+        1    0.025    0.025    1.446    1.446 polib.py:1328(parse)
+        3    0.025    0.008    0.025    0.008 {method 'executemany' of 'apsw.Cursor' objects}
+2805/2681    0.024    0.000    0.516    0.000 {built-in method builtins.__build_class__}
+        1    0.023    0.023    0.023    0.023 {method 'show' of 'PySide6.QtWidgets.QWidget' objects}
+100173/81910    0.022    0.000    0.123    0.000 {built-in method builtins.hasattr}
+        1    0.022    0.022    0.022    0.022 {built-in method processEvents}
+    25118    0.021    0.000    0.050    0.000 enum.py:1556(__and__)
+   1490/1    0.020    0.000   20.709   20.709 {built-in method builtins.exec}
+       25    0.019    0.001    0.019    0.001 {built-in method pydantic_core._pydantic_core.validate_core_schema}
+    12477    0.018    0.000    0.018    0.000 {method 'execute' of 'apsw.Cursor' objects}
+     4148    0.018    0.000    0.019    0.000 table_manager.py:652(_get_status_color)
+9188/5680    0.018    0.000    0.107    0.000 {built-in method __new__ of type object at 0x10434ca30}
+    24888    0.017    0.000    0.017    0.000 {method 'setItem' of 'PySide6.QtWidgets.QTableWidget' objects}
+   106219    0.016    0.000    0.016    0.000 {method 'pop' of 'dict' objects}
+   100293    0.016    0.000    0.023    0.000 enum.py:1538(_get_value)
+    50768    0.015    0.000    0.136    0.000 enum.py:720(__call__)
+     8296    0.014    0.000    0.348    0.000 entry.py:97(__init__)
+    12473    0.014    0.000    0.014    0.000 {method 'search' of 're.Pattern' objects}
+     8299    0.013    0.000    0.013    0.000 {method 'fetchall' of 'apsw.Cursor' objects}
+     5865    0.013    0.000    0.045    0.000 typing.py:175(_type_check)
+  930/155    0.013    0.000    0.034    0.000 _parser.py:512(_parse)
+  521/514    0.012    0.000    0.200    0.000 _fields.py:74(collect_model_fields)
+    15745    0.012    0.000    0.019    0.000 feature.py:88(feature_import)
+    16592    0.012    0.000    0.014    0.000 fields.py:1138(__getattr__)
+     4148    0.012    0.000    0.031    0.000 base.py:204(_convert_entry_to_dict)
+        1    0.012    0.012    0.053    0.053 database.py:203(add_entries_bulk)
+8550/8298    0.012    0.000    0.019    0.000 copy.py:118(deepcopy)
+       37    0.011    0.000    0.012    0.000 typing.py:1999(__init_subclass__)
+ 1114/521    0.011    0.000    0.021    0.000 _decorators.py:426(build)
+    47861    0.011    0.000    0.011    0.000 {method 'startswith' of 'str' objects}
+     1751    0.010    0.000    0.024    0.000 fields.py:202(__init__)
+     1176    0.010    0.000    0.056    0.000 <frozen importlib._bootstrap_external>:755(_compile_bytecode)
+100785/98967    0.010    0.000    0.010    0.000 {built-in method builtins.len}
+     4122    0.010    0.000    0.021    0.000 enum.py:390(__setitem__)
+     1620    0.010    0.000    0.046    0.000 <frozen importlib._bootstrap_external>:1597(find_spec)
+    24888    0.009    0.000    0.016    0.000 {method 'setFlags' of 'PySide6.QtWidgets.QTableWidgetItem' objects}
+     1176    0.009    0.000    0.009    0.000 {method 'read' of '_io.BufferedReader' objects}
+    23186    0.009    0.000    0.016    0.000 typing.py:2344(get_origin)
+    24888    0.009    0.000    0.020    0.000 {method 'flags' of 'PySide6.QtWidgets.QTableWidgetItem' objects}
+    50512    0.009    0.000    0.009    0.000 enum.py:1123(__new__)
+    33184    0.009    0.000    0.034    0.000 fields.py:1156(get_default)
+1201/1197    0.008    0.000    0.144    0.000 feature.py:150(_mod_uses_pyside)
+    52943    0.008    0.000    0.008    0.000 {method 'items' of 'dict' objects}
+  522/515    0.008    0.000    0.367    0.001 _model_construction.py:81(__new__)
+    61054    0.008    0.000    0.008    0.000 {method 'append' of 'list' objects}
+     9248    0.008    0.000    0.013    0.000 <frozen importlib._bootstrap_external>:126(_path_join)
+    12214    0.007    0.000    0.016    0.000 typing.py:1215(__setattr__)
+    33186    0.007    0.000    0.026    0.000 _utils.py:329(smart_deepcopy)
+    15745    0.007    0.000    0.027    0.000 loader.py:59(feature_import)
+        2    0.007    0.004    0.056    0.028 {method 'viewport' of 'PySide6.QtWidgets.QAbstractScrollArea' objects}
+     1251    0.007    0.000    0.067    0.000 <frozen importlib._bootstrap>:1240(_find_spec)
+     8297    0.007    0.000    0.023    0.000 main.py:893(__setattr__)
+     8320    0.007    0.000    0.013    0.000 database.py:185(transaction)
+        1    0.007    0.007    0.007    0.007 {method 'restoreState' of 'PySide6.QtWidgets.QMainWindow' objects}
+     1883    0.007    0.000    0.007    0.000 {method 'readline' of '_io.BufferedReader' objects}
+     4149    0.006    0.000    0.018    0.000 polib.py:965(__init__)
+    24888    0.006    0.000    0.012    0.000 enum.py:1578(__invert__)
+     8297    0.006    0.000    2.569    0.000 polib.py:378(append)
+      521    0.006    0.000    0.012    0.000 _model_construction.py:357(inspect_namespace)
+     8297    0.006    0.000    0.165    0.000 _repr.py:60(__repr_str__)
+     1872    0.006    0.000    0.036    0.000 typing.py:1269(__init__)
+15736/15709    0.006    0.000    0.152    0.000 feature.py:134(feature_imported)
+    15177    0.006    0.000    0.011    0.000 typing.py:1161(_is_dunder)
+    24413    0.006    0.000    0.006    0.000 _typing_extra.py:44(_is_typing_name)
+    12513    0.006    0.000    0.044    0.000 __init__.py:179(sub)
+15736/15709    0.006    0.000    0.158    0.000 loader.py:67(feature_imported)
+7007/2513    0.006    0.000    0.068    0.000 typing.py:407(_eval_type)
+    32644    0.006    0.000    0.006    0.000 {method 'get' of 'mappingproxy' objects}
+      302    0.005    0.000    0.092    0.000 enum.py:528(__new__)
+    24967    0.005    0.000    0.007    0.000 enum.py:202(__get__)
+      344    0.005    0.000    0.031    0.000 typing_extensions.py:916(__new__)
+     1176    0.005    0.000    0.131    0.000 <frozen importlib._bootstrap_external>:1066(get_code)
+  521/518    0.005    0.000    0.099    0.000 _typing_extra.py:472(get_model_type_hints)
+     4148    0.005    0.000    1.338    0.000 polib.py:1616(handle_ct)
+  682/130    0.005    0.000    0.070    0.001 _generate_schema.py:886(match_type)
+    12780    0.005    0.000    1.383    0.000 polib.py:1506(process)
+      110    0.005    0.000    0.005    0.000 {built-in method posix.listdir}
+ 8145/352    0.005    0.000    0.020    0.000 _core_utils.py:194(_walk)
+ 1534/115    0.005    0.000    0.013    0.000 _compiler.py:37(_compile)
+     2352    0.005    0.000    0.015    0.000 <frozen importlib._bootstrap_external>:486(cache_from_source)
+    12459    0.005    0.000    0.025    0.000 __init__.py:174(search)
+5683/5338    0.005    0.000    0.073    0.000 typing.py:392(inner)
+        1    0.005    0.005    0.567    0.567 filter.py:305(get_filtered_entries_from_db)
+     1159    0.005    0.000    0.052    0.000 tokenize.py:439(open)
+     4148    0.005    0.000    0.007    0.000 cache_manager.py:38(set)
+   1273/6    0.005    0.000    1.248    0.208 <frozen importlib._bootstrap>:1349(_find_and_load)
+     8872    0.004    0.000    0.010    0.000 {built-in method builtins.any}
+        1    0.004    0.004    0.004    0.004 {method 'setColumnCount' of 'PySide6.QtWidgets.QTableWidget' objects}
+     4149    0.004    0.000    0.008    0.000 polib.py:831(__init__)
+     6708    0.004    0.000    0.005    0.000 enum.py:844(__setattr__)
+    20539    0.004    0.000    0.004    0.000 {method 'endswith' of 'str' objects}
+     1506    0.004    0.000    0.014    0.000 <frozen importlib._bootstrap>:304(acquire)
+     4148    0.004    0.000    0.004    0.000 {method 'setForeground' of 'PySide6.QtWidgets.QTableWidgetItem' objects}
+      105    0.004    0.000    4.981    0.047 __init__.py:1(<module>)
+        1    0.004    0.004    0.866    0.866 main_window.py:47(__init__)
+     7405    0.004    0.000    0.005    0.000 _model_construction.py:259(__getattr__)
+     2374    0.004    0.000    0.004    0.000 {method '__exit__' of '_io._IOBase' objects}
+    12457    0.004    0.000    0.047    0.000 polib.py:247(unescape)
+    14216    0.004    0.000    0.037    0.000 {built-in method builtins.next}
+      258    0.004    0.000    0.004    0.000 {method 'flush' of '_io.TextIOWrapper' objects}
+    12516    0.004    0.000    0.005    0.000 {method 'sub' of 're.Pattern' objects}
+    13396    0.004    0.000    0.004    0.000 {method 'split' of 'str' objects}
+     1172    0.004    0.000    0.015    0.000 _core_utils.py:69(get_type_ref)
+     8296    0.004    0.000    0.013    0.000 main.py:861(__getattr__)
+     8069    0.004    0.000    0.011    0.000 _typing_extra.py:99(is_annotated)
+     2010    0.004    0.000    0.013    0.000 typing_extensions.py:3029(_collect_parameters)
+   1271/6    0.004    0.000    1.247    0.208 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+     1159    0.004    0.000    0.096    0.000 linecache.py:83(updatecache)
+        6    0.004    0.001    0.004    0.001 {method 'value' of 'PySide6.QtCore.QSettings' objects}
+    15664    0.003    0.000    0.003    0.000 {method 'update' of 'dict' objects}
+     1235    0.003    0.000    0.020    0.000 <frozen importlib._bootstrap>:733(_init_module_attrs)
+    22302    0.003    0.000    0.006    0.000 {built-in method builtins.issubclass}
+    14670    0.003    0.000    0.006    0.000 _parser.py:261(get)
+        2    0.003    0.002    0.883    0.442 base.py:58(load)
+     8296    0.003    0.000    0.005    0.000 entry.py:398(validate_flags)
+    13598    0.003    0.000    0.007    0.000 {built-in method builtins.setattr}
+        1    0.003    0.003    0.792    0.792 base.py:189(_load_all_basic_info)
+     1201    0.003    0.000    0.016    0.000 inspect.py:951(getsourcefile)
+     7100    0.003    0.000    0.004    0.000 contextlib.py:104(__init__)
+     1070    0.003    0.000    0.006    0.000 _namespace_utils.py:236(types_namespace)
+  385/122    0.003    0.000    0.089    0.001 _generate_schema.py:1217(_common_field_schema)
+     3630    0.003    0.000    0.003    0.000 {built-in method _codecs.utf_8_decode}
+        1    0.003    0.003    0.088    0.088 database_accessor.py:576(advanced_search)
+     1165    0.003    0.000    0.015    0.000 tokenize.py:346(detect_encoding)
+        1    0.003    0.003    0.007    0.007 database.py:30(__init__)
+     4160    0.003    0.000    0.003    0.000 {method '__exit__' of 'apsw.Connection' objects}
+    17085    0.003    0.000    0.003    0.000 {method 'strip' of 'str' objects}
+    10322    0.003    0.000    0.006    0.000 _fields.py:371(is_valid_field_name)
+    20853    0.003    0.000    0.003    0.000 {method 'rstrip' of 'str' objects}
+     7100    0.003    0.000    0.028    0.000 contextlib.py:132(__enter__)
+    12003    0.003    0.000    0.003    0.000 {method 'rpartition' of 'str' objects}
+   1235/9    0.003    0.000    1.246    0.138 <frozen importlib._bootstrap>:911(_load_unlocked)
+     7100    0.003    0.000    0.007    0.000 contextlib.py:299(helper)
+     8297    0.003    0.000    0.167    0.000 main.py:1126(__str__)
+     2528    0.003    0.000    0.024    0.000 typing.py:892(__init__)
+     8302    0.003    0.000    0.134    0.000 main.py:204(__init__)
+     1201    0.003    0.000    0.119    0.000 inspect.py:1070(findsource)
+    18434    0.003    0.000    0.003    0.000 {built-in method sys._getframe}
+     1506    0.003    0.000    0.004    0.000 <frozen importlib._bootstrap>:372(release)
+     1506    0.003    0.000    0.005    0.000 <frozen importlib._bootstrap>:426(_get_module_lock)
+ 1045/556    0.003    0.000    0.057    0.000 _generate_schema.py:738(_generate_schema_from_property)
+     6105    0.003    0.000    0.021    0.000 typing.py:166(_type_convert)
+    16907    0.003    0.000    0.003    0.000 _parser.py:240(__next)
+     4148    0.003    0.000    0.003    0.000 {method 'setData' of 'PySide6.QtWidgets.QTableWidgetItem' objects}
+     7100    0.003    0.000    0.014    0.000 contextlib.py:141(__exit__)
+ 1311/580    0.003    0.000    0.007    0.000 _repr.py:91(display_as_type)
+     4148    0.003    0.000    0.007    0.000 entry.py:158(get_status)
+     3617    0.003    0.000    0.003    0.000 {method 'match' of 're.Pattern' objects}
+     4017    0.003    0.000    0.007    0.000 _typing_extra.py:273(is_finalvar)
+     3893    0.003    0.000    0.003    0.000 _model_construction.py:61(__setitem__)
+2594/1188    0.002    0.000    0.003    0.000 {built-in method _abc._abc_subclasscheck}
+     4631    0.002    0.000    0.002    0.000 enum.py:779(__delattr__)
+    15580    0.002    0.000    0.004    0.000 typing.py:962(__eq__)
+    12702    0.002    0.000    0.002    0.000 {method 'lstrip' of 'str' objects}
+      740    0.002    0.000    0.028    0.000 typing.py:694(Union)
+ 8018/352    0.002    0.000    0.021    0.000 _core_utils.py:191(walk)
+  633/630    0.002    0.000    0.054    0.000 {built-in method builtins.eval}
+     5258    0.002    0.000    0.005    0.000 {built-in method builtins.delattr}
+     2010    0.002    0.000    0.003    0.000 typing_extensions.py:2954(_has_generic_or_protocol_as_origin)
+        1    0.002    0.002    0.112    0.112 entry_editor.py:99(__init__)
+        4    0.002    0.001    0.002    0.001 {method 'setValue' of 'PySide6.QtCore.QSettings' objects}
+    10167    0.002    0.000    0.004    0.000 _parser.py:168(__getitem__)
+        1    0.002    0.002    0.003    0.003 ui_setup.py:457(setup_toolbar)
+      581    0.002    0.000    0.004    0.000 _compiler.py:243(_optimize_charset)
+     6762    0.002    0.000    0.004    0.000 <frozen importlib._bootstrap>:645(parent)
+    12481    0.002    0.000    0.004    0.000 typing.py:1279(__eq__)
+     3153    0.002    0.000    0.005    0.000 typing.py:1205(__getattr__)
+     4148    0.002    0.000    0.016    0.000 entry.py:170(score)
+      521    0.002    0.000    0.006    0.000 _config.py:99(for_model)
+     1506    0.002    0.000    0.004    0.000 <frozen importlib._bootstrap>:124(setdefault)
+       40    0.002    0.000    0.004    0.000 {built-in method _imp.exec_dynamic}
+     5828    0.002    0.000    0.002    0.000 _config.py:148(__getattr__)
+   106/25    0.002    0.000    0.092    0.004 _generate_schema.py:622(_model_schema)
+      133    0.002    0.000    0.002    0.000 {built-in method posix.getcwd}
+     1176    0.002    0.000    0.051    0.000 <frozen importlib._bootstrap_external>:1187(get_data)
+       33    0.002    0.000    0.004    0.000 __init__.py:355(namedtuple)
+     1235    0.002    0.000    0.053    0.000 <frozen importlib._bootstrap_external>:1495(_get_spec)
+     4411    0.002    0.000    0.003    0.000 enum.py:79(_is_private)
+     1217    0.002    0.000    0.004    0.000 <frozen importlib._bootstrap_external>:806(spec_from_file_location)
+5987/4308    0.002    0.000    0.005    0.000 typing.py:430(<genexpr>)
+        1    0.002    0.002    0.005    0.005 metadata_panel.py:41(setup_ui)
+     2500    0.002    0.000    0.002    0.000 _parser.py:176(append)
+       76    0.002    0.000    0.031    0.000 dataclasses.py:921(_process_class)
+     3630    0.002    0.000    0.005    0.000 <frozen codecs>:319(decode)
+1201/1197    0.002    0.000    0.128    0.000 inspect.py:1258(getsourcelines)
+        1    0.002    0.002    0.914    0.914 main_window.py:1(<module>)
+     2353    0.002    0.000    0.005    0.000 <frozen importlib._bootstrap_external>:132(_path_split)
+      256    0.002    0.000    0.112    0.000 enum.py:857(_create_)
+ 6275/629    0.002    0.000    0.019    0.000 _core_utils.py:201(_handle_other_schemas)
+        1    0.002    0.002    0.004    0.004 search.py:58(_setup_ui)
+     1506    0.002    0.000    0.007    0.000 <frozen importlib._bootstrap>:162(__enter__)
+     3932    0.002    0.000    0.003    0.000 typing.py:1492(__subclasscheck__)
+     4149    0.002    0.000    0.009    0.000 polib.py:1624(handle_mi)
+     8296    0.002    0.000    0.003    0.000 entry.py:348(validate_po_entry)
+   1176/8    0.002    0.000    1.218    0.152 <frozen importlib._bootstrap_external>:993(exec_module)
+     1876    0.002    0.000    0.012    0.000 typing.py:1174(__init__)
+      508    0.002    0.000    0.003    0.000 _mock_val_ser.py:152(set_model_mocks)
+  740/347    0.002    0.000    0.019    0.000 _core_utils.py:346(handle_model_fields_schema)
+        1    0.002    0.002    0.002    0.002 {method 'setStyleSheet' of 'PySide6.QtWidgets.QWidget' objects}
+    12444    0.002    0.000    0.003    0.000 sgpo_adapter.py:59(msgctxt)
+    11385    0.002    0.000    0.002    0.000 {method '__exit__' of '_thread.RLock' objects}
+     1965    0.002    0.000    0.009    0.000 _typing_extra.py:244(is_classvar_annotation)
+    11910    0.002    0.000    0.002    0.000 {built-in method builtins.id}
+     3528    0.002    0.000    0.003    0.000 <frozen importlib._bootstrap_external>:84(_unpack_uint32)
+       61    0.002    0.000    0.002    0.000 {method 'connect' of 'PySide6.QtCore.SignalInstance' objects}
+     4148    0.002    0.000    0.004    0.000 entry.py:125(fuzzy)
+      340    0.002    0.000    0.012    0.000 typing.py:753(Literal)
+     2352    0.002    0.000    0.003    0.000 _namespace_utils.py:274(push)
+1235/1214    0.002    0.000    0.151    0.000 <frozen importlib._bootstrap>:806(module_from_spec)
+2575/2508    0.002    0.000    0.080    0.000 _typing_extra.py:538(try_eval_type)
+        1    0.002    0.002    0.002    0.002 {method 'remove' of 'PySide6.QtCore.QSettings' objects}
+     1156    0.002    0.000    0.021    0.000 fields.py:280(from_annotation)
+      730    0.002    0.000    0.025    0.000 <frozen abc>:105(__new__)
+  492/115    0.002    0.000    0.035    0.000 _parser.py:452(_parse_sub)
+      730    0.002    0.000    0.002    0.000 {built-in method _abc._abc_init}
+      550    0.002    0.000    0.002    0.000 _namespace_utils.py:89(data)
+     1160    0.002    0.000    0.098    0.000 linecache.py:36(getlines)
+    10029    0.002    0.000    0.002    0.000 <frozen importlib._bootstrap>:491(_verbose_message)
+    24957    0.002    0.000    0.002    0.000 enum.py:1286(value)
+     2121    0.002    0.000    0.002    0.000 _parser.py:312(_class_escape)
+ 1708/300    0.002    0.000    0.002    0.000 _parser.py:178(getwidth)
+     1751    0.002    0.000    0.002    0.000 fields.py:536(_collect_metadata)
+   796/25    0.002    0.000    0.092    0.004 _generate_schema.py:861(_generate_schema_inner)
+      441    0.002    0.000    0.007    0.000 _generate_schema.py:1985(_get_prepare_pydantic_annotations_for_known_type)
+     2965    0.001    0.000    0.003    0.000 {built-in method builtins.max}
+     3932    0.001    0.000    0.005    0.000 typing.py:1221(__instancecheck__)
+2575/2508    0.001    0.000    0.071    0.000 _typing_extra.py:593(eval_type_backport)
+     4149    0.001    0.000    0.008    0.000 polib.py:1638(handle_ms)
+       20    0.001    0.000    0.003    0.000 enum.py:1702(convert_class)
+      553    0.001    0.000    0.003    0.000 _typing_extra.py:357(is_namedtuple)
+     3802    0.001    0.000    0.003    0.000 enum.py:38(_is_descriptor)
+      533    0.001    0.000    0.168    0.000 _model_construction.py:555(complete_model_class)
+      521    0.001    0.000    0.002    0.000 _config.py:332(check_deprecated)
+        2    0.001    0.001    0.001    0.001 {method 'setWindowTitle' of 'PySide6.QtWidgets.QWidget' objects}
+        1    0.001    0.001    0.001    0.001 {method 'addItems' of 'PySide6.QtWidgets.QComboBox' objects}
+     1620    0.001    0.000    0.010    0.000 functools.py:982(__get__)
+      740    0.001    0.000    0.004    0.000 typing.py:345(_remove_dups_flatten)
+     1986    0.001    0.000    0.004    0.000 _typing_extra.py:224(is_classvar)
+     2302    0.001    0.000    0.017    0.000 _generate_schema.py:2446(get_schema_or_ref)
+     6745    0.001    0.000    0.003    0.000 typing.py:1592(__eq__)
+      521    0.001    0.000    0.003    0.000 _model_construction.py:277(_collect_bases_data)
+2575/2508    0.001    0.000    0.069    0.000 _typing_extra.py:656(_eval_type)
+1271/1267    0.001    0.000    0.007    0.000 inspect.py:754(unwrap)
+     4172    0.001    0.000    0.002    0.000 enum.py:48(_is_dunder)
+     4148    0.001    0.000    0.008    0.000 cache_manager.py:138(set_entry)
+     1216    0.001    0.000    0.006    0.000 <frozen importlib._bootstrap_external>:1592(_get_spec)
+     1885    0.001    0.000    0.003    0.000 tokenize.py:376(find_cookie)
+     1920    0.001    0.000    0.002    0.000 core_schema.py:4108(_dict_not_none)
+  1342/25    0.001    0.000    0.005    0.000 _core_utils.py:448(collect_refs)
+     4411    0.001    0.000    0.002    0.000 enum.py:59(_is_sunder)
+     1176    0.001    0.000    0.003    0.000 <frozen importlib._bootstrap_external>:670(_classify_pyc)
+      820    0.001    0.000    0.002    0.000 enum.py:1002(_find_data_type_)
+     4149    0.001    0.000    0.002    0.000 sgpo_adapter.py:259(__iter__)
+  403/122    0.001    0.000    0.084    0.001 _generate_schema.py:2015(_apply_annotations)
+      521    0.001    0.000    0.002    0.000 _model_construction.py:648(set_deprecated_descriptors)
+     4546    0.001    0.000    0.018    0.000 <frozen importlib._bootstrap_external>:140(_path_stat)
+     4148    0.001    0.000    0.003    0.000 entry_utils.py:7(get_entry_key)
+  2600/14    0.001    0.000    1.244    0.089 <frozen importlib._bootstrap>:480(_call_with_frames_removed)
+       93    0.001    0.000    0.010    0.000 typing.py:2888(__new__)
+     4148    0.001    0.000    0.007    0.000 entry.py:304(overall_quality_score)
+       24    0.001    0.000    0.001    0.000 {method 'addWidget' of 'PySide6.QtWidgets.QBoxLayout' objects}
+      129    0.001    0.000    0.003    0.000 __init__.py:298(__init__)
+     4963    0.001    0.000    0.002    0.000 <frozen importlib._bootstrap>:1226(__exit__)
+     1977    0.001    0.000    0.002    0.000 typing.py:2374(get_args)
+     4160    0.001    0.000    0.001    0.000 {method 'close' of 'apsw.Cursor' objects}
+       25    0.001    0.000    0.030    0.001 _schema_validator.py:21(create_schema_validator)
+      385    0.001    0.000    0.002    0.000 _core_metadata.py:41(update_core_metadata)
+     4963    0.001    0.000    0.002    0.000 <frozen importlib._bootstrap>:1222(__enter__)
+  521/514    0.001    0.000    0.205    0.000 _model_construction.py:522(set_model_fields)
+
+
