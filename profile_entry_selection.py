@@ -127,9 +127,7 @@ def profile_entry_selection():
         event_handler._update_detail_view(row)
         row_end_time = time.time()
         print(
-            f"ランダム選択 {i + 1} (Row {row}): {
-                (row_end_time - row_start_time) * 1000:.2f
-            } ms"
+            f"ランダム選択 {i + 1} (Row {row}): {(row_end_time - row_start_time) * 1000:.2f} ms"
         )
 
     # 時間計測終了

@@ -41,9 +41,7 @@ class TestFilterReset:
 
         # 1. 初期状態の確認
         print(
-            f"\n[TEST] ViewerPOFile初期状態: search_text={
-                po_file.get_filters().get('search_text')
-            }, translation_status={po_file.get_filters().get('translation_status')}"
+            f"\n[TEST] ViewerPOFile初期状態: search_text={po_file.get_filters().get('search_text')}, translation_status={po_file.get_filters().get('translation_status')}"
         )
         initial_entries = po_file.get_filtered_entries(SearchCriteria())
         initial_count = len(initial_entries)
@@ -63,9 +61,7 @@ class TestFilterReset:
         reset_count = len(reset_entries)
         print(f"[TEST] フィルタリセット後のエントリ数: {reset_count}件")
         print(
-            f"[TEST] リセット後のViewerPOFile状態: search_text={
-                po_file.get_filters().get('search_text')
-            }, translation_status={po_file.get_filters().get('translation_status')}"
+            f"[TEST] リセット後のViewerPOFile状態: search_text={po_file.get_filters().get('search_text')}, translation_status={po_file.get_filters().get('translation_status')}"
         )
 
         # 4. 検証: リセット後のエントリ数が初期状態と同じになるはず
@@ -90,9 +86,7 @@ class TestFilterReset:
         # 1. 初期状態の確認
         initial_filters = po_file.get_filters()
         print(
-            f"\n[TEST] ViewerPOFile初期状態: search_text={
-                initial_filters.get('search_text')
-            }, translation_status={initial_filters.get('translation_status')}"
+            f"\n[TEST] ViewerPOFile初期状態: search_text={initial_filters.get('search_text')}, translation_status={initial_filters.get('translation_status')}"
         )
 
         # 2. 初期状態で全エントリを取得
@@ -104,9 +98,7 @@ class TestFilterReset:
         po_file.get_filtered_entries(SearchCriteria(update_filter=True, filter_keyword="test"))
         filtered_filters = po_file.get_filters()
         print(
-            f"[TEST] フィルタ後のViewerPOFile状態: search_text={
-                filtered_filters.get('search_text')
-            }, translation_status={filtered_filters.get('translation_status')}"
+            f"[TEST] フィルタ後のViewerPOFile状態: search_text={filtered_filters.get('search_text')}, translation_status={filtered_filters.get('translation_status')}"
         )
 
         # 4. フィルタをリセット（空文字列）
@@ -116,9 +108,7 @@ class TestFilterReset:
         reset_count = len(reset_entries)
         reset_filters = po_file.get_filters()
         print(
-            f"[TEST] リセット後のViewerPOFile状態: search_text={
-                reset_filters.get('search_text')
-            }, translation_status={reset_filters.get('translation_status')}"
+            f"[TEST] リセット後のViewerPOFile状態: search_text={reset_filters.get('search_text')}, translation_status={reset_filters.get('translation_status')}"
         )
 
         # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず
@@ -128,9 +118,7 @@ class TestFilterReset:
 
         # 6. 検証: リセット後のフィルタ状態が初期状態と同じになるはず
         assert reset_filters.get('search_text') == initial_filters.get('search_text'), (
-            f"フィルタリセット後のsearch_textが初期状態と異なります: {
-                reset_filters.get('search_text')
-            } != {initial_filters.get('search_text')}"
+            f"フィルタリセット後のsearch_textが初期状態と異なります: {reset_filters.get('search_text')} != {initial_filters.get('search_text')}"
         )
 
         # 7. 検証: データベースの状態を直接確認
@@ -152,9 +140,7 @@ class TestFilterReset:
 
         # 1. 初期状態の確認
         print(
-            f"\n[TEST] ViewerPOFile初期状態: search_text={
-                po_file.get_filters().get('search_text')
-            }, translation_status={po_file.get_filters().get('translation_status')}"
+            f"\n[TEST] ViewerPOFile初期状態: search_text={po_file.get_filters().get('search_text')}, translation_status={po_file.get_filters().get('translation_status')}"
         )
 
         # 2. 初期状態で全エントリを取得
@@ -190,9 +176,7 @@ class TestFilterReset:
 
         # 1. 初期状態の確認
         print(
-            f"\n[TEST] ViewerPOFile初期状態: search_text={
-                po_file.get_filters().get('search_text')
-            }, translation_status={po_file.get_filters().get('translation_status')}"
+            f"\n[TEST] ViewerPOFile初期状態: search_text={po_file.get_filters().get('search_text')}, translation_status={po_file.get_filters().get('translation_status')}"
         )
 
         # 2. 初期状態で全エントリを取得
@@ -211,9 +195,7 @@ class TestFilterReset:
         # フィルタ後の状態を確認
         filtered_state = po_file.get_filters()
         print(
-            f"[TEST] フィルタ後のViewerPOFile状態: search_text={
-                filtered_state.get('search_text')
-            }, translation_status={filtered_state.get('translation_status')}"
+            f"[TEST] フィルタ後のViewerPOFile状態: search_text={filtered_state.get('search_text')}, translation_status={filtered_state.get('translation_status')}"
         )
 
         # SearchCriteria対応後はフィルタ状態の検証を省略
@@ -231,9 +213,7 @@ class TestFilterReset:
         # リセット後の状態を確認
         reset_state = po_file.get_filters()
         print(
-            f"[TEST] リセット後のViewerPOFile状態: search_text={
-                reset_state.get('search_text')
-            }, translation_status={reset_state.get('translation_status')}"
+            f"[TEST] リセット後のViewerPOFile状態: search_text={reset_state.get('search_text')}, translation_status={reset_state.get('translation_status')}"
         )
 
         # 5. 検証: リセット後のエントリ数が初期状態と同じになるはず
