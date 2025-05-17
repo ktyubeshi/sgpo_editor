@@ -2,7 +2,7 @@
 name = "sgpo_editor"
 version = "0.1.0"
 description = "A tool for viewing and checking PO (gettext) files"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "polib", # POファイルの解析用
     "rich", # ターミナルでの表示を改善
