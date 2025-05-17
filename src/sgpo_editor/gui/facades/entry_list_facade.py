@@ -395,7 +395,7 @@ class EntryListFacade(QObject):
 
                 key = item.data(Qt.ItemDataRole.UserRole)
                 # CacheManager を ViewerPOFile から取得して使用
-                if key and not current_po.cache_manager.exists_entry(key):
+                if key and not current_po.cache_manager.has_entry_in_cache(key):
                     # プリフェッチ中でもないことを確認
                     if not current_po.cache_manager.is_key_being_prefetched(key):
                         keys_to_prefetch.append(key)
