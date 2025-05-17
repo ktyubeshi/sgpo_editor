@@ -917,13 +917,15 @@ class MainWindow(QMainWindow):
             pass
         self.ui_manager.update_recent_files_menu(self._open_recent_file)
 
-    def _update_editor_on_selection(self, entry_number: int) -> None:
+    def _update_editor_on_selection(self, key: str) -> None:
         """エントリ選択時にエディタの内容を更新するスロット"""
-        logger.debug(f"MainWindow._update_editor_on_selection: entry_number={entry_number}")
+        logger.debug(
+            f"MainWindow._update_editor_on_selection: key={key}"
+        )
         current_po = self._get_current_po()
         if not current_po:
             return
-        entry = current_po.get_entry_by_number(entry_number)
+        entry = current_po.get_entry_by_key(key)
         self.entry_editor_facade.display_entry(entry)
 
     def _setup_connections(self) -> None:
@@ -935,9 +937,20 @@ class MainWindow(QMainWindow):
         self.entry_editor_facade.entry_applied.connect(self._on_entry_updated)
 
         # エントリ選択時の処理
-        self.entry_list_facade.entry_selected.connect(self._update_editor_on_selection)
-        self.entry_list_facade.entry_selected.connect(self._on_entry_selected)
-        self.entry_list_facade.entry_selected.connect(self.update_metadata_panel)
+        self.entry_list_facade.entry_selected.connect(
+            self._update_editor_on_selection
+        )
+        # レガシー互換のため、キーから番号を取得して渡す
+        self.entry_list_facade.entry_selected.connect(
+            lambda key: self._on_entry_selected(
+                self._get_current_po().get_entry_by_key(key).position
+                if self._get_current_po() and self._get_current_po().get_entry_by_key(key)
+                else -1
+            )
+        )
+        self.entry_list_facade.entry_selected.connect(
+            lambda _key: self.update_metadata_panel()
+        )
 
         # メタデータパネルのイベント接続
         self.metadata_panel.edit_requested.connect(self.edit_metadata)

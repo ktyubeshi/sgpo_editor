@@ -53,7 +53,7 @@ class EntryListFacade(QObject):
     """
 
     # シグナル定義
-    entry_selected = Signal(int)  # エントリ選択時に発行。引数はエントリ番号
+    entry_selected = Signal(str)  # エントリ選択時に発行。引数はエントリキー
     filter_changed = Signal()  # フィルタ条件が変更された時に発行
 
     def __init__(
@@ -295,15 +295,16 @@ class EntryListFacade(QObject):
 
         try:
             entry = current_po.get_entry_by_key(key)
-            if entry and hasattr(entry, "position"):
+            if entry:
                 logger.debug(
-                    f"EntryListFacade._on_cell_clicked: エントリ位置={entry.position}のシグナルを発行"
+                    "EntryListFacade._on_cell_clicked: エントリキー %s のシグナルを発行",
+                    key,
                 )
-                self.entry_selected.emit(entry.position)
+                self.entry_selected.emit(key)
                 logger.debug("EntryListFacade._on_cell_clicked: シグナル発行完了")
             else:
                 logger.debug(
-                    "EntryListFacade._on_cell_clicked: エントリが取得できないか、positionがない"
+                    "EntryListFacade._on_cell_clicked: エントリが取得できない"
                 )
         except Exception as e:
             logger.error(
@@ -331,8 +332,8 @@ class EntryListFacade(QObject):
 
         try:
             entry = current_po.get_entry_by_key(key)
-            if entry and hasattr(entry, "position"):
-                self.entry_selected.emit(entry.position)
+            if entry:
+                self.entry_selected.emit(key)
         except Exception as e:  # pragma: no cover - log unexpected errors
             logger.error(
                 f"EntryListFacade._on_selection_changed: エラー発生 {e}",
