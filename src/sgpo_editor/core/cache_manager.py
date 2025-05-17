@@ -296,6 +296,19 @@ class EntryCacheManager:
         self._filtered_entries_cache_key = ""
         self._force_filter_update = True
 
+    # --- Compatibility Helpers -------------------------------------------------
+    def clear_filter_cache(self) -> None:
+        """Clear the filter cache (alias of :meth:`invalidate_filter_cache`).
+
+        This method is kept for backward compatibility with older components
+        that still call ``clear_filter_cache``. Internally it simply delegates
+        to :py:meth:`invalidate_filter_cache`.
+        """
+        logger.debug(
+            "EntryCacheManager.clear_filter_cache: called (alias for invalidate_filter_cache)"
+        )
+        self.invalidate_filter_cache()
+
     def invalidate_entry(self, key: str) -> None:
         """特定のエントリのキャッシュを無効化する
 
