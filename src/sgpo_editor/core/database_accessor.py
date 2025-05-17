@@ -173,18 +173,12 @@ class DatabaseAccessor:
                 FROM entries
                 """
             )
-            # 件数デバッグ出力
-            cur.execute(
-                """
-                SELECT key, msgid, msgstr, fuzzy, obsolete
-                FROM entries
-                """
-            )
             columns = [desc[0] for desc in cur.description]
             rows = cur.fetchall()
-            print(f"[DEBUG] 取得時の件数: {len(rows)}")
+            logger.debug(
+                f"DatabaseAccessor.get_all_entries_basic_info: fetched {len(rows)} entries"
+            )
             for row in rows:
-                print(f"columns: {columns}, row: {row}, type(row): {type(row)}")
                 row_dict = dict(zip(columns, row))
                 key = row_dict["key"]
                 entries[key] = {
@@ -196,7 +190,6 @@ class DatabaseAccessor:
                     "position": 0,  # デフォルト値を設定
                 }
 
-        print(f"entries(keys): {list(entries.keys())}, entries: {entries}")
         return entries
 
     def get_entry_basic_info(self, key: str) -> Optional[EntryDict]:
