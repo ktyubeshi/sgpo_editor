@@ -1,6 +1,6 @@
 """フィルタリング用ウィジェット"""
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (
@@ -18,11 +18,16 @@ from sgpo_editor.i18n import translate
 
 
 class SearchCriteria(BaseModel):
-    model_config = ConfigDict()
+    model_config = ConfigDict(extra="allow")
 
     filter: str = TranslationStatus.ALL
     filter_keyword: Optional[str] = ""
     match_mode: str = "partial"  # 部分一致を'partial'に変更
+    update_filter: bool = True
+    case_sensitive: bool = False
+    filter_obsolete: bool = False
+    filter_status: Optional[Set[str]] = None
+    search_text: Optional[str] = None
 
 
 class SearchWidget(QWidget):
