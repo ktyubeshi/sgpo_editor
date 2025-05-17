@@ -167,8 +167,17 @@ class FilterComponent:
         update_filter: bool = True,
         search_text: str = "",
     ) -> List[EntryModel]:
-        print(
-            f"[DEBUG] get_filtered_entries: called with filter_text={filter_text}, filter_keyword={filter_keyword}, match_mode={match_mode}, case_sensitive={case_sensitive}, filter_status={filter_status}, filter_obsolete={filter_obsolete}, update_filter={update_filter}, search_text={search_text}"
+        logger.debug(
+            "get_filtered_entries called: filter_text=%s, filter_keyword=%s, "
+            "match_mode=%s, case_sensitive=%s, filter_status=%s, filter_obsolete=%s, update_filter=%s, search_text=%s",
+            filter_text,
+            filter_keyword,
+            match_mode,
+            case_sensitive,
+            filter_status,
+            filter_obsolete,
+            update_filter,
+            search_text,
         )
         # None と空文字列は意味が異なるため区別して扱う
         #   filter_keyword が None   : キーワードフィルタをリセットしたい意図
@@ -231,8 +240,9 @@ class FilterComponent:
             and self.filtered_entries
             and len(self.filtered_entries) > 0
         ):
-            print(
-                f"[DEBUG] get_filtered_entries: self.filtered_entriesヒット {len(self.filtered_entries)}件"
+            logger.debug(
+                "get_filtered_entries: self.filtered_entriesヒット %s件",
+                len(self.filtered_entries),
             )
             # 既に計算済みのフィルタ結果がある場合はそれを使用
             return self.filtered_entries
@@ -241,8 +251,9 @@ class FilterComponent:
             # キャッシュ上の計算済みフィルタ結果をチェック
             cached_entries = self.cache_manager.get_filter_cache()
             if cached_entries is not None and len(cached_entries) > 0:
-                print(
-                    f"[DEBUG] get_filtered_entries: cache_managerヒット {len(cached_entries)}件"
+                logger.debug(
+                    "get_filtered_entries: cache_managerヒット %s件",
+                    len(cached_entries),
                 )
                 # キャッシュヒット
                 logger.debug(
@@ -297,8 +308,9 @@ class FilterComponent:
             # self.cache_manager.clear_filter_cache()
 
         self.filtered_entries = db_filtered
-        print(
-            f"[DEBUG] get_filtered_entries: DBフィルタ結果 {len(self.filtered_entries)}件返却"
+        logger.debug(
+            "get_filtered_entries: DBフィルタ結果 %s件返却",
+            len(self.filtered_entries),
         )
         return self.filtered_entries
 
@@ -353,12 +365,17 @@ class FilterComponent:
             limit=None,
             offset=0,
         )
-        print(
-            f"[DEBUG] get_filtered_entries_from_db: translation_status={translation_status}"
+        logger.debug(
+            "get_filtered_entries_from_db: translation_status=%s",
+            translation_status,
         )
-        print(f"[DEBUG] get_filtered_entries_from_db: entries件数={len(entries)}")
-        print(
-            f"[DEBUG] get_filtered_entries_from_db: entries(keys)={[e.get('key') for e in entries] if entries and isinstance(entries[0], dict) else entries}"
+        logger.debug(
+            "get_filtered_entries_from_db: entries件数=%s",
+            len(entries),
+        )
+        logger.debug(
+            "get_filtered_entries_from_db: entries(keys)=%s",
+            [e.get('key') for e in entries] if entries and isinstance(entries[0], dict) else entries,
         )
         return [
             EntryModel.from_dict(e) if not isinstance(e, EntryModel) else e
