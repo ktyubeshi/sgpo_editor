@@ -223,7 +223,7 @@ class POFormatEditor(QDialog):
             return
 
         # すべてのエントリを取得（SearchCriteriaを必ず渡す）
-        from sgpo_editor.gui.search_criteria import SearchCriteria
+        from sgpo_editor.gui.widgets.search import SearchCriteria
         criteria = SearchCriteria()
         entries = po_file.get_filtered_entries(criteria)
         if not entries:
@@ -261,7 +261,7 @@ class POFormatEditor(QDialog):
             filter_keyword = criteria.filter_keyword
 
         # フィルタされたエントリを取得（SearchCriteriaを必ず渡す）
-        from sgpo_editor.gui.search_criteria import SearchCriteria
+        from sgpo_editor.gui.widgets.search import SearchCriteria
         criteria = SearchCriteria(update_filter=True, filter_keyword=filter_keyword)
         entries = po_file.get_filtered_entries(criteria)
 
