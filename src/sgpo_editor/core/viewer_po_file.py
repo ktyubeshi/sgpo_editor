@@ -4,6 +4,8 @@
 各機能コンポーネントを内部に保持するコンポジション構造で実装されています。
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Union, Any
@@ -325,76 +327,29 @@ class ViewerPOFile:
 
     def get_filtered_entries(
         self,
-        criteria: "SearchCriteria"
+        criteria: "SearchCriteria",
     ) -> List[EntryModel]:
-        """フィルタ条件に一致するエントリを取得する
+        """フィルタ条件に一致するエントリを取得する"""
 
-        Args:
-            criteria: 検索条件
-            case_sensitive: 大文字小文字を区別するかどうか
-            filter_status: フィルタするステータスのセット
-            filter_obsolete: 廃止されたエントリをフィルタするかどうか
-            update_filter: フィルタ条件を更新するかどうか
-            search_text: 検索テキスト（update_filter=Trueの場合に使用）
-            translation_status: 翻訳状態フィルタ
+        filter_text = getattr(criteria, "filter", TranslationStatus.ALL)
+        filter_keyword = getattr(criteria, "filter_keyword", "")
+        match_mode = getattr(criteria, "match_mode", "部分一致")
+        case_sensitive = getattr(criteria, "case_sensitive", False)
+        filter_status = getattr(criteria, "filter_status", None)
+        filter_obsolete = getattr(criteria, "filter_obsolete", False)
+        update_filter = getattr(criteria, "update_filter", True)
+        search_text = getattr(criteria, "search_text", "")
 
-        Returns:
-            List[EntryModel]: フィルタ条件に一致するエントリのリスト
-        """
-        # criteriaから値を取得
-        filter_status = getattr(criteria, 'filter_status', None)
-        translation_status = getattr(criteria, 'filter', None)
-        filter_keyword = getattr(criteria, 'filter_keyword', None)
-        print(f"DEBUG: translation_status(from filter)={translation_status}")  # デバッグ用
-        match_mode = getattr(criteria, 'match_mode', 'partial')
-        case_sensitive = getattr(criteria, 'case_sensitive', False)
-        filter_obsolete = getattr(criteria, 'filter_obsolete', False)
-        update_filter = getattr(criteria, 'update_filter', False)
-        search_text = getattr(criteria, 'search_text', None)
-
-        # キャッシュ制御: update_filter=Falseかつキャッシュがあれば返却
-        if not update_filter and getattr(self, 'filtered_entries', None):
-            return self.filtered_entries
-        # filter_keyword無指定時はインスタンスsearch_textを使用
-        effective_keyword = (
-            self.search_text if filter_keyword is None else filter_keyword
+        entries = self.filter.get_filtered_entries(
+            filter_text=filter_text,
+            filter_keyword=filter_keyword,
+            match_mode=match_mode,
+            case_sensitive=case_sensitive,
+            filter_status=filter_status,
+            filter_obsolete=filter_obsolete,
+            update_filter=update_filter,
+            search_text=search_text,
         )
-        # テスト要件: キーワードや翻訳状態指定時はadvanced_searchを呼ぶ
-        if filter_keyword or filter_status or search_text or translation_status:
-            # advanced_searchを呼ぶ
-            if translation_status is not None:
-                translation_status_arg = translation_status
-            elif isinstance(filter_status, set) and len(filter_status) == 1:
-                translation_status_arg = list(filter_status)[0]
-            else:
-                translation_status_arg = None
-            # translation_statusを必ずkwargsに含める（Noneでも明示的に渡す）
-            entries_data = self.db_accessor.advanced_search(
-                search_text=filter_keyword or search_text or "",
-                search_fields=["msgid", "msgstr", "reference", "tcomment", "comment"],
-                sort_column="position",
-                sort_order="ASC",
-                flag_conditions={},
-                exact_match=match_mode == "完全一致",
-                case_sensitive=case_sensitive,
-                limit=None,
-                offset=0,
-                translation_status=translation_status_arg
-            )
-        else:
-            # 従来通り
-            entries_data = self.db_accessor.get_filtered_entries(
-                filter_text=filter_text,
-                filter_keyword=effective_keyword or "",
-                case_sensitive=case_sensitive,
-                filter_status=filter_status,
-                filter_obsolete=filter_obsolete,
-            )
-        entries = []
-        for d in entries_data:
-            entries.append(
-                EntryModel.model_validate(d) if isinstance(d, dict) else d
-            )
         self.filtered_entries = entries
         return entries
 
