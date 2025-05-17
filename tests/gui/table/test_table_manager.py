@@ -7,7 +7,12 @@ import json
 import sys
 from unittest.mock import MagicMock, patch
 
-from PySide6.QtWidgets import QApplication, QHeaderView, QTableWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QAbstractItemView,
+    QHeaderView,
+    QTableWidget,
+)
 
 from sgpo_editor.gui.table_manager import TableManager
 from sgpo_editor.core.cache_manager import EntryCacheManager
@@ -60,6 +65,12 @@ class TestTableManager:
                 self.table.horizontalHeader().sectionResizeMode(i)
                 == QHeaderView.ResizeMode.Interactive
             )
+
+        # 選択モードが行単位になっているか確認
+        assert (
+            self.table.selectionBehavior()
+            == QAbstractItemView.SelectionBehavior.SelectRows
+        )
 
     @patch("sgpo_editor.gui.table_manager.QSettings")
     def test_save_column_widths(self, mock_settings):
