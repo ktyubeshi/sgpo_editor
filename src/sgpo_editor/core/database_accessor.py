@@ -181,9 +181,9 @@ class DatabaseAccessor:
             )
             columns = [desc[0] for desc in cur.description]
             rows = cur.fetchall()
-            print(f"[DEBUG] 取得時の件数: {len(rows)}")
+            logger.debug("取得時の件数: %d", len(rows))
             for row in rows:
-                print(f"columns: {columns}, row: {row}, type(row): {type(row)}")
+                logger.debug("columns: %s, row: %s, type(row): %s", columns, row, type(row))
                 row_dict = dict(zip(columns, row))
                 key = row_dict["key"]
                 entries[key] = {
@@ -195,7 +195,7 @@ class DatabaseAccessor:
                     "position": 0,  # デフォルト値を設定
                 }
 
-        print(f"entries(keys): {list(entries.keys())}, entries: {entries}")
+        logger.debug("entries(keys): %s, entries: %s", list(entries.keys()), entries)
         return entries
 
     def get_entry_basic_info(self, key: str) -> Optional[EntryDict]:

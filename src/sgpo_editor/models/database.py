@@ -236,7 +236,7 @@ class InMemoryEntryStore:
             # デバッグ: insert直後の件数確認
             cur.execute("SELECT COUNT(*) FROM entries")
             count = cur.fetchone()[0]
-            print(f"[DEBUG] INSERT直後の件数: {count}")
+            logger.debug("INSERT直後の件数: %s", count)
 
             # 挿入されたエントリのIDを取得
             # keyとidのマッピングを作成
@@ -551,7 +551,9 @@ class InMemoryEntryStore:
             List[Dict[str, Any]]: エントリのリスト
         """
         # デバッグ用ログ出力
-        print(f"InMemoryEntryStore.get_entries呼び出し: search_text={search_text}")
+        logger.debug(
+            "InMemoryEntryStore.get_entries called: search_text=%s", search_text
+        )
 
         query = """
             SELECT e.*, GROUP_CONCAT(f.flag) as flags, d.position
@@ -656,21 +658,19 @@ class InMemoryEntryStore:
         # 翻訳状態によるフィルタリングは上記の条件で処理済み
 
         # キーワード検索条件（msgidとmsgstrの両方で検索）
-        import logging
-
-        logging.debug(f"InMemoryEntryStore.get_entries: search_text={search_text}")
+        logger.debug("InMemoryEntryStore.get_entries: search_text=%s", search_text)
 
         # 空のキーワードを処理
         if search_text is None:
             # Noneの場合は検索条件を追加しない
-            print("キーワードがNoneのため、検索条件を追加しません")
+            logger.debug("キーワードがNoneのため、検索条件を追加しません")
         elif isinstance(search_text, str):
             # 文字列の場合は空白除去してチェック
             search_text = search_text.strip()
             if not search_text:  # 空白文字のみの場合はスキップ
-                print("空のキーワードのため、検索条件を追加しません")
+                logger.debug("空のキーワードのため、検索条件を追加しません")
             else:
-                print(f"キーワード検索条件を追加: '{search_text}'")
+                logger.debug("キーワード検索条件を追加: '%s'", search_text)
                 # 完全一致検索に変更し、テストケースに合わせる
                 if search_text.endswith("1"):
                     # test1のようなテストケースに対応
@@ -745,10 +745,10 @@ class InMemoryEntryStore:
             query += " ORDER BY COALESCE(d.position, 0) ASC"
 
         # デバッグ用ログ出力
-        print(f"SQLクエリ: {query}")
-        print(f"SQLパラメータ: {params}")
+        logger.debug("SQLクエリ: %s", query)
+        logger.debug("SQLパラメータ: %s", params)
         if search_text:
-            print(f"キーワード検索条件: '{search_text}'")
+            logger.debug("キーワード検索条件: '%s'", search_text)
 
         # クエリ実行
         try:
@@ -761,34 +761,36 @@ class InMemoryEntryStore:
             entries = [
                 self._row_to_dict_from_cursor(cursor, row) for row in cursor.fetchall()
             ]
-            print(f"取得したエントリ数: {len(entries)}件")
+            logger.debug("取得したエントリ数: %d件", len(entries))
 
             # キーワード検索の場合、最初の数件を表示
             if search_text and search_text.strip():
-                print("検索結果のサンプル:")
+                logger.debug("検索結果のサンプル:")
                 for i, entry in enumerate(entries[:3]):
                     msgid = entry.get("msgid", "")[:30]
                     msgstr = entry.get("msgstr", "")[:30]
-                    print(f"  エントリ {i + 1}: msgid={msgid}... msgstr={msgstr}...")
+                    logger.debug("  エントリ %d: msgid=%s... msgstr=%s...", i + 1, msgid, msgstr)
 
                 # キーワードに一致するか確認
                 if len(entries) > 0:
-                    print(f"キーワード '{search_text}' に一致するか確認:")
+                    logger.debug("キーワード '%s' に一致するか確認:", search_text)
                     first_entry = entries[0]
                     msgid = first_entry.get("msgid", "")
                     msgstr = first_entry.get("msgstr", "")
-                    print(
-                        f"  msgid '{msgid}' に '{search_text}' が含まれるか: {
-                            search_text.lower() in msgid.lower()
-                        }"
+                    logger.debug(
+                        "  msgid '%s' に '%s' が含まれるか: %s",
+                        msgid,
+                        search_text,
+                        search_text.lower() in msgid.lower(),
                     )
-                    print(
-                        f"  msgstr '{msgstr}' に '{search_text}' が含まれるか: {
-                            search_text.lower() in msgstr.lower()
-                        }"
+                    logger.debug(
+                        "  msgstr '%s' に '%s' が含まれるか: %s",
+                        msgstr,
+                        search_text,
+                        search_text.lower() in msgstr.lower(),
                     )
         except Exception as e:
-            print(f"SQLクエリ実行エラー: {str(e)}")
+            logger.error(f"SQLクエリ実行エラー: {str(e)}")
             import traceback
 
             traceback.print_exc()
@@ -822,7 +824,7 @@ class InMemoryEntryStore:
                     [(entry_id, i) for i, entry_id in enumerate(entry_ids)],
                 )
             except Exception as e:
-                print(f"エントリの表示順序を変更中にエラーが発生しました: {str(e)}")
+                logger.error(f"エントリの表示順序を変更中にエラーが発生しました: {str(e)}")
             finally:
                 # 制約を有効化
                 cur.execute("PRAGMA foreign_keys = ON")
