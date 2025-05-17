@@ -131,7 +131,7 @@ class EntryRetrieverComponent:
         )
 
         # 基本情報キャッシュからエントリを取得
-        if self.cache_manager.exists_entry(key):
+        if self.cache_manager.has_entry_in_cache(key):
             basic_info = self.cache_manager.get_entry(key)
             logger.debug(
                 f"EntryRetrieverComponent.get_entry_basic_info: キャッシュヒット key={key}"
@@ -162,7 +162,7 @@ class EntryRetrieverComponent:
             return
 
         # キャッシュにないキーを特定
-        missing_keys = [key for key in keys if not self.cache_manager.exists_entry(key)]
+        missing_keys = [key for key in keys if not self.cache_manager.has_entry_in_cache(key)]
         if not missing_keys:
             return
 
