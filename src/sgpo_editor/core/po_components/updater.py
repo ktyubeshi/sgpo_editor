@@ -240,5 +240,5 @@ class UpdaterComponent:
         キャッシュマネージャのキャッシュを無効化します。
         """
         if self.cache_manager:
-            self.cache_manager.clear_filter_cache()
+            self.cache_manager.invalidate_filter_cache()
             self.cache_manager.clear_cache()
