@@ -87,6 +87,8 @@ class EntryListFacade(QObject):
 
         # テーブルのセル選択シグナルを接続
         self._table.cellClicked.connect(self._on_cell_clicked)
+        # 行選択変更時にもエントリを更新する
+        self._table.itemSelectionChanged.connect(self._on_selection_changed)
 
         # テーブルのスクロールイベントを接続してプリフェッチをトリガー
         self._table.verticalScrollBar().valueChanged.connect(
@@ -100,8 +102,17 @@ class EntryListFacade(QObject):
 
     def update_table(self) -> None:
         import traceback
-        logger.debug("EntryListFacade.update_table called. Stack trace:\n%s", traceback.format_stack())
-        logger.debug("EntryListFacade.update_table: Criteria before retrieval: %s", self._search_widget.get_search_criteria() if self._search_widget else 'No search widget')
+
+        logger.debug(
+            "EntryListFacade.update_table called. Stack trace:\n%s",
+            traceback.format_stack(),
+        )
+        logger.debug(
+            "EntryListFacade.update_table: Criteria before retrieval: %s",
+            self._search_widget.get_search_criteria()
+            if self._search_widget
+            else "No search widget",
+        )
         """テーブルを最新の状態に更新する
 
         POファイルからフィルタリング/ソートされたエントリを取得し、
@@ -299,6 +310,35 @@ class EntryListFacade(QObject):
                 f"EntryListFacade._on_cell_clicked: エラー発生 {e}", exc_info=True
             )
 
+    def _on_selection_changed(self) -> None:
+        """テーブルの選択行が変更されたときの処理"""
+        if not self._table.selectionModel().hasSelection():
+            return
+
+        selection_rows = self._table.selectionModel().selectedRows()
+        if not selection_rows:
+            return
+
+        current_row = selection_rows[0].row()
+        item = self._table.item(current_row, 0)
+        if not item:
+            return
+
+        key = item.data(Qt.ItemDataRole.UserRole)
+        current_po = self._get_current_po()
+        if not current_po:
+            return
+
+        try:
+            entry = current_po.get_entry_by_key(key)
+            if entry and hasattr(entry, "position"):
+                self.entry_selected.emit(entry.position)
+        except Exception as e:  # pragma: no cover - log unexpected errors
+            logger.error(
+                f"EntryListFacade._on_selection_changed: エラー発生 {e}",
+                exc_info=True,
+            )
+
     def toggle_column_visibility(self, column_index: int) -> None:
         """列の表示/非表示を切り替える
 
@@ -376,4 +416,6 @@ class EntryListFacade(QObject):
             logger.exception(f"EntryListFacade: プリフェッチ中にエラー: {e}")
 
     def __getattr__(self, name: str):
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
