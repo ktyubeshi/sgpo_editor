@@ -289,8 +289,8 @@ class EntryEditorFacade(QObject):
             return False
 
         try:
-            # エントリの更新を実行
-            result = current_po.update_entry(entry)
+            # エントリの更新を実行 (UpdaterComponent 経由)
+            result = current_po.updater.update_entry_model(entry)
 
             if result:
                 # 成功メッセージとシグナル発行
