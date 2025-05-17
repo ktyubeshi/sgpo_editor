@@ -192,7 +192,7 @@ class EntryEditorFacade(QObject):
     """
 
     # シグナル定義
-    entry_applied = Signal(int)  # エントリ適用時に発行。引数はエントリ番号
+    entry_applied = Signal(str)  # エントリ適用時に発行。引数はエントリキー
     entry_changed = Signal()  # エントリ内容が変更された時に発行
 
     def __init__(
@@ -295,7 +295,7 @@ class EntryEditorFacade(QObject):
             if result:
                 # 成功メッセージとシグナル発行
                 self._show_status(f"エントリ {entry.position} を更新しました", 3000)
-                self.entry_applied.emit(entry.position)
+                self.entry_applied.emit(entry.key)
                 return True
             else:
                 self._show_status("エントリの更新に失敗しました", 3000)
