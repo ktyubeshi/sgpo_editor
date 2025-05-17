@@ -95,7 +95,7 @@ class EntryModel(BaseModel):
     )  # 任意のメタデータを格納する辞書
 
     def __init__(self, **data):
-        print("DEBUG: EntryModel.__init__ called, data=", data)
+        logger.debug("EntryModel.__init__ called, data=%s", data)
         # evaluation_stateが渡された場合、初期化後に設定
         evaluation_state = data.pop("evaluation_state", EvaluationState.NOT_EVALUATED)
         super().__init__(**data)
@@ -392,7 +392,7 @@ class EntryModel(BaseModel):
             if metadata:
                 model_data["metadata"] = metadata
 
-        print("DEBUG: model_data before return:", model_data)
+        logger.debug("model_data before return: %s", model_data)
         return model_data
 
     @field_validator("flags", mode="before")
@@ -473,35 +473,36 @@ class EntryModel(BaseModel):
 
     @classmethod
     def from_po_entry(cls, po_entry: POEntry, position: int = 0) -> "EntryModel":
-        print("DEBUG: from_po_entry called")
+        logger.debug("from_po_entry called")
         """POEntryからインスタンスを生成"""
         from pydantic import ValidationError
+
         if po_entry is None or getattr(po_entry, "msgid", None) is None:
             raise ValidationError("po_entryおよびmsgidは必須です")
         msgctxt = getattr(po_entry, "msgctxt", None)
         key = cls._generate_key(msgctxt, po_entry.msgid)
 
-        print("DEBUG: before flags")
-        print("DEBUG: po_entry type and repr:", type(po_entry), repr(po_entry))
+        logger.debug("before flags")
+        logger.debug("po_entry type and repr: %s %r", type(po_entry), po_entry)
         try:
             flags = getattr(po_entry, "flags", [])
         except Exception as e:
-            print("DEBUG: Exception when getting flags:", repr(e))
+            logger.debug("Exception when getting flags: %r", e)
             return None
-        print("DEBUG: after flags assignment, flags=", flags)
+        logger.debug("after flags assignment, flags=%s", flags)
         if isinstance(flags, str):
             flags = [flag.strip() for flag in flags.split(",") if flag.strip()]
         elif not isinstance(flags, list):
             flags = []
-        print("DEBUG: after flags normalization, flags=", flags)
-        print("DEBUG: before fuzzy")
+        logger.debug("after flags normalization, flags=%s", flags)
+        logger.debug("before fuzzy")
         # fuzzy判定
         fuzzy = any(isinstance(f, str) and f.lower() == "fuzzy" for f in flags)
-        print("DEBUG: after fuzzy, fuzzy=", fuzzy)
-        print("DEBUG: before norm_occurrences")
+        logger.debug("after fuzzy, fuzzy=%s", fuzzy)
+        logger.debug("before norm_occurrences")
         # occurrencesを(str, int)型に正規化
         raw_occurrences = cls.safe_getattr(po_entry, "occurrences", [])
-        print("DEBUG: raw_occurrences=", raw_occurrences)
+        logger.debug("raw_occurrences=%s", raw_occurrences)
         norm_occurrences = []
         for occ in raw_occurrences:
             try:
@@ -509,27 +510,35 @@ class EntryModel(BaseModel):
                 norm_occurrences.append((str(f), int(l)))
             except Exception:
                 continue  # 型が合わないものはスキップ
-        print("DEBUG: after norm_occurrences, norm_occurrences=", norm_occurrences)
+        logger.debug("after norm_occurrences, norm_occurrences=%s", norm_occurrences)
         from pydantic import ValidationError
-        print("DEBUG: before try")
+
+        logger.debug("before try")
         try:
-            print("DEBUG: before model init")
-            print("DEBUG: model init args", dict(
-                key=key,
-                msgid=po_entry.msgid,
-                msgstr=po_entry.msgstr,
-                msgctxt=msgctxt,
-                obsolete=cls.safe_getattr(po_entry, "obsolete", False),
-                position=position,
-                previous_msgid=cls.safe_getattr(po_entry, "previous_msgid", None),
-                previous_msgid_plural=cls.safe_getattr(po_entry, "previous_msgid_plural", None),
-                previous_msgctxt=cls.safe_getattr(po_entry, "previous_msgctxt", None),
-                comment=cls.safe_getattr(po_entry, "comment", None),
-                tcomment=cls.safe_getattr(po_entry, "tcomment", None),
-                occurrences=norm_occurrences,
-                flags=flags,
-                fuzzy=fuzzy,
-            ))
+            logger.debug("before model init")
+            logger.debug(
+                "model init args %s",
+                dict(
+                    key=key,
+                    msgid=po_entry.msgid,
+                    msgstr=po_entry.msgstr,
+                    msgctxt=msgctxt,
+                    obsolete=cls.safe_getattr(po_entry, "obsolete", False),
+                    position=position,
+                    previous_msgid=cls.safe_getattr(po_entry, "previous_msgid", None),
+                    previous_msgid_plural=cls.safe_getattr(
+                        po_entry, "previous_msgid_plural", None
+                    ),
+                    previous_msgctxt=cls.safe_getattr(
+                        po_entry, "previous_msgctxt", None
+                    ),
+                    comment=cls.safe_getattr(po_entry, "comment", None),
+                    tcomment=cls.safe_getattr(po_entry, "tcomment", None),
+                    occurrences=norm_occurrences,
+                    flags=flags,
+                    fuzzy=fuzzy,
+                ),
+            )
             model = cls(
                 key=key,
                 msgid=po_entry.msgid,
@@ -538,7 +547,9 @@ class EntryModel(BaseModel):
                 obsolete=cls.safe_getattr(po_entry, "obsolete", False),
                 position=position,
                 previous_msgid=cls.safe_getattr(po_entry, "previous_msgid", None),
-                previous_msgid_plural=cls.safe_getattr(po_entry, "previous_msgid_plural", None),
+                previous_msgid_plural=cls.safe_getattr(
+                    po_entry, "previous_msgid_plural", None
+                ),
                 previous_msgctxt=cls.safe_getattr(po_entry, "previous_msgctxt", None),
                 comment=cls.safe_getattr(po_entry, "comment", None),
                 tcomment=cls.safe_getattr(po_entry, "tcomment", None),
@@ -546,16 +557,20 @@ class EntryModel(BaseModel):
                 flags=flags,
                 fuzzy=fuzzy,
             )
-            print("DEBUG: after model init", repr(model), type(model))
+            logger.debug("after model init %r %s", model, type(model))
         except ValidationError as ve:
-            print("DEBUG: ValidationError in EntryModel.from_po_entry:", ve, ve.errors())
+            logger.debug(
+                "ValidationError in EntryModel.from_po_entry: %s %s",
+                ve,
+                ve.errors(),
+            )
             return None
         except Exception as e:
-            print("DEBUG: Exception in EntryModel.from_po_entry:", repr(e))
+            logger.debug("Exception in EntryModel.from_po_entry: %r", e)
             return None
-        print("DEBUG: after try")
+        logger.debug("after try")
 
-        print("DEBUG: model before return:", model)
+        logger.debug("model before return: %s", model)
 
         # POEntryへの参照を設定
         # （ここでmodel.references等の処理が必要なら正しい位置で実施）
@@ -568,7 +583,7 @@ class EntryModel(BaseModel):
                 # 抽出したメタデータをモデルに設定
                 for key, value in metadata.items():
                     model.add_metadata(key, value)
-        print("DEBUG: model before return:", model)
+        logger.debug("model before return: %s", model)
         return model
 
     @classmethod
@@ -631,7 +646,7 @@ class EntryModel(BaseModel):
             for category, score in category_quality_scores.items():
                 model.set_category_score(category, score)
 
-        print("DEBUG: model before return:", model)
+        logger.debug("model before return: %s", model)
         return model
 
     def add_flag(self, flag: str) -> None:
