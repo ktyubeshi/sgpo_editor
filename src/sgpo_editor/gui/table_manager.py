@@ -6,7 +6,12 @@ from typing import Callable, Dict, List, Optional, Set
 
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QColor, QBrush
-from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QHeaderView,
+    QTableWidget,
+    QTableWidgetItem,
+)
 
 from sgpo_editor.core.cache_manager import EntryCacheManager
 from sgpo_editor.core.viewer_po_file import ViewerPOFile
@@ -151,6 +156,9 @@ class TableManager:
             self.table.horizontalHeader().setSectionResizeMode(
                 i, QHeaderView.ResizeMode.Interactive
             )
+
+        # 行単位で選択されるように設定
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
         # 保存された列幅を読み込む、なければデフォルト値を使用
         self._load_column_widths()
