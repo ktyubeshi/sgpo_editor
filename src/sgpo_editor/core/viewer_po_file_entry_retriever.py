@@ -37,19 +37,10 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         )
 
         # キャッシュからエントリを取得
-        # 完全なエントリキャッシュを確認
         entry = self.cache_manager.get_entry(key)
         if entry:
             logger.debug(
                 f"ViewerPOFileEntryRetriever.get_entry_by_key: キャッシュヒット key={key}"
-            )
-            return entry
-
-        # 基本情報キャッシュを確認
-        entry = self.cache_manager.get_entry(key)
-        if entry:
-            logger.debug(
-                f"ViewerPOFileEntryRetriever.get_entry_by_key: 基本情報キャッシュヒット key={key}"
             )
             return entry
 
@@ -88,20 +79,11 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         cached_entries = {}
         missing_keys = []
         for key in keys:
-            # 完全なエントリキャッシュを確認
             entry = self.cache_manager.get_entry(key)
             if entry:
                 cached_entries[key] = entry
-                continue
-
-            # 基本情報キャッシュを確認
-            entry = self.cache_manager.get_entry(key)
-            if entry:
-                cached_entries[key] = entry
-                continue
-
-            # キャッシュにない場合は取得対象に追加
-            missing_keys.append(key)
+            else:
+                missing_keys.append(key)
 
         # キャッシュにないエントリをデータベースから一括取得
         if missing_keys:
