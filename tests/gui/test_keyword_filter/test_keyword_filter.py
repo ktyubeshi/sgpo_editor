@@ -134,14 +134,10 @@ class TestKeywordFilter:
 
         # タイマーの接続を確認
         print(
-            f"[TEST] _filter_timerが存在するか: {
-                hasattr(search_widget, '_filter_timer')
-            }"
+            f"[TEST] _filter_timerが存在するか: {hasattr(search_widget, '_filter_timer')}"
         )
         print(
-            f"[TEST] _search_timerが存在するか: {
-                hasattr(search_widget, '_search_timer')
-            }"
+            f"[TEST] _search_timerが存在するか: {hasattr(search_widget, '_search_timer')}"
         )
 
         # コールバックを置き換え
@@ -392,9 +388,7 @@ class TestKeywordFilter:
                 assert keyword_found, "キーワードを含むエントリが見つかりません"
 
                 print(
-                    f"[TEST] フィルタリングテスト成功: {
-                        len(keyword_entries)
-                    }件のエントリが見つかりました"
+                    f"[TEST] フィルタリングテスト成功: {len(keyword_entries)}件のエントリが見つかりました"
                 )
         except Exception as e:
             print(

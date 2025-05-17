@@ -94,9 +94,7 @@ class TestFilterDebug:
 
         # 4. 検証: リセット後のエントリ数が初期状態と同じになるはず
         logger.debug(
-            f"\n[DEBUG] 検証: リセット後({reset_count}) == 初期状態({
-                initial_count
-            }) -> {reset_count == initial_count}"
+            f"\n[DEBUG] 検証: リセット後({reset_count}) == 初期状態({initial_count}) -> {reset_count == initial_count}"
         )
         assert reset_count == initial_count, (
             f"フィルタリセット後のエントリ数が初期状態と異なります: {reset_count} != {initial_count}"

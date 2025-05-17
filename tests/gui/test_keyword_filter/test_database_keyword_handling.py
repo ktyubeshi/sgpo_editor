@@ -48,9 +48,7 @@ class TestDatabaseKeywordHandling:
         # データベースにエントリを追加 (db_accessor経由)
         po_file.db_accessor.add_entries_bulk(normal_entries + test_entries)
         print(
-            f"\n[SETUP] データベースに追加したエントリ数: 通常={
-                len(normal_entries)
-            }件, test含む={len(test_entries)}件"
+            f"\n[SETUP] データベースに追加したエントリ数: 通常={len(normal_entries)}件, test含む={len(test_entries)}件"
         )
 
         # データがロードされたことを示すフラグを設定 (不要)

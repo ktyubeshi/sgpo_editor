@@ -186,9 +186,7 @@ class TestFilterResetBasic:
         # 1. 初期状態の確認
         initial_filters = po_file.get_filters()
         print(
-            f"\n[TEST] ViewerPOFile初期状態: search_text={
-                initial_filters.get('search_text')
-            }, translation_status={initial_filters.get('translation_status')}"
+            f"\n[TEST] ViewerPOFile初期状態: search_text={initial_filters.get('search_text')}, translation_status={initial_filters.get('translation_status')}"
         )
         # print(
         #     f"[TEST] 内部キャッシュ: _entry_obj_cache件数={
@@ -208,9 +206,7 @@ class TestFilterResetBasic:
         po_file.get_filtered_entries(SearchCriteria(filter_keyword="test", update_filter=True))
         filtered_filters = po_file.get_filters()
         print(
-            f"[TEST] フィルタ適用後のViewerPOFile状態: search_text={
-                filtered_filters.get('search_text')
-            }, translation_status={filtered_filters.get('translation_status')}"
+            f"[TEST] フィルタ適用後のViewerPOFile状態: search_text={filtered_filters.get('search_text')}, translation_status={filtered_filters.get('translation_status')}"
         )
         # print(
         #     f"[TEST] フィルタ適用後の内部キャッシュ: _entry_obj_cache件数={
@@ -226,9 +222,7 @@ class TestFilterResetBasic:
         reset_filters = po_file.get_filters()
         print(f"[TEST] リセット後のエントリ数: {reset_count}件")
         print(
-            f"[TEST] リセット後のViewerPOFile状態: search_text={
-                reset_filters.get('search_text')
-            }, translation_status={reset_filters.get('translation_status')}"
+            f"[TEST] リセット後のViewerPOFile状態: search_text={reset_filters.get('search_text')}, translation_status={reset_filters.get('translation_status')}"
         )
         # print(
         #     f"[TEST] リセット後の内部キャッシュ: _entry_obj_cache件数={
