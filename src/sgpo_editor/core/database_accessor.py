@@ -257,7 +257,6 @@ class DatabaseAccessor:
 
         if criteria:
             # SearchCriteriaから各フィールドを抽出
-            filter_text = getattr(criteria, 'filter', 'すべて')
             filter_keyword = getattr(criteria, 'filter_keyword', '')
             match_mode = getattr(criteria, 'match_mode', '部分一致')
             case_sensitive = getattr(criteria, 'case_sensitive', False)
@@ -269,7 +268,6 @@ class DatabaseAccessor:
             if translation_status and not filter_status:
                 filter_status = {translation_status}
         else:
-            filter_text = kwargs.get('filter_text', 'すべて')
             filter_keyword = kwargs.get('filter_keyword', '')
             match_mode = kwargs.get('match_mode', '部分一致')
             case_sensitive = kwargs.get('case_sensitive', False)
@@ -863,9 +861,15 @@ class DatabaseAccessor:
             "msgid": "e.msgid",
             "msgstr": "e.msgstr",
             "fuzzy": "e.fuzzy",
+            "context": "e.msgctxt",
+            "status": (
+                "(CASE WHEN e.obsolete = 1 THEN 3 "
+                "WHEN e.fuzzy = 1 THEN 2 "
+                "WHEN e.msgstr = '' THEN 1 ELSE 0 END)"
+            ),
             "score": """(
-                SELECT qs.overall_score 
-                FROM quality_scores qs 
+                SELECT qs.overall_score
+                FROM quality_scores qs
                 WHERE qs.entry_id = e.id
             )""",
         }

@@ -166,9 +166,11 @@ class TableManager:
         # 保存された列の表示/非表示設定を読み込む
         self._load_column_visibility()
 
-        # 列幅の変更イベントおよびヘッダークリックイベントはテスト時のメモリ破損を防ぐため無効化
+        # 列幅変更イベントはテスト時のメモリ破損を防ぐため無効化
         # self.table.horizontalHeader().sectionResized.connect(self._on_section_resized)
-        # self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
+
+        # ヘッダークリック時にソート処理を実行
+        self.table.horizontalHeader().sectionClicked.connect(self._on_header_clicked)
 
         # 列幅の自動調整を無効化（ユーザーが設定した列幅を維持するため）
         self.table.horizontalHeader().setStretchLastSection(False)
