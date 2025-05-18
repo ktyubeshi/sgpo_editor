@@ -8,7 +8,6 @@ from typing import (
     Any,
     Dict,
     List,
-    TypeAlias,
     Union,
     Tuple,
     Callable,
@@ -17,6 +16,7 @@ from typing import (
     TypedDict,
     TYPE_CHECKING,
 )
+from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from sgpo_editor.models.entry import EntryModel

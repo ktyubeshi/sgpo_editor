@@ -94,7 +94,7 @@ class EntryModel(BaseModel):
         Field(default_factory=dict)
     )  # 任意のメタデータを格納する辞書
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         logger.debug("EntryModel.__init__ called, data=%s", data)
         # evaluation_stateが渡された場合、初期化後に設定
         evaluation_state = data.pop("evaluation_state", EvaluationState.NOT_EVALUATED)
