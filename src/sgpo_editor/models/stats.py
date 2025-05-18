@@ -51,7 +51,7 @@ class StatsModel(BaseModel):
             return ""
         return str(v)
 
-    def __init__(self, **data: Any):
+    def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         self.update_progress()
 
