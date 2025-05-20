@@ -17,13 +17,14 @@
 3. 非同期プリフェッチ: バックグラウンドでの先読みによるUI応答性の向上
 """
 
-import logging
+import asyncio
 import hashlib
 import json
-import time
+import logging
 import threading
+import time
 from collections import Counter, OrderedDict
-from typing import Optional, List, Dict, Set, Callable
+from typing import Callable, Dict, List, Optional, Set, cast
 
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import (
@@ -329,7 +330,8 @@ class EntryCacheManager:
     def invalidate_filter_cache(self, filter_key: Optional[str] = None) -> None:
         """フィルタキャッシュを無効化する
 
-        ToDo Phase 1: filter_keyを指定するとそのキーに対応するキャッシュのみを削除
+        Args:
+            filter_key: 無効化するフィルタキー。指定しない場合はすべて削除する。
         """
         if filter_key is not None:
             self._filter_cache.delete(filter_key)
