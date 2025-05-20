@@ -1117,10 +1117,6 @@ class EntryCacheManager:
                 return None
         return self._complete_cache.get(key)
 
-    def invalidate_entry(self, key: str) -> None:
-        self._complete_cache.delete(key)
-        self._entry_timestamps.pop(key, None)
-
     def set_filtered_entries(self, cond: FilterConditions, entries: EntryModelList) -> None:
         key = json.dumps(cond, sort_keys=True)
         self._filter_cache.set(key, entries)
@@ -1128,14 +1124,8 @@ class EntryCacheManager:
     def get_filtered_entries(self, cond: FilterConditions) -> Optional[EntryModelList]:
         return self._filter_cache.get(json.dumps(cond, sort_keys=True))
 
-    def invalidate_filter_cache(self) -> None:
-        self._filter_cache.clear()
-
     def disable_cache(self) -> None:
         self._cache_enabled = False
-
-    def enable_cache(self) -> None:
-        self._cache_enabled = True
 
     def prefetch_entries(self, keys: List[str], fetch_callback: Callable[[List[str]], Dict[str, EntryModel]]) -> None:
         if not self._prefetch_enabled:
@@ -1149,6 +1139,3 @@ class EntryCacheManager:
         finally:
             for k in keys:
                 self._keys_being_prefetched.discard(k)
-
-    def is_key_being_prefetched(self, key: str) -> bool:
-        return key in self._keys_being_prefetched
