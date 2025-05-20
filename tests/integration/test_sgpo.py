@@ -174,6 +174,18 @@ class TestSgpo(unittest.TestCase):
 
         self.assertEqual(expected_result.__unicode__(), pot.__unicode__())
 
+    def test_import_unknown_logging(self) -> None:
+        pot_file = get_test_data_path("import_unknown", "case_1_messages.pot")
+        unknown_file = get_test_data_path("import_unknown", "case_1_unknown.24_1")
+        pot = pofile(str(pot_file))
+        unknown = pofile(str(unknown_file))
+
+        with self.assertLogs("sgpo.core", level="INFO") as cm:
+            pot.import_unknown(unknown)
+
+        assert any("Import unknown entry" in msg for msg in cm.output)
+        assert any("entries added" in msg for msg in cm.output)
+
     def test_import_unknown_sgpo_case2(self) -> None:
         """
         Conflicting entries between the pot file and the unknown file

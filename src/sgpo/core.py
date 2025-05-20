@@ -5,12 +5,15 @@ import re
 from enum import Enum
 from os import PathLike
 from typing import Any, Dict, List, Optional, Union
+import logging
 
 import polib
 from pydantic import BaseModel, ConfigDict
 
 from . import duplicate_checker
 from .duplicate_checker import DuplicateEntry
+
+logger = logging.getLogger(__name__)
 
 
 class DiffStatus(str, Enum):
@@ -164,34 +167,34 @@ class SGPOFile(polib.POFile):
             - インポート結果は標準出力に表示されます
         """
         success_count = 0
-        print("\nImport unknown entry...")
+        logger.info("Import unknown entry...")
         for unknown_entry in unknown:
             # unknown_entry.flags = ['New']  # For debugging.
             my_entry = self.find_by_key(unknown_entry.msgctxt, unknown_entry.msgid)
 
             if my_entry is not None:
                 if my_entry.msgid == unknown_entry.msgid:
-                    print("\nAlready exists.(Skipped)")
-                    print(f'\t\tmsgctxt "{unknown_entry.msgctxt}"')
-                    print(f'\t\tmsgid "{unknown_entry.msgid}"')
+                    logger.info("Already exists.(Skipped)")
+                    logger.debug('msgctxt "%s"', unknown_entry.msgctxt)
+                    logger.debug('msgid "%s"', unknown_entry.msgid)
                 else:
-                    print("\nAlready exists. but,msgid has been changed.(Skipped)")
-                    print(f'\t\t#| msgid "{my_entry.msgid}"')
-                    print(f'\t\tmsgctxt "{unknown_entry.msgctxt}"')
-                    print(f'\t\tmsgid "{unknown_entry.msgid}"')
+                    logger.info("Already exists. but msgid has been changed.(Skipped)")
+                    logger.debug('#| msgid "%s"', my_entry.msgid)
+                    logger.debug('msgctxt "%s"', unknown_entry.msgctxt)
+                    logger.debug('msgid "%s"', unknown_entry.msgid)
             else:
                 try:
                     self.append(unknown_entry)
-                    print("\nNew entry added.")
-                    print(f'\t\tmsgctxt "{unknown_entry.msgctxt}')
-                    print(f'\t\tmsgid "{unknown_entry.msgid}')
+                    logger.info("New entry added.")
+                    logger.debug('msgctxt "%s"', unknown_entry.msgctxt)
+                    logger.debug('msgid "%s"', unknown_entry.msgid)
                     success_count += 1
                 except ValueError as e:
-                    print(e)
+                    logger.info(str(e))
                 except OSError as e:
-                    print(e)
+                    logger.info(str(e))
 
-        print(f"{success_count} entries added.")
+        logger.info("%d entries added.", success_count)
 
     def import_mismatch(self, mismatch: SGPOFile) -> None:
         """不一致のエントリをインポートします。
@@ -206,39 +209,39 @@ class SGPOFile(polib.POFile):
         new_entry_count = 0
         modified_entry_count = 0
 
-        print("\nImport unknown entry...")
+        logger.info("Import unknown entry...")
         for mismatch_entry in mismatch:
             # mismatch_entry.flags = ['Modified']  # For debugging.
             my_entry = self.find_by_key(mismatch_entry.msgctxt, mismatch_entry.msgid)
 
             if my_entry is not None:
                 if my_entry.msgid == mismatch_entry.msgid:
-                    print("\nAlready exists.(Skipped)")
-                    print(f'\t\t#| msgid "{my_entry.previous_msgid}"')
-                    print(f'\t\tmsgctxt "{my_entry.msgctxt}"')
-                    print(f'\t\tmsgid "{my_entry.msgid}"')
+                    logger.info("Already exists.(Skipped)")
+                    logger.debug('#| msgid "%s"', my_entry.previous_msgid)
+                    logger.debug('msgctxt "%s"', my_entry.msgctxt)
+                    logger.debug('msgid "%s"', my_entry.msgid)
                 else:
-                    print("\nmsgid has been changed.")
-                    print(f'\t\t#| msgid "{my_entry.msgid}"')
-                    print(f'\t\tmsgctxt "{mismatch_entry.msgctxt}"')
-                    print(f'\t\tmsgid "{mismatch_entry.msgid}"')
+                    logger.info("msgid has been changed.")
+                    logger.debug('#| msgid "%s"', my_entry.msgid)
+                    logger.debug('msgctxt "%s"', mismatch_entry.msgctxt)
+                    logger.debug('msgid "%s"', mismatch_entry.msgid)
                     my_entry.previous_msgid = my_entry.msgid
                     my_entry.msgid = mismatch_entry.msgid
                     modified_entry_count += 1
             else:
                 try:
                     self.append(mismatch_entry)
-                    print("\nNew entry added.")
-                    print(f'\t\tmsgctxt "{mismatch_entry.msgctxt}"')
-                    print(f'\t\tmsgid "{mismatch_entry.msgid}"')
+                    logger.info("New entry added.")
+                    logger.debug('msgctxt "%s"', mismatch_entry.msgctxt)
+                    logger.debug('msgid "%s"', mismatch_entry.msgid)
                     new_entry_count += 1
                 except ValueError as e:
-                    print(e)
+                    logger.info(str(e))
                 except OSError as e:
-                    print(e)
+                    logger.info(str(e))
 
-        print(f"{new_entry_count} entries added.")
-        print(f"{modified_entry_count} entries modified.")
+        logger.info("%d entries added.", new_entry_count)
+        logger.info("%d entries modified.", modified_entry_count)
 
     def import_pot(self, pot: SGPOFile) -> None:
         """POTファイルからエントリをインポートします。
@@ -261,9 +264,9 @@ class SGPOFile(polib.POFile):
         diff_po_only_key: set[KeyTuple] = po_key_set - pot_key_set
 
         # Add new my_entry
-        print(f"\npot file only: {len(diff_pot_only_key)}")
+        logger.info("pot file only: %d", len(diff_pot_only_key))
         for key in diff_pot_only_key:
-            print(f'msgctxt:\t"{key.msgctxt}"\n  msgid:\t"{key.msgid}"\n')
+            logger.debug('msgctxt:\t"%s"\n  msgid:\t"%s"', key.msgctxt, key.msgid)
 
             pot_entry = pot.find_by_key(key.msgctxt, key.msgid)
             if pot_entry:
@@ -271,9 +274,9 @@ class SGPOFile(polib.POFile):
                 new_entry_count += 1
 
         # Remove obsolete entry
-        print(f"\npo file only: {len(diff_po_only_key)}")
+        logger.info("po file only: %d", len(diff_po_only_key))
         for key in diff_po_only_key:
-            print(f'msgctxt:\t"{key.msgctxt}"\n  msgid:\t"{key.msgid}"\n')
+            logger.debug('msgctxt:\t"%s"\n  msgid:\t"%s"', key.msgctxt, key.msgid)
 
             entry = self.find_by_key(key.msgctxt, key.msgid)
             if entry:
@@ -287,14 +290,14 @@ class SGPOFile(polib.POFile):
                 )  # Noneの代わりに空文字を使用
 
                 if pot_entry and (my_entry.msgid != pot_entry.msgid):
-                    print(f"msgctxt:\t{my_entry.msgctxt}\n  msgid:\t{my_entry.msgid}\n")
+                    logger.debug("msgctxt:\t%s\n  msgid:\t%s\n", my_entry.msgctxt, my_entry.msgid)
                     my_entry.previous_msgid = my_entry.msgid
                     my_entry.msgid = pot_entry.msgid
                     my_entry.flags = ["fuzzy"]
                     modified_entry_count += 1
 
-        print(f"\n     new entry:\t{new_entry_count}")
-        print(f"\nmodified entry:\t{modified_entry_count}")
+        logger.info("     new entry:\t%d", new_entry_count)
+        logger.info("modified entry:\t%d", modified_entry_count)
 
     def delete_extracted_comments(self) -> None:
         """抽出されたコメントを削除します。
