@@ -25,10 +25,12 @@ POファイルを開き、編集、保存することができます。
 
 ### 環境設定
 
+依存関係は `uv` を用いて管理します。
+
 ```bash
 git clone https://github.com/your-username/sgpo_editor.git
 cd sgpo_editor
-pip install -e .
+uv pip install -e .
 ```
 
 ### 実行
@@ -37,10 +39,12 @@ pip install -e .
 python -m sgpo_editor
 ```
 
-### テスト
+### テスト・コードチェック
 
 ```bash
-pytest
+uv run pytest
+uv run ruff check --fix
+uv run ty check src --exit-zero
 ```
 
 ## ライセンス
