@@ -124,10 +124,9 @@ class EntryModel(BaseModel):
 
     @property
     def fuzzy(self) -> bool:
-        """ファジーかどうか（大文字小文字無視）"""
-        return any(
-            isinstance(flag, str) and flag.lower() == "fuzzy" for flag in self.flags
-        )
+        """ファジーかどうか"""
+        normalized = [str(flag).lower() for flag in self.flags]
+        return "fuzzy" in normalized
 
     @fuzzy.setter
     def fuzzy(self, value: bool) -> None:
@@ -406,6 +405,12 @@ class EntryModel(BaseModel):
             return [str(flag) for flag in v]
         return []
 
+    @field_validator("flags")
+    @classmethod
+    def normalize_flags(cls, v: List[str]) -> List[str]:
+        """flagsを小文字に正規化"""
+        return [flag.lower() for flag in v]
+
     def to_dict(self) -> Dict[str, Any]:
         """辞書化"""
         result = {
@@ -471,6 +476,14 @@ class EntryModel(BaseModel):
         else:
             return f"|{msgid}"
 
+    @staticmethod
+    def safe_getattr(obj: Any, name: str, default: Any = None) -> Any:
+        """AttributeError を無視して属性を取得"""
+        try:
+            return getattr(obj, name)
+        except Exception:
+            return default
+
     @classmethod
     def from_po_entry(cls, po_entry: POEntry, position: int = 0) -> "EntryModel":
         logger.debug("from_po_entry called")
@@ -506,8 +519,8 @@ class EntryModel(BaseModel):
         norm_occurrences = []
         for occ in raw_occurrences:
             try:
-                f, l = occ
-                norm_occurrences.append((str(f), int(l)))
+                f, linenum = occ
+                norm_occurrences.append((str(f), int(linenum)))
             except Exception:
                 continue  # 型が合わないものはスキップ
         logger.debug("after norm_occurrences, norm_occurrences=%s", norm_occurrences)

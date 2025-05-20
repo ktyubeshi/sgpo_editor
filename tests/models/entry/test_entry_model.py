@@ -381,8 +381,6 @@ class TestEntryModel(unittest.TestCase):
             'msgid': 'test',
             'msgstr': 'テスト',
             'msgctxt': None,
-            'msgid_plural': None,
-            'msgstr_plural': {},
             'obsolete': False,
             'position': 0,
             'flags': [],
