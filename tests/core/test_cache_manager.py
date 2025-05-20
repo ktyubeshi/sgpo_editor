@@ -1,3 +1,4 @@
+import json
 import pytest
 import time
 from sgpo_editor.core.cache_manager import EntryCacheManager
@@ -97,17 +98,26 @@ def test_is_key_being_prefetched(cache_manager):
     assert not cache_manager.is_key_being_prefetched("x")
 
 
-def test_invalidate_entry_and_filter_cache(cache_manager):
-    cache_manager.set_entry("k1", make_entry("k1"))
-    assert cache_manager.get_entry("k1") is not None
-    cache_manager.invalidate_entry("k1")
-    assert cache_manager.get_entry("k1") is None
+def test_invalidate_filter_cache_all(cache_manager):
     # FilterCache
     cond = {"foo": "bar"}
     cache_manager.set_filtered_entries(cond, [make_entry("k2")])
     assert cache_manager.get_filtered_entries(cond) is not None
     cache_manager.invalidate_filter_cache()
     assert cache_manager.get_filtered_entries(cond) is None
+
+
+def test_invalidate_filter_cache_by_key(cache_manager):
+    cond1 = {"foo": "bar"}
+    cond2 = {"spam": "eggs"}
+    cache_manager.set_filtered_entries(cond1, [make_entry("k1")])
+    cache_manager.set_filtered_entries(cond2, [make_entry("k2")])
+    assert cache_manager.get_filtered_entries(cond1) is not None
+    assert cache_manager.get_filtered_entries(cond2) is not None
+    cache_manager.invalidate_filter_cache(json.dumps(cond1, sort_keys=True))
+    assert cache_manager.get_filtered_entries(cond1) is None
+    # cond2 should remain
+    assert cache_manager.get_filtered_entries(cond2) is not None
 
 
 def test_cache_disable_enable(cache_manager):
