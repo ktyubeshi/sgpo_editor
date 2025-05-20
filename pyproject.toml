@@ -34,7 +34,7 @@ test = [
 ]
 
 [project.scripts]
-po_editor-cli = "sgpo_editor.cli:app"
+po_editor-cli = "sgpo_editor.cli:main"
 po_editor = "sgpo_editor.__main__:main"
 
 [build-system]

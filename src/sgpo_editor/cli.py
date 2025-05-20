@@ -6,7 +6,7 @@ from pathlib import Path
 from sgpo_editor.core.sgpo_adapter import SgpoFile as POFile
 
 
-def main():
+def main() -> int:
     """コマンドラインインターフェースのエントリポイント"""
     parser = argparse.ArgumentParser(description="POファイルビューワー")
     parser.add_argument("file", help="POファイルのパス")
