@@ -76,20 +76,50 @@ class StatsComponent:
 
         # 総エントリ数
         total = self.db_accessor.count_entries()
+        if not isinstance(total, int):
+            logger.warning("count_entries returned non-int value: %r", total)
+        assert isinstance(total, int), "count_entries must return int"
+
         # 翻訳済みエントリ数 (msgstrが空でないもの)
         translated = self.db_accessor.count_entries_with_condition(
             {"field": "msgstr", "value": "", "operator": "!="}
         )
+        if not isinstance(translated, int):
+            logger.warning(
+                "count_entries_with_condition for translated returned non-int value: %r",
+                translated,
+            )
+        assert isinstance(translated, int), "count_entries_with_condition must return int"
+
         # 未翻訳エントリ数 (msgstrが空のもの)
         untranslated = self.db_accessor.count_entries_with_condition(
             {"field": "msgstr", "value": "", "operator": "="}
         )
+        if not isinstance(untranslated, int):
+            logger.warning(
+                "count_entries_with_condition for untranslated returned non-int value: %r",
+                untranslated,
+            )
+        assert isinstance(untranslated, int), "count_entries_with_condition must return int"
+
         # fuzzyフラグ付きエントリ数
         fuzzy = self.db_accessor.count_entries_with_flag("fuzzy")
+        if not isinstance(fuzzy, int):
+            logger.warning(
+                "count_entries_with_flag returned non-int value: %r", fuzzy
+            )
+        assert isinstance(fuzzy, int), "count_entries_with_flag must return int"
+
         # obsoleteフラグ付きエントリ数
         obsolete = self.db_accessor.count_entries_with_condition(
             {"field": "obsolete", "value": True, "operator": "="}
         )
+        if not isinstance(obsolete, int):
+            logger.warning(
+                "count_entries_with_condition for obsolete returned non-int value: %r",
+                obsolete,
+            )
+        assert isinstance(obsolete, int), "count_entries_with_condition must return int"
 
         # 翻訳率の計算 (0除算対策)
         percent_translated = (translated / total * 100) if total > 0 else 0.0
@@ -114,7 +144,13 @@ class StatsComponent:
         """
         if not self.db_accessor:
             return 0
-        return self.db_accessor.count_entries_with_flag(flag)
+        result = self.db_accessor.count_entries_with_flag(flag)
+        if not isinstance(result, int):
+            logger.warning(
+                "count_entries_with_flag returned non-int value: %r", result
+            )
+        assert isinstance(result, int), "count_entries_with_flag must return int"
+        return result
 
     def get_flag_statistics(self) -> Dict[str, int]:
         """すべてのフラグの統計情報を取得する
@@ -130,6 +166,11 @@ class StatsComponent:
 
         for flag in all_flags:
             count = self.db_accessor.count_entries_with_flag(flag)
+            if not isinstance(count, int):
+                logger.warning(
+                    "count_entries_with_flag returned non-int value: %r", count
+                )
+            assert isinstance(count, int), "count_entries_with_flag must return int"
             result[flag] = count
 
         return result
@@ -205,16 +246,34 @@ class StatsComponent:
         singular = self.db_accessor.count_entries_with_condition(
             {"field": "msgid_plural", "value": None, "operator": "="}
         )
+        if not isinstance(singular, int):
+            logger.warning(
+                "count_entries_with_condition for singular returned non-int value: %r",
+                singular,
+            )
+        assert isinstance(singular, int), "count_entries_with_condition must return int"
 
         # 複数形エントリ（msgid_pluralがあるもの）
         plural = self.db_accessor.count_entries_with_condition(
             {"field": "msgid_plural", "value": None, "operator": "!="}
         )
+        if not isinstance(plural, int):
+            logger.warning(
+                "count_entries_with_condition for plural returned non-int value: %r",
+                plural,
+            )
+        assert isinstance(plural, int), "count_entries_with_condition must return int"
 
         # コンテキスト付きエントリ（msgctxtがあるもの）
         with_context = self.db_accessor.count_entries_with_condition(
             {"field": "msgctxt", "value": None, "operator": "!="}
         )
+        if not isinstance(with_context, int):
+            logger.warning(
+                "count_entries_with_condition for with_context returned non-int value: %r",
+                with_context,
+            )
+        assert isinstance(with_context, int), "count_entries_with_condition must return int"
 
         return {
             "singular": singular,

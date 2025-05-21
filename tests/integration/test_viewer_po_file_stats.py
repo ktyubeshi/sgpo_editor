@@ -15,9 +15,9 @@ class TestViewerPOFileStats(unittest.TestCase):
         # db_accessor のモックをコンストラクタに渡す
         self.mock_db_accessor = MagicMock()
         # StatsComponent.get_statisticsメソッドで使用されるメソッドの戻り値を設定
-        self.mock_db_accessor.count_entries.return_value = 0
-        self.mock_db_accessor.count_entries_with_condition.return_value = 0
-        self.mock_db_accessor.count_entries_with_flag.return_value = 0
+        self.mock_db_accessor.count_entries.return_value = int(0)
+        self.mock_db_accessor.count_entries_with_condition.return_value = int(0)
+        self.mock_db_accessor.count_entries_with_flag.return_value = int(0)
         self.viewer = ViewerPOFileRefactored(db_accessor=self.mock_db_accessor)
 
     def test_get_stats_has_progress_attribute(self):
@@ -33,9 +33,9 @@ class TestViewerPOFileStats(unittest.TestCase):
         ]
 
         # StatsComponent.get_statisticsメソッドで使用されるメソッドの戻り値を設定
-        self.mock_db_accessor.count_entries.return_value = 3
-        self.mock_db_accessor.count_entries_with_condition.return_value = 1
-        self.mock_db_accessor.count_entries_with_flag.return_value = 1
+        self.mock_db_accessor.count_entries.return_value = int(3)
+        self.mock_db_accessor.count_entries_with_condition.return_value = int(1)
+        self.mock_db_accessor.count_entries_with_flag.return_value = int(1)
 
         # get_filtered_entriesをモック化
         self.viewer.get_filtered_entries = MagicMock(return_value=mock_entries)
@@ -62,9 +62,9 @@ class TestViewerPOFileStats(unittest.TestCase):
             EntryModel(key="3", msgid="test3", msgstr="", fuzzy=False),
         ]
         # StatsComponent.get_statisticsメソッドで使用されるメソッドの戻り値を設定
-        self.mock_db_accessor.count_entries.return_value = 3
-        self.mock_db_accessor.count_entries_with_condition.return_value = 1
-        self.mock_db_accessor.count_entries_with_flag.return_value = 1
+        self.mock_db_accessor.count_entries.return_value = int(3)
+        self.mock_db_accessor.count_entries_with_condition.return_value = int(1)
+        self.mock_db_accessor.count_entries_with_flag.return_value = int(1)
         
         self.viewer.get_filtered_entries = MagicMock(return_value=mock_entries1)
         # get_statsメソッドの中でget_filtered_entriesが呼ばれる場合に備えて、引数をチェックする
@@ -79,9 +79,9 @@ class TestViewerPOFileStats(unittest.TestCase):
             EntryModel(key="2", msgid="test2", msgstr="テスト2", fuzzy=False),
         ]
         # StatsComponent.get_statisticsメソッドで使用されるメソッドの戻り値を設定
-        self.mock_db_accessor.count_entries.return_value = 2
-        self.mock_db_accessor.count_entries_with_condition.return_value = 2
-        self.mock_db_accessor.count_entries_with_flag.return_value = 0
+        self.mock_db_accessor.count_entries.return_value = int(2)
+        self.mock_db_accessor.count_entries_with_condition.return_value = int(2)
+        self.mock_db_accessor.count_entries_with_flag.return_value = int(0)
         
         self.viewer.get_filtered_entries = MagicMock(return_value=mock_entries2)
         # get_statsメソッドの中でget_filtered_entriesが呼ばれる場合に備えて、引数をチェックする
@@ -92,9 +92,9 @@ class TestViewerPOFileStats(unittest.TestCase):
 
         # ケース3: エントリがない場合
         # StatsComponent.get_statisticsメソッドで使用されるメソッドの戻り値を設定
-        self.mock_db_accessor.count_entries.return_value = 0
-        self.mock_db_accessor.count_entries_with_condition.return_value = 0
-        self.mock_db_accessor.count_entries_with_flag.return_value = 0
+        self.mock_db_accessor.count_entries.return_value = int(0)
+        self.mock_db_accessor.count_entries_with_condition.return_value = int(0)
+        self.mock_db_accessor.count_entries_with_flag.return_value = int(0)
         
         self.viewer.get_filtered_entries = MagicMock(return_value=[])
         # get_statsメソッドの中でget_filtered_entriesが呼ばれる場合に備えて、引数をチェックする
