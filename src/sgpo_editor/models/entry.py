@@ -125,8 +125,8 @@ class EntryModel(BaseModel):
     @property
     def fuzzy(self) -> bool:
         """ファジーかどうか"""
-        normalized = [str(flag).lower() for flag in self.flags]
-        return "fuzzy" in normalized
+        normalized_flags = [str(flag).lower() for flag in self.flags]
+        return "fuzzy" in normalized_flags
 
     @fuzzy.setter
     def fuzzy(self, value: bool) -> None:
@@ -407,7 +407,7 @@ class EntryModel(BaseModel):
 
     @field_validator("flags")
     @classmethod
-    def normalize_flags(cls, v: List[str]) -> List[str]:
+    def lowercase_flags(cls, v: List[str]) -> List[str]:
         """flagsを小文字に正規化"""
         return [flag.lower() for flag in v]
 
