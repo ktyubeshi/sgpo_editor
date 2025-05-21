@@ -21,6 +21,10 @@ from sgpo_editor.core.po_factory import POLibraryType
 from sgpo_editor.models.entry import EntryModel
 from sgpo_editor.types import FilterSettings, StatisticsInfo
 from sgpo_editor.core.constants import TranslationStatus
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sgpo_editor.gui.widgets.search import SearchCriteria
 
 logger = logging.getLogger(__name__)
 

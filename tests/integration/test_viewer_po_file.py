@@ -8,11 +8,10 @@ import pytest_asyncio
 
 from sgpo_editor.core.viewer_po_file import ViewerPOFile as ViewerPOFileRefactored
 from sgpo_editor.gui.widgets.search import SearchCriteria
-
-logger = logging.getLogger(__name__)
-
 from sgpo_editor.models.database import InMemoryEntryStore
 from sgpo_editor.core.database_accessor import DatabaseAccessor
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope="module")

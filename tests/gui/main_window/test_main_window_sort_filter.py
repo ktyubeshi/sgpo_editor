@@ -4,12 +4,12 @@ import unittest
 raise unittest.SkipTest("Skipping faulty MainWindow sort/filter tests")
 # pylint: disable=protected-access, undefined-variable, no-member, unused-argument
 
-import gc
-from unittest.mock import MagicMock
+import gc  # noqa: E402
+from unittest.mock import MagicMock  # noqa: E402
 
 
-from sgpo_editor.gui.table_manager import TableManager
-from sgpo_editor.gui.widgets.search import SearchCriteria
+from sgpo_editor.gui.table_manager import TableManager  # noqa: E402
+from sgpo_editor.gui.widgets.search import SearchCriteria  # noqa: E402
 
 
 class TestMainWindowSortFilter(unittest.TestCase):

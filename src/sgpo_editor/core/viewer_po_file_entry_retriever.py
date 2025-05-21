@@ -19,6 +19,11 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
     このクラスは、ViewerPOFileBaseを継承し、エントリ取得に関連する機能を実装します。
     """
 
+    @staticmethod
+    def _to_entry_model(row_dict: dict) -> EntryModel:
+        """Convert a DB row dict to :class:`EntryModel`."""
+        return EntryModel.model_validate(row_dict)
+
     def get_entry_by_key(self, key: str) -> Optional[EntryModel]:
         """キーでエントリを取得する（キャッシュ対応）
 
@@ -48,7 +53,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         entry_dict = self.db_accessor.get_entry_by_key(key)
         if entry_dict:
             # EntryModelオブジェクトに変換 (Pydantic v2)
-            entry = EntryModel.model_validate(entry_dict)
+            entry = self._to_entry_model(entry_dict)
             # キャッシュに追加
             self.cache_manager.set_entry(key, entry)
             return entry
@@ -90,7 +95,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
             db_entries = self.db_accessor.get_entries_by_keys(missing_keys)
             for key, entry_dict in db_entries.items():
                 # EntryModelオブジェクトに変換 (Pydantic v2)
-                entry = EntryModel.model_validate(entry_dict)
+                entry = self._to_entry_model(entry_dict)
                 # キャッシュに追加
                 self.cache_manager.set_entry(key, entry)
                 result[key] = entry
@@ -128,7 +133,7 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         basic_info_dict = self.db_accessor.get_entry_basic_info(key)
         if basic_info_dict:
             # EntryModelオブジェクトに変換 (Pydantic v2)
-            basic_info = EntryModel.model_validate(basic_info_dict)
+            basic_info = self._to_entry_model(basic_info_dict)
             # キャッシュに追加
             self.cache_manager.add_entry(key, basic_info)
             return basic_info
@@ -156,8 +161,8 @@ class ViewerPOFileEntryRetriever(ViewerPOFileBase):
         entries = self.db_accessor.get_entries_by_keys(missing_keys)
 
         # キャッシュに保存
-        for key, entry in entries.items():
-            entry_model = EntryModel.model_validate(entry)
+        for key, entry_dict in entries.items():
+            entry_model = self._to_entry_model(entry_dict)
             self.cache_manager.add_entry(key, entry_model)
 
     def get_entry_at(self, position: int) -> Optional[EntryModel]:
