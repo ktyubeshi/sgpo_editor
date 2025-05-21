@@ -155,7 +155,7 @@ class TestDatabaseKeywordHandling:
         with patch.object(po_file, 'get_filtered_entries', wraps=po_file.get_filtered_entries) as mock_get_filtered:
             # filter_keywordを直接指定して呼び出す
             criteria = SearchCriteria(filter_keyword="test", update_filter=True)
-            filtered_entries = po_file.get_filtered_entries(criteria)
+            _filtered_entries = po_file.get_filtered_entries(criteria)
             
             # get_filtered_entriesが呼び出されたことを確認
             mock_get_filtered.assert_called_once()
