@@ -1,0 +1,6 @@
+- Investigate failing tests unrelated to preview dialog update:
+  - `tests/core/filter/test_filter_reset_advanced.py::test_filter_reset_after_complex_filter` expects `translation_status="all"` but receives a set of statuses.
+  - `tests/gui/keyword_filter/test_keyword_filter.py::TestKeywordFilter::test_filter_text_and_keyword_together` fails for the same reason.
+  - `tests/integration/test_viewer_po_file.py::test_save_po_file` fails due to `'EntryModel' object has no attribute 'msgid_plural'` when saving.
+  - `tests/models/test_models.py::test_entry_model` fails because `EntryModel.from_po_entry` returns `None`.
+- These tests appear unrelated to the preview dialog changes and require deeper investigation.

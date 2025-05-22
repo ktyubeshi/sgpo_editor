@@ -216,7 +216,10 @@ class TestPreviewIntegration:
 
         # 検証
         mock_preview_dialog.assert_called_once()
-        mock_preview_dialog_instance.set_entry.assert_called_once_with(mock_entry)
+        assert (
+            mock_preview_dialog_instance.set_entry.call_count == 2
+        )
+        mock_preview_dialog_instance.set_entry.assert_called_with(mock_entry)
         mock_preview_dialog_instance.show.assert_called_once()
         mock_preview_dialog_instance.raise_.assert_called_once()
         mock_preview_dialog_instance.activateWindow.assert_called_once()
