@@ -210,8 +210,8 @@ class EntryRetrieverComponent:
             search_text=None,
         )
 
-        # 既にEntryModelのリストが返されるので変換は不要
-        return entries_dict
+        # EntryDictのリストをEntryModelのリストに変換
+        return [EntryModel.from_dict(entry_data) for entry_data in entries_dict]
 
     def count_entries(self) -> int:
         """全エントリ数を取得する
