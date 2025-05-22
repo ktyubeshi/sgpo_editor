@@ -411,6 +411,21 @@ class EntryModel(BaseModel):
         """flagsを小文字に正規化"""
         return [flag.lower() for flag in v]
 
+    @field_validator("occurrences", mode="before")
+    @classmethod
+    def parse_occurrences(cls, v: Any) -> List[tuple[str, int]]:
+        """occurrencesを `(file, line)` タプルのリストに変換する"""
+        if not v:
+            return []
+        parsed: List[tuple[str, int]] = []
+        for item in v:
+            try:
+                file, lineno = item
+                parsed.append((str(file), int(lineno)))
+            except Exception:
+                continue
+        return parsed
+
     def to_dict(self) -> Dict[str, Any]:
         """辞書化"""
         result = {

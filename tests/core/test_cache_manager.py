@@ -147,3 +147,12 @@ def test_config_applied(monkeypatch):
     # max_size=1なのでk1は消える
     assert cm.get_entry("k1") is None
     assert cm.get_entry("k2") is not None
+
+
+def test_filtered_id_cache(cache_manager):
+    key = "abc"
+    ids = ["e1", "e2"]
+    cache_manager.cache_filtered_ids(key, ids)
+    assert cache_manager.get_filtered_ids(key) == ids
+    cache_manager.invalidate_filter_cache(key)
+    assert cache_manager.get_filtered_ids(key) is None

@@ -334,10 +334,11 @@ class EntryCacheManager:
             filter_key: 無効化するフィルタキー。指定しない場合はすべて削除する。
         """
         if filter_key is not None:
+            logger.debug(f"invalidate_filter_cache: delete key={filter_key}")
             self._filter_cache.delete(filter_key)
         else:
+            logger.debug("invalidate_filter_cache: clear all filter cache")
             self._filter_cache.clear()
-        logger.debug(f"Filter cache invalidated for key: {filter_key}")
 
     def invalidate_entry(self, key: str) -> None:
         """特定のエントリのキャッシュを無効化する
@@ -786,13 +787,23 @@ class EntryCacheManager:
 
         ToDo Phase 1: フィルタ条件に合致するエントリIDのキャッシュを取得する
         """
-        return self._filter_cache.get(filter_key)
+        ids = self._filter_cache.get(filter_key)
+        if ids is not None:
+            logger.debug(
+                f"get_filtered_ids: hit for key={filter_key} ({len(ids)} ids)"
+            )
+        else:
+            logger.debug(f"get_filtered_ids: miss for key={filter_key}")
+        return ids
 
     def cache_filtered_ids(self, filter_key: str, entry_ids: List[str]) -> None:
         """フィルタ条件に合致するエントリIDをキャッシュする
 
         ToDo Phase 1: フィルタ条件に合致するエントリIDをキャッシュする
         """
+        logger.debug(
+            f"cache_filtered_ids: store {len(entry_ids)} ids for key={filter_key}"
+        )
         self._filter_cache.set(filter_key, entry_ids)
 
     def evaluate_cache_efficiency(self) -> CacheEfficiency:
