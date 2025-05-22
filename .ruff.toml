@@ -1,2 +1,3 @@
 # ruff configuration
+[lint]
 ignore = ["F401", "E701"]
