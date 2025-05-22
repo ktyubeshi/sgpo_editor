@@ -367,7 +367,10 @@ class MainWindow(QMainWindow):
 
         # プレビューダイアログを表示
         dialog = PreviewDialog(self)
-        
+
+        # プレビューダイアログに現在のエントリを設定
+        dialog.set_entry(current_entry)
+
         # 更新シグナルを設定
         dialog.set_update_signal(self.entry_list_facade.entry_selected)
         
