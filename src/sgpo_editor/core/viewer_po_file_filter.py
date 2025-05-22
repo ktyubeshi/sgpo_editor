@@ -113,8 +113,20 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
             str: マージされたフィルターキーワード
         """
         if new_keyword:
-            return new_keyword if not current_search_text else f'{current_search_text} {new_keyword}'  # シンプルなマージ、必要に応じて調整
-        return current_search_text or ''
+            merged = (
+                new_keyword
+                if not current_search_text
+                else f"{current_search_text} {new_keyword}"
+            )
+        else:
+            merged = current_search_text or ""
+        logger.debug(
+            "_merge_filters: new=%s current=%s merged=%s",
+            new_keyword,
+            current_search_text,
+            merged,
+        )
+        return merged
 
     def _generate_filter_key(self, filter_keyword: str) -> str:
         """フィルターキーを生成する
@@ -161,6 +173,9 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
                 # キャッシュを無効化
                 cache_manager = cm.EntryCacheManager()  # インスタンス取得、必要に応じてシングルトンを考慮
                 filter_key = self._generate_filter_key(self.search_text)  # フィルターキーを生成
+                logger.debug(
+                    "get_filtered_entries: invalidate cache key=%s", filter_key
+                )
                 cache_manager.invalidate_filter_cache(filter_key)
                 self._force_filter_update = True
         else:
@@ -169,6 +184,9 @@ class ViewerPOFileFilter(ViewerPOFileEntryRetriever):
                 self.search_text = self._merge_filters(filter_keyword, self.search_text)
                 cache_manager = cm.EntryCacheManager()
                 filter_key = self._generate_filter_key(self.search_text)
+                logger.debug(
+                    "get_filtered_entries: invalidate cache key=%s", filter_key
+                )
                 cache_manager.invalidate_filter_cache(filter_key)
                 self._force_filter_update = True
 

@@ -487,6 +487,15 @@ class TestEntryModel(unittest.TestCase):
         entry2 = EntryModel.from_dict(data)
         self.assertEqual(entry2.metadata, metadata)
 
+    def test_occurrences_validator(self):
+        data = {
+            "msgid": "a",
+            "msgstr": "b",
+            "occurrences": [("file.py", "12"), ("other", 5)],
+        }
+        entry = EntryModel(**data)
+        assert entry.occurrences == [("file.py", 12), ("other", 5)]
+
 
 if __name__ == "__main__":
     unittest.main()
