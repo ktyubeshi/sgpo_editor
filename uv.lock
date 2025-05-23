@@ -740,31 +740,30 @@ source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
     { name = "apsw" },
-    { name = "autopep8" },
     { name = "openai" },
     { name = "polib" },
-    { name = "pycodestyle" },
     { name = "pydantic" },
     { name = "pyside6" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-qt" },
-    { name = "pytest-timeout" },
-    { name = "pytest-xdist" },
     { name = "rich" },
-    { name = "ruff" },
-    { name = "snakeviz" },
     { name = "typer" },
 ]
 
 [package.optional-dependencies]
 test = [
     { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "pytest-cov" },
+    { name = "pytest-qt" },
+    { name = "pytest-timeout" },
+    { name = "pytest-xdist" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "autopep8" },
+    { name = "pycodestyle" },
+    { name = "ruff" },
+    { name = "snakeviz" },
     { name = "ty" },
 ]
 
@@ -772,28 +771,29 @@ dev = [
 requires-dist = [
     { name = "anthropic", specifier = ">=0.15.0" },
     { name = "apsw", specifier = ">=3.46.2.0" },
-    { name = "autopep8", specifier = ">=2.3.1" },
     { name = "openai", specifier = ">=1.10.0" },
     { name = "polib" },
-    { name = "pycodestyle", specifier = ">=2.12.1" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pyside6", specifier = ">=6.6.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.4.0" },
-    { name = "pytest-asyncio", specifier = ">=0.24.0" },
-    { name = "pytest-cov", specifier = ">=5.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.24.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.1.0" },
-    { name = "pytest-qt", specifier = ">=4.4.0" },
-    { name = "pytest-timeout", specifier = ">=2.3.1" },
-    { name = "pytest-xdist", specifier = ">=3.6.1" },
+    { name = "pytest-qt", marker = "extra == 'test'", specifier = ">=4.4.0" },
+    { name = "pytest-timeout", marker = "extra == 'test'", specifier = ">=2.3.1" },
+    { name = "pytest-xdist", marker = "extra == 'test'", specifier = ">=3.6.1" },
     { name = "rich" },
-    { name = "ruff", specifier = ">=0.9.10" },
-    { name = "snakeviz", specifier = ">=2.2.1" },
     { name = "typer" },
 ]
 provides-extras = ["test"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ty", specifier = ">=0.0.1a5" }]
+dev = [
+    { name = "autopep8", specifier = ">=2.3.1" },
+    { name = "pycodestyle", specifier = ">=2.12.1" },
+    { name = "ruff", specifier = ">=0.9.10" },
+    { name = "snakeviz", specifier = ">=2.2.1" },
+    { name = "ty", specifier = ">=0.0.1a5" },
+]
 
 [[package]]
 name = "shellingham"
