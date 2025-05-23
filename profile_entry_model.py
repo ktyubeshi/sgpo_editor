@@ -14,7 +14,8 @@ from sgpo_editor.models.entry import EntryModel
 logging.basicConfig(level=logging.WARNING)
 
 PROFILE_RESULTS_DIR = Path(__file__).parent / "profile_results"
-SAMPLE_PO_PATH = Path(__file__).parent / "sample_data" / "sample.po"
+# Use a larger PO file for performance profiling
+SAMPLE_PO_PATH = Path(__file__).parent / "sample_data" / "sample_10000.po"
 
 
 # 2. Helper Function `run_profile`
